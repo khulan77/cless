@@ -11,7 +11,8 @@
  * Үлдээнэ: каталог, орлого/тооллогын StockMovement, хэрэглэгчид, тохиргоо, AuditLog.
  * Дараа нь Variant.stock-ийг үлдсэн StockMovement-уудаас дахин тооцож, reserved = 0.
  *
- * NODE_ENV=production үед ажиллахгүй. Нэг transaction — алдаа гарвал юу ч өөрчлөгдөхгүй.
+ * NODE_ENV=production үед эсвэл "Нээлт хийгдсэн" (SiteSetting system.launchedAt) DB дээр ажиллахгүй.
+ * Нэг transaction — алдаа гарвал юу ч өөрчлөгдөхгүй.
  */
 import pg from "pg";
 
@@ -57,6 +58,15 @@ const client = new pg.Client({ connectionString: url });
 await client.connect();
 try {
   console.log(`DB: ${target}`);
+  // Нээлт хийсэн (бодит) DB — ADMIN "Нээлт хийгдсэн" гэж тэмдэглэсэн бол ХЭЗЭЭ Ч ажиллахгүй
+  const system = await client.query<{ value: { launchedAt?: string } }>(`SELECT "value" FROM "SiteSetting" WHERE "key" = 'system'`);
+  const launchedAt = system.rows[0]?.value?.launchedAt;
+  if (launchedAt) {
+    console.error(`Зогслоо: DB "нээлт хийгдсэн" гэж тэмдэглэгдсэн (${launchedAt}). Бодит гүйлгээг устгахгүй.`);
+    process.exitCode = 1;
+    await client.end();
+    process.exit(1);
+  }
   console.log(confirm ? "Устгах:" : "Устгагдах (dry run — --confirm өгөөгүй тул юу ч өөрчлөхгүй):");
   for (const [label, sql] of COUNTS) {
     const r = await client.query<{ count: string }>(sql);

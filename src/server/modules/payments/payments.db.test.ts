@@ -181,7 +181,7 @@ describe("QPay API mode", () => {
   it("worker poll verifies processing payments", async () => {
     const { r } = await startQPay();
     qpay.next = { paid: true, paidAmount: 410_000, raw: {} };
-    expect(await pollProcessingQPayPayments()).toBe(1);
+    expect(await pollProcessingQPayPayments()).toEqual({ checked: 1, paid: 1 });
     expect((await db.payment.findUniqueOrThrow({ where: { id: r.payment.id } })).status).toBe("SUCCEEDED");
   });
 

@@ -22,7 +22,7 @@ export default async function ShiftReportPage({ params }: { params: Promise<{ id
   if (!r) notFound();
   const sh = r.shift;
   const row = (k: string, v: string, strong = false) => (
-    <div className={`flex justify-between py-1 ${strong ? "font-medium" : ""}`}>
+    <div key={k} className={`flex justify-between py-1 ${strong ? "font-medium" : ""}`}>
       <dt>{k}</dt>
       <dd className="tabular-nums">{v}</dd>
     </div>

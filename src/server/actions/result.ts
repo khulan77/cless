@@ -4,6 +4,8 @@ import type { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { ForbiddenError, UnauthorizedError, UserError } from "@/server/errors";
 import type { ActionResult } from "@/lib/action-result";
+import { randomUUID } from "node:crypto";
+import { log } from "@/server/log";
 
 /** zod-оор шалгаж, алдаатай бол талбарын алдаатай UserError шиднэ */
 export function parseInput<S extends z.ZodType>(schema: S, input: unknown): z.infer<S> {
@@ -39,7 +41,9 @@ export async function runAction<T>(fn: () => Promise<T>, successMessage?: string
       if (e.code === "P2025") return { ok: false, error: "Бичлэг олдсонгүй. Хуудсаа шинэчилнэ үү." };
       if (e.code === "P2003") return { ok: false, error: "Холбоотой бичлэг байгаа тул энэ үйлдлийг хийх боломжгүй." };
     }
-    console.error("[action]", e);
-    return { ok: false, error: "Алдаа гарлаа. Дахин оролдоно уу." };
+    // Хэрэглэгчид ID өгч, лог-д тэр ID-тай бичнэ (нууц мэдээлэл log.ts-д redact хийгдэнэ)
+    const errorId = randomUUID().slice(0, 8);
+    log.error("server action failed", { errorId, error: e instanceof Error ? e : String(e) });
+    return { ok: false, error: `Алдаа гарлаа. Дахин оролдоно уу. (Алдааны ID: ${errorId})` };
   }
 }

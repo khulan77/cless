@@ -36,6 +36,26 @@
   }
 }
 
+/* ─── Header (transparent over a collection banner) ─── */
+/* HeaderShell-ийн тайлбарыг үз: URL биш, хуудсан дахь [data-header-overlay]-ээр шийднэ. */
+.site-header {
+  border-color: var(--color-line);
+  background-color: #fff;
+  color: var(--color-navy);
+}
+body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) {
+  border-color: transparent;
+  background-color: transparent;
+  color: #fff;
+}
+body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) :focus-visible {
+  outline-color: #fff;
+}
+body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) .header-cart-count {
+  background-color: #fff;
+  color: var(--color-navy);
+}
+
 /* ─── Typography ─── */
 /*
  * Кирилл UPPERCASE латинаас илүү бөөгнөрдөг тул letter-spacing-ийг +0.02em

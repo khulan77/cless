@@ -22,12 +22,16 @@ const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
 type Interval = { start: string; end: string };
 type Week = Record<number, Interval[]>;
 
-/** 24-hour time picker in 15-minute steps (native type=time follows the browser locale, e.g. AM/PM) */
-const TIMES = Array.from({ length: 24 * 4 + 1 }, (_, i) => formatHm(i * 15));
+/** 24-hour time picker in 15-minute steps, 06:00–23:00 (native type=time follows the browser locale, e.g. AM/PM) */
+const FIRST = 6 * 60;
+const LAST = 23 * 60;
+const TIMES = Array.from({ length: (LAST - FIRST) / 15 + 1 }, (_, i) => formatHm(FIRST + i * 15));
 function TimeSelect({ value, onChange, label, id, allowEmpty }: { value: string; onChange: (v: string) => void; label: string; id?: string; allowEmpty?: boolean }) {
   return (
     <select id={id} aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={`${inputClass} h-8 w-[84px] px-2 text-[13px] tabular-nums`}>
       {allowEmpty && <option value="">--:--</option>}
+      {/* A value saved outside 06:00–23:00 (e.g. imported) stays selectable instead of silently changing */}
+      {value && !TIMES.includes(value) && <option value={value}>{value}</option>}
       {TIMES.map((tm) => (
         <option key={tm} value={tm}>
           {tm}

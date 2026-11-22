@@ -7,7 +7,8 @@ import type { Role } from "@/generated/prisma/enums";
  */
 export const authConfig = {
   pages: { signIn: "/admin/login" },
-  session: { strategy: "jwt", maxAge: 60 * 60 * 12 }, // 12 цаг
+  // 12 цаг идэвхгүй бол гарна: JWT 15 минут тутам шинэчлэгдэж (updateAge) хугацаа нь сунна
+  session: { strategy: "jwt", maxAge: 60 * 60 * 12, updateAge: 60 * 15 },
   providers: [],
   callbacks: {
     authorized({ auth, request }) {
@@ -18,12 +19,15 @@ export const authConfig = {
       if (user) {
         token.uid = user.id as string;
         token.role = (user as { role: Role }).role;
+        // Нууц үг солигдсон мөч — session-ийг хүчингүй болгоход (src/server/auth/session.ts)
+        token.pwdAt = (user as { pwdAt?: number }).pwdAt ?? 0;
       }
       return token;
     },
     session({ session, token }) {
       session.user.id = token.uid as string;
       session.user.role = token.role as Role;
+      session.user.pwdAt = (token.pwdAt as number | undefined) ?? 0;
       return session;
     },
   },

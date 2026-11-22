@@ -33,7 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await db.user.findUnique({
           where: { email },
-          select: { id: true, name: true, email: true, role: true, isActive: true, passwordHash: true },
+          select: { id: true, name: true, email: true, role: true, isActive: true, passwordHash: true, passwordChangedAt: true },
         });
         const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
 
@@ -42,7 +42,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
         await recordLoginAttempt(ip, email, true);
-        return { id: user.id, name: user.name, email: user.email, role: user.role };
+        return { id: user.id, name: user.name, email: user.email, role: user.role, pwdAt: user.passwordChangedAt?.getTime() ?? 0 };
       },
     }),
   ],

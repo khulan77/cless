@@ -3,7 +3,7 @@ import type { Permission } from "@/server/auth/permissions";
 
 export type NavIcon =
   | "dashboard" | "schedule" | "product" | "service" | "stock" | "collection" | "content" | "users"
-  | "calendar" | "pos" | "orders" | "customers" | "shift" | "report" | "payroll" | "staffSchedule" | "room";
+  | "calendar" | "pos" | "orders" | "customers" | "shift" | "report" | "payroll" | "staffSchedule" | "room" | "account" | "settings" | "system";
 
 export type AdminNavItem = {
   href: string;
@@ -31,6 +31,9 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/staff-schedules", label: t.admin.nav.staffSchedules, icon: "staffSchedule", permission: "staff-schedule:write" },
   { href: "/admin/rooms", label: t.admin.nav.rooms, icon: "room", permission: "room:write" },
   { href: "/admin/users", label: t.admin.nav.users, icon: "users", permission: "user:write" },
+  { href: "/admin/settings", label: t.admin.nav.settings, icon: "settings", permission: "settings:write" },
+  { href: "/admin/system", label: t.admin.nav.system, icon: "system", permission: "settings:write" },
+  { href: "/admin/account", label: t.admin.nav.account, icon: "account", permission: "schedule:own" },
   { href: "/admin/reports", label: t.admin.nav.reports, icon: "report", permission: "report:read", soon: true },
   { href: "/admin/payroll", label: t.admin.nav.payroll, icon: "payroll", permission: "payroll:write", soon: true },
 ];

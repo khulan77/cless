@@ -77,7 +77,7 @@ export type FooterColumn = {
 
 export type FooterSetting = {
   columns: FooterColumn[];
-  contact: { title: string; address: string; phone: string; email: string; hours: string[] };
+  contact: { title: string; address: string; phone: string; email: string; hours: string[]; mapsUrl?: string };
   socials: { network: "instagram" | "facebook"; href: string; label: string }[];
   newsletter: { title: string; text: string; placeholder: string; button: string };
   copyright: string;

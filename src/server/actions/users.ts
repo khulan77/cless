@@ -35,7 +35,7 @@ export async function createUser(input: CreateUserInput) {
       const exists = await tx.user.findUnique({ where: { email: data.email }, select: { id: true } });
       if (exists) throw new UserError("Энэ имэйлтэй хэрэглэгч бүртгэлтэй байна.", { email: ["Давхардсан имэйл."] });
       const created = await tx.user.create({
-        data: { name: data.name, email: data.email, phone: data.phone, role: data.role, baseSalary: data.baseSalary, passwordHash, isBookable: defaultBookable(data.role) },
+        data: { name: data.name, email: data.email, phone: data.phone, role: data.role, baseSalary: data.baseSalary, passwordHash, isBookable: defaultBookable(data.role), mustChangePassword: true },
         select: publicFields,
       });
       await audit(tx, { userId: actor.id, action: "user.create", entity: "User", entityId: created.id, after: created });
@@ -97,7 +97,8 @@ export async function resetPassword(input: { id: string; password: string }) {
     await db.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id: data.id }, select: { email: true } });
       if (!user) throw new UserError("Хэрэглэгч олдсонгүй.");
-      await tx.user.update({ where: { id: data.id }, data: { passwordHash } });
+      // Түр нууц үг: анх нэвтрэхэд солиулна; өмнөх session-ууд хүчингүй
+      await tx.user.update({ where: { id: data.id }, data: { passwordHash, mustChangePassword: true, passwordChangedAt: new Date() } });
       // Нууц үг хэзээ ч лог-д орохгүй
       await audit(tx, { userId: actor.id, action: "user.reset_password", entity: "User", entityId: data.id });
       // Түгжигдсэн бол нээх

@@ -7,7 +7,7 @@ import { IntroToggle } from "./IntroToggle";
  */
 export function CollectionBanner({ heading, intro, image }: { heading: string; intro: string | null; image: string | null }) {
   return (
-    <section className="on-dark relative -mt-16 flex h-[264px] items-center justify-center overflow-hidden bg-navy pt-16 text-center text-white md:-mt-[76px] md:h-[336px] md:pt-[76px]">
+    <section data-header-overlay className="on-dark relative -mt-16 flex h-[264px] items-center justify-center overflow-hidden bg-navy pt-16 text-center text-white md:-mt-[76px] md:h-[336px] md:pt-[76px]">
       {image && <Img src={image} alt="" fill priority sizes="100vw" className="object-cover" />}
       <div aria-hidden className="absolute inset-0 bg-black/20" />
       <div className="relative px-4">

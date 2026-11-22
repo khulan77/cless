@@ -24,6 +24,8 @@ export type QPayApiConfig = {
   /** Тестэд fetch-ийг солино */
   fetchImpl?: typeof fetch;
   now?: () => number;
+  /** Token амжилттай авсан үед (Тохиргоо → QPay-д "сүүлд холбогдсон" харуулна) */
+  onToken?: (at: Date) => void;
 };
 
 export class QPayApiError extends Error {
@@ -65,6 +67,7 @@ export class QPayApiProvider implements QPayProvider {
     // Хэрэв утга нь timestamp биш (жижиг тоо) бол үлдсэн секунд гэж үзнэ (хамгаалалт)
     const expiresAtMs = Number.isFinite(expSec) && expSec > 1e9 ? expSec * 1000 : this.now() + (Number.isFinite(expSec) ? expSec : 3600) * 1000;
     this.token = { value, expiresAtMs };
+    this.cfg.onToken?.(new Date(this.now()));
     return value;
   }
 

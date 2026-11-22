@@ -276,12 +276,15 @@ export function paymentStatus(paymentId: string) {
 /** Worker: PROCESSING QPay төлбөрүүдийг шалгана (callback алдагдсан ч гацахгүй) */
 export async function pollProcessingQPayPayments(now = new Date()) {
   const processing = await db.payment.findMany({ where: { method: "QPAY", status: "PROCESSING" }, select: { id: true }, take: 50 });
+  let paid = 0;
   for (const p of processing) {
     try {
-      await verifyQPayPayment(p.id, null, now);
+      const v = await verifyQPayPayment(p.id, null, now);
+      if (v.sale.status === "PAID" && v.payment.status === "SUCCEEDED") paid++;
     } catch {
       // Дараагийн удаа дахин оролдоно
     }
   }
-  return processing.length;
+  // paid > 0 → үлдэгдэл хасагдсан тул storefront-ийн кэшийг шинэчлэх хэрэгтэй (worker)
+  return { checked: processing.length, paid };
 }

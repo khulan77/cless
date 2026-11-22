@@ -17,7 +17,23 @@ export default async function ContactPage() {
   const socials = footer.socials.filter((s) => s.href);
 
   const rows = [
-    { icon: MapPin, label: C.address, content: <span className="whitespace-pre-line">{contact.address}</span> },
+    {
+      icon: MapPin,
+      label: C.address,
+      content: (
+        <span className="whitespace-pre-line">
+          {contact.address}
+          {contact.mapsUrl && (
+            <>
+              {"\n"}
+              <a href={contact.mapsUrl} target="_blank" rel="noopener noreferrer" className="link-underline">
+                {C.openMap}
+              </a>
+            </>
+          )}
+        </span>
+      ),
+    },
     {
       icon: Phone,
       label: C.phone,

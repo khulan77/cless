@@ -8,8 +8,11 @@ import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { todaySummary } from "@/server/modules/sales/queries";
 import { todayAppointmentStats } from "@/server/modules/appointments/queries";
-import { formatTime } from "@/lib/time";
+import { formatDateTime, formatTime } from "@/lib/time";
 import { workerStatus } from "@/server/modules/outbox/heartbeat";
+import { failedEmailCount } from "@/server/modules/outbox/monitor";
+import { readiness } from "@/server/modules/system/readiness";
+import { LaunchButton } from "@/components/admin/system/LaunchButton";
 
 export const metadata = { title: "Хянах самбар" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
@@ -37,7 +40,8 @@ export default async function DashboardPage() {
     db.service.count({ where: { isActive: true } }),
     can(user.role, "user:write") ? db.user.count({ where: { isActive: true } }) : Promise.resolve(null),
   ]);
-  const [sales, worker, appts] = await Promise.all([today$, workerStatus(), appts$]);
+  const ready$ = can(user.role, "settings:write") ? readiness() : Promise.resolve(null);
+  const [sales, worker, appts, failedEmails, ready] = await Promise.all([today$, workerStatus(), appts$, failedEmailCount(), ready$]);
 
   const stats = [
     { label: "Нийтлэгдсэн бүтээгдэхүүн", value: published, hint: `${drafts} ноорог`, href: can(user.role, "product:write") ? "/admin/products" : undefined },
@@ -73,6 +77,43 @@ export default async function DashboardPage() {
         })}
       </div>
 
+      {ready && (!ready.ready || !ready.launchedAt) && (
+        <Card title={t.admin.readiness.title} description={t.admin.readiness.hint} className="mt-6" actions={ready.ready && !ready.launchedAt ? <LaunchButton /> : undefined}>
+          <ul className="-my-1 divide-y divide-line text-[14px]" data-testid="readiness">
+            {ready.items.map((i) => (
+              <li key={i.key} className="flex items-start justify-between gap-3 py-2">
+                <span className="flex items-start gap-2">
+                  <span aria-hidden className={i.ok ? "text-emerald-600" : "text-red-600"}>
+                    {i.ok ? "✓" : "✕"}
+                  </span>
+                  <span>
+                    <Link href={i.href} className="hover:underline">
+                      {i.label}
+                    </Link>
+                    {i.detail && <span className={`block text-[12px] ${i.ok ? "text-navy/50" : "text-red-700"}`}>{i.detail}</span>}
+                  </span>
+                </span>
+                <Badge tone={i.ok ? "green" : "red"}>{i.ok ? "OK" : "Дутуу"}</Badge>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+      {ready?.launchedAt && ready.ready === false && (
+        <p className="mt-2 text-[12px] text-navy/50">{t.admin.readiness.launched(formatDateTime(new Date(ready.launchedAt)))}</p>
+      )}
+      {failedEmails > 0 && (
+        <p role="alert" className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">
+          {failedEmails} имэйл (айлчлал/цагийн мэдэгдэл) илгээгдэж чадсангүй.{" "}
+          {can(user.role, "settings:write") ? (
+            <Link href="/admin/system" className="underline underline-offset-4">
+              Систем → Дахин оролдох
+            </Link>
+          ) : (
+            "Админд мэдэгдэнэ үү."
+          )}
+        </p>
+      )}
       <p
         role={worker.stale ? "alert" : "status"}
         className={`mt-4 inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] ${worker.stale ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}

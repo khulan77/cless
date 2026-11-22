@@ -36,8 +36,23 @@ export function getQPayProvider(): QPayProvider {
     password: process.env.QPAY_PASSWORD!,
     invoiceCode: process.env.QPAY_INVOICE_CODE!,
     invoiceReceiverCode: process.env.QPAY_INVOICE_RECEIVER_CODE,
+    onToken: (at) => {
+      void recordQPayToken(at);
+    },
   });
   return cached;
+}
+
+export const QPAY_TOKEN_HEARTBEAT = "qpay-token";
+
+/** Сүүлд амжилттай token авсан мөч (DB-д — app ба worker хоёулаа) */
+async function recordQPayToken(at: Date) {
+  try {
+    const { db } = await import("@/server/db");
+    await db.workerHeartbeat.upsert({ where: { id: QPAY_TOKEN_HEARTBEAT }, create: { id: QPAY_TOKEN_HEARTBEAT, lastRunAt: at }, update: { lastRunAt: at } });
+  } catch {
+    // Хяналтын мэдээлэл — төлбөрийг саатуулахгүй
+  }
 }
 
 export function callbackSecret(): string {

@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/pos/payments
   try {
     const check = req.nextUrl.searchParams.get("check") === "1";
     const view = check ? await verifyQPayPayment(id, user.id) : await paymentStatus(id);
-    if (check && view.sale.status === "PAID") revalidateTag("catalog", "max");
+    if (check && view.sale.status === "PAID") revalidateTag("catalog", { expire: 0 });
     return NextResponse.json(view, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "error" }, { status: 400 });

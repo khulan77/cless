@@ -8,6 +8,7 @@ import { requirePagePermission } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { getCurrentBranch } from "@/server/modules/branches/service";
 import { getOpenShift, shiftReport } from "@/server/modules/cash-shifts/service";
+import { getPosSettings } from "@/server/modules/settings/pos-settings";
 
 export const metadata = { title: "Кассын ээлж" };
 export const instant = false;
@@ -19,6 +20,7 @@ export default async function ShiftsPage() {
   const branch = await getCurrentBranch();
   const open = await getOpenShift(db, branch.id);
   const report = open ? await shiftReport(open.id) : null;
+  const pos = await getPosSettings();
   const mine = open && (open.openedById === user.id || can(user.role, "shift:all"));
   const history = await db.cashShift.findMany({
     where: { branchId: branch.id, status: "CLOSED" },
@@ -60,7 +62,7 @@ export default async function ShiftsPage() {
               </p>
             )}
           </Card>
-          {mine ? <ShiftOpenControls shiftId={open.id} expected={report.expectedCash} /> : <p className="text-[14px] text-navy/60">Энэ ээлжийг өөр ажилтан нээсэн.</p>}
+          {mine ? <ShiftOpenControls shiftId={open.id} expected={report.expectedCash} threshold={pos.shiftDifferenceThreshold} /> : <p className="text-[14px] text-navy/60">Энэ ээлжийг өөр ажилтан нээсэн.</p>}
         </div>
       )}
 
