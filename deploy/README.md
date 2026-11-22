@@ -7,7 +7,7 @@
 | `caddy` | 80/443 — автомат HTTPS (Let's Encrypt), www → apex, gzip/zstd, security header, `/uploads/*` зураг |
 | `app` | Next.js (standalone), `/api/health` healthcheck |
 | `worker` | Outbox (имэйл, QPay invoice цуцлах), QPay шалгалт, түгжээ тайлах |
-| `db` | Postgres 16 (`localdb` profile; порт гадагш нээгдэхгүй) |
+| `db` | Postgres 16, UTC (`localdb` profile; зөвхөн `127.0.0.1:5432` — серверийн build-д) |
 | `backup` | Өдөр бүр 03:00 DB + зургийн backup → `./backups`, 14 хоног, S3 (сонголттой) |
 | `tools` | Зөвхөн команд: `migrate deploy`, админ үүсгэх |
 
@@ -58,7 +58,7 @@ sudo ufw enable
 sudo ufw status
 ```
 
-> ⚠️ Docker-ийн `ports:` нь ufw-г тойрдог. Тиймээс compose-д зөвхөн `caddy` порт нээдэг; `db` порт **нээхгүй**.
+> ⚠️ Docker-ийн `ports:` нь ufw-г тойрдог. Тиймээс гадагш зөвхөн `caddy` (80/443) нээгдэнэ. `db` нь зөвхөн `127.0.0.1:5432`-д publish хийгдэнэ (серверийн өөрөөс л хандана — build-д хэрэгтэй); `0.0.0.0` руу хэзээ ч бүү соль.
 
 ### 1.4 Цагийн бүс, автомат шинэчлэл
 
@@ -103,7 +103,7 @@ chmod 600 .env.production
 nano .env.production
 ```
 
-Заавал бөглөх: `SITE_DOMAIN`, `POSTGRES_PASSWORD`, `DATABASE_URL`/`DIRECT_URL` (нууц үгийг оруулна), `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_SITE_URL`. Нууц утга үүсгэх:
+Заавал бөглөх: `SITE_DOMAIN`, `POSTGRES_PASSWORD`, `DATABASE_URL`/`DIRECT_URL`/`BUILD_DATABASE_URL` (гурвуулаа ижил нууц үгтэй; эхний хоёр нь `@db:5432`, build-ийнх `@127.0.0.1:5432`), `AUTH_SECRET`, `AUTH_URL`, `NEXT_PUBLIC_SITE_URL`. Нууц утга үүсгэх:
 
 ```bash
 openssl rand -hex 24      # POSTGRES_PASSWORD
@@ -115,13 +115,20 @@ QPay, Resend-ийг дараа нь бөглөж болно (бөглөсний 
 
 ## 5. Анхны асаалт
 
+Build-ийг **сервер дээр өөр дээр нь** хийнэ (CI/өөр машин биш). Шалтгаан: `next build` нь нүүр, ангилал, бараа хуудсуудыг
+prerender хийхдээ DB-ээс уншдаг. BuildKit нь compose-ийн дотоод сүлжээнд холбогдож чаддаггүй тул app build нь
+`network: host`-оор серверийн `127.0.0.1:5432` (db-ийн publish) руу хандана. DB-ийн URL-ийг BuildKit **secret**-ээр
+(`BUILD_DATABASE_URL` → `--secret id=database_url`) дамжуулдаг тул image layer, `docker history`-д үлдэхгүй.
+
+Дараалал (заавал энэ дарааллаар):
+
 ```bash
-dc up -d db                                           # 1. DB
+dc up -d db                                           # 1. DB асаах (127.0.0.1:5432)
 dc --profile tools build tools                        # 2. tools image (DB хэрэггүй)
-dc --profile tools run --rm tools bun run db:deploy   # 3. migration (app build-ээс ӨМНӨ)
-dc build app                                          # 4. app image (~3–5 мин, prerender-д DB хэрэгтэй)
+dc --profile tools run --rm tools bun run db:deploy   # 3. migrate deploy — app build-ээс ӨМНӨ (prerender шинэ schema-г уншина)
+dc build app                                          # 4. app image (~3–5 мин; host сүлжээ + secret)
 dc up -d                                              # 5. app, worker, caddy, backup
-dc ps                                # бүгд "running", app "healthy"
+dc ps                                                 # бүгд "running", app "healthy"
 ```
 
 Шалгах:
@@ -149,7 +156,7 @@ cd /opt/cless
 ./deploy/update.sh
 ```
 
-Скрипт: `git pull` → **backup** → build → `migrate deploy` → restart → health шалгана. Build, migration эсвэл health амжилтгүй бол өмнөх image руу автоматаар буцна.
+Скрипт: `git pull` → **backup** → tools build → `migrate deploy` → app build → restart → health шалгана (§5-ийн дараалал). Build, migration эсвэл health амжилтгүй бол өмнөх image руу автоматаар буцна.
 
 > Migration DB-д ажилласны дараа app унавал image буцсан ч DB шинэ schema-тай үлдэнэ. Ихэнх migration (багана нэмэх) хуучин кодтой зэрэгцэн ажилладаг. Үгүй бол §10-аар шинэчлэлийн өмнөх backup-аас сэргээнэ.
 
@@ -214,16 +221,19 @@ ls backups/
 COMPOSE_PROFILES=
 DATABASE_URL=<pooler, порт 6543, ?pgbouncer=true>
 DIRECT_URL=<session/direct, порт 5432>
+BUILD_DATABASE_URL=<DATABASE_URL-тэй ижил>
 ```
 
-Build `DATABASE_URL`-ээр prerender хийнэ. `backup` нь `DIRECT_URL`-ээс dump авна. `restore.sh` нь `public` schema-г устгадаг тул Supabase-д **ашиглахгүй** — Supabase-ийн өөрийн сэргээлтийг ашиглана.
+Build `BUILD_DATABASE_URL`-ээр (secret) prerender хийнэ. `backup` нь `DIRECT_URL`-ээс dump авна. `restore.sh` нь `public` schema-г устгадаг тул Supabase-д **ашиглахгүй** — Supabase-ийн өөрийн сэргээлтийг ашиглана.
 
 ## 12. Түгээмэл асуудал
 
 | Шинж | Шалтгаан / шийдэл |
 | --- | --- |
 | Caddy: `obtaining certificate … failed` | DNS сервер рүү заагаагүй, эсвэл 80/443 хаалттай. `dig`, `ufw status` → `dc restart caddy` |
-| Build: `Can't reach database server` | `dc up -d db`-г эхэлж асаасан эсэх, `DATABASE_URL`-ийн host `db` эсэх |
+| Build: `Can't reach database server` | `dc up -d db`-г эхэлж асаасан эсэх; `BUILD_DATABASE_URL`-ийн host `127.0.0.1`, порт `DB_HOST_PORT`-той ижил эсэх (`docker port cless-db-1`) |
+| Build: `relation "…" does not exist` | Migration-ийг app build-ээс ӨМНӨ ажиллуулаагүй (§5, 3-р алхам) |
+| Outbox ажил хэдэн цагаар хоцорч байна | DB-ийн timezone UTC биш. `dc exec db psql -U cless -c 'show timezone'` → `UTC` байх ёстой (compose-д `-c timezone=UTC`) |
 | `/api/health` 503 | `dc logs db`, `dc ps` — DB ажиллаж байгаа эсэх |
 | Зураг 404 | `dc exec app ls public/uploads` — volume холбогдсон эсэх |
 | Имэйл явахгүй | `RESEND_API_KEY`, `EMAIL_FROM` → `dc up -d app worker`; `dc logs worker` |

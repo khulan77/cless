@@ -23,8 +23,10 @@ services:
       target: runner
       args:
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL тохируулна уу}
-      # Build үед prerender хийхэд DB хэрэгтэй
-      network: cless_internal
+      # Build үед prerender хийхэд DB хэрэгтэй. Build-ийг СЕРВЕР ДЭЭР хийнэ: BuildKit нь compose-ийн
+      # дотоод сүлжээг дэмждэггүй тул host сүлжээгээр 127.0.0.1:${DB_HOST_PORT}-д (db-ийн publish) хүрнэ.
+      # URL нь BuildKit secret — image layer, `docker history`-д үлдэхгүй.
+      network: host
       secrets: [database_url]
     restart: unless-stopped
     depends_on:
@@ -78,7 +80,9 @@ services:
     # уншдаг. TZ=Asia/Ulaanbaatar тавибал DB-ийн default утгууд +8 цаг болж outbox ажил 8 цаг хоцорно
     # (локал тестээр баталгаажсан). Supabase, dev DB мөн UTC.
     command: ["postgres", "-c", "timezone=UTC", "-c", "log_timezone=UTC"]
-    # Порт гадагш НЭЭХГҮЙ — зөвхөн internal сүлжээнд
+    # Зөвхөн 127.0.0.1-д publish (серверийн build-д). Гадагш (0.0.0.0) НЭЭХГҮЙ.
+    ports:
+      - "127.0.0.1:${DB_HOST_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks: [internal]
@@ -125,12 +129,12 @@ services:
     networks: [internal]
 
 secrets:
+  # App build-ийн prerender-д: localdb үед postgresql://…@127.0.0.1:5432/… (host сүлжээ), гадны DB үед DATABASE_URL-тэй ижил
   database_url:
-    environment: DATABASE_URL
+    environment: BUILD_DATABASE_URL
 
 networks:
   internal:
-    # Build (`build.network`) нэрээр нь холбогдох тул тогтмол нэртэй
     name: cless_internal
 
 volumes:
