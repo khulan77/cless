@@ -1,8 +1,8 @@
 import Image, { type ImageProps } from "next/image";
 
 /**
- * next/image wrapper. Локал SVG placeholder-уудыг optimizer-ээр дамжуулахгүй.
- * Cloudinary/S3 руу шилжихэд next.config-ийн images.remotePatterns-д домэйн нэмнэ.
+ * next/image wrapper. Local SVG placeholders skip the optimizer.
+ * When moving to Cloudinary/S3, add the domain to images.remotePatterns in next.config.
  */
 export function Img({ src, alt, unoptimized, ...props }: ImageProps) {
   const isSvg = typeof src === "string" && src.endsWith(".svg");

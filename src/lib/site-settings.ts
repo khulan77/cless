@@ -15,12 +15,16 @@ export type BrandSetting = {
   description: string;
 };
 
-/** Цэсний бүлэг: DB-ийн Collection-оос автоматаар бөглөгдөнө */
+/**
+ * Цэсний бүлэг: DB-ийн Collection-оос автоматаар бөглөгдөнө (showInMenu=true).
+ * parentSlug өгвөл тухайн ангиллын хүүхдүүд; slugs өгвөл яг тэдгээр; аль нь ч үгүй бол
+ * тухайн kind-ийн дээд түвшний ангиллууд.
+ */
 export type NavCollectionSource = {
   title: string;
   kind: "CATEGORY" | "CONCERN";
-  /** Collection.navGroup-ээр шүүнэ. Байхгүй бол тухайн kind бүгд */
-  navGroup?: string;
+  parentSlug?: string;
+  slugs?: string[];
 };
 
 export type NavItem = {
@@ -58,14 +62,17 @@ export type BannerSetting = {
 
 export type GridSectionSetting = { title: string; labelPrefix?: string };
 
-export type BenefitIcon = "gift" | "package" | "scan-face" | "shield-check" | "sparkles";
+export type BenefitIcon = "gift" | "package" | "scan-face" | "shield-check" | "sparkles" | "truck";
 export type BenefitsSetting = { items: { icon: BenefitIcon; lines: [string, string] }[] };
+
+/** Бүтээгдэхүүний хуудасны давуу талын мөр (icon + нэг мөр текст) */
+export type ProductBenefitsSetting = { items: { icon: BenefitIcon; label: string }[] };
 
 export type FooterColumn = {
   title: string;
   links: Link[];
   /** Өгвөл линкүүдийг DB-ийн Collection-оос автоматаар нэмнэ (slug → /collections/[slug]) */
-  collections?: { kind: "CATEGORY" | "CONCERN"; navGroup?: string };
+  collections?: { kind: "CATEGORY" | "CONCERN"; parentSlug?: string; slugs?: string[] };
 };
 
 export type FooterSetting = {
@@ -90,6 +97,7 @@ export type SiteSettings = {
   categoryGrid: GridSectionSetting;
   servicesBanner: BannerSetting;
   benefits: BenefitsSetting;
+  productBenefits: ProductBenefitsSetting;
   footer: FooterSetting;
 };
 

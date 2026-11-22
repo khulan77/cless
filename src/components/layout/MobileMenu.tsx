@@ -3,13 +3,13 @@
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { t } from "@/i18n";
 import type { ResolvedNavItem } from "@/server/queries/catalog";
 import { MegaMenu } from "./MegaMenu";
 
 /**
- * Hamburger товч + зүүнээс гарах drawer. Бүх дэлгэцийн хэмжээнд ашиглагдана:
- * desktop дээр дэд цэс (MegaMenu) drawer-ийн хажууд 2-р багана болж нээгдэнэ,
- * mobile дээр drawer-ийн оронд "Буцах" товчтой гарна.
+ * Hamburger + left drawer on every breakpoint. On desktop the sub-menu (MegaMenu)
+ * opens as a second column; on mobile it replaces the drawer with a back button.
  */
 export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
   const [open, setOpen] = useState(false);
@@ -36,7 +36,7 @@ export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
         setActive(null);
         triggerRef.current?.focus();
       }
-      // Энгийн focus trap
+      // Simple focus trap
       if (e.key === "Tab" && panelRef.current) {
         const nodes = panelRef.current.querySelectorAll<HTMLElement>("a, button");
         const first = nodes[0];
@@ -65,7 +65,7 @@ export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
       <button
         ref={triggerRef}
         type="button"
-        aria-label="Цэс нээх"
+        aria-label={t.layout.openMenu}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(true)}
@@ -87,20 +87,22 @@ export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Үндсэн цэс"
+        aria-label={t.layout.mainMenu}
+        // Хаалттай drawer: Tab-аар дотор нь орохгүй, screen reader-т харагдахгүй
         inert={!open}
+        aria-hidden={!open}
         className={`fixed inset-y-0 left-0 z-50 flex max-w-full transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <nav
-          aria-label="Үндсэн"
-          className={`h-full w-screen overflow-y-auto bg-white px-6 pb-10 pt-4 sm:w-[380px] ${
+          aria-label={t.layout.mainNav}
+          className={`h-full w-screen overflow-y-auto bg-white px-6 pb-10 pt-4 text-navy sm:w-[380px] ${
             activeItem ? "max-md:hidden" : ""
           }`}
         >
           <div className="mb-6 flex justify-end">
-            <button type="button" onClick={close} aria-label="Цэс хаах" className="grid size-10 place-items-center">
+            <button type="button" onClick={close} aria-label={t.layout.closeMenu} className="grid size-10 place-items-center">
               <X className="size-[22px]" strokeWidth={1.25} aria-hidden />
             </button>
           </div>

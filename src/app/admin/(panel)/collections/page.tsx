@@ -2,7 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Badge, PageHeader, Table, btnClass, tdClass, thClass } from "@/components/admin/ui";
 import type { CollectionKind } from "@/generated/prisma/enums";
-import { COLLECTION_KIND_LABELS, NAV_GROUPS } from "@/lib/validation/collection";
+import { COLLECTION_KIND_LABELS } from "@/lib/validation/collection";
+import { listCollectionOptions } from "@/server/queries/admin";
 import { db } from "@/server/db";
 import { requirePagePermission } from "@/server/auth/session";
 
@@ -16,11 +17,16 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
   const kind: CollectionKind = rawKind === "CONCERN" ? "CONCERN" : "CATEGORY";
 
   // Тоо цөөн (<100) тул pagination шаардлагагүй
-  const collections = await db.collection.findMany({
-    where: { kind },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    include: { _count: { select: { products: true } } },
-  });
+  const [rows, tree] = await Promise.all([
+    db.collection.findMany({
+      where: { kind },
+      include: { _count: { select: { products: true, tiles: true } } },
+    }),
+    listCollectionOptions(),
+  ]);
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  // Модны дарааллаар
+  const collections = tree.filter((o) => byId.has(o.id)).map((o) => ({ ...byId.get(o.id)!, depth: o.depth }));
 
   return (
     <>
@@ -47,7 +53,7 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
           <tr>
             <th className={`${thClass} w-14`}><span className="sr-only">Зураг</span></th>
             <th className={thClass}>Нэр</th>
-            <th className={thClass}>Цэсний бүлэг</th>
+            <th className={thClass}>Цэс</th>
             <th className={`${thClass} text-right`}>Бүтээгдэхүүн</th>
             <th className={`${thClass} text-right`}>Эрэмбэ</th>
             <th className={thClass}>Нүүр хуудас</th>
@@ -58,14 +64,17 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
             <tr key={c.id} className="hover:bg-navy/[0.02]">
               <td className={tdClass}>
                 <div className="relative size-10 overflow-hidden rounded bg-card">
-                  {c.image && <Image src={c.image} alt="" fill sizes="40px" unoptimized={c.image.endsWith(".svg")} className="object-cover" />}
+                  {c.tileImage && <Image src={c.tileImage} alt="" fill sizes="40px" unoptimized={c.tileImage.endsWith(".svg")} className="object-cover" />}
                 </div>
               </td>
               <td className={tdClass}>
-                <Link href={`/admin/collections/${c.id}`} className="font-medium hover:underline">{c.name}</Link>
+                <span style={{ paddingLeft: c.depth * 20 }} className="inline-block">
+                  {c.depth > 0 && <span className="mr-1 text-navy/30">└</span>}
+                  <Link href={`/admin/collections/${c.id}`} className="font-medium hover:underline">{c.name}</Link>
+                </span>
                 <p className="font-mono text-[11px] text-navy/45">{c.slug}</p>
               </td>
-              <td className={tdClass}>{c.navGroup ? NAV_GROUPS[c.navGroup as keyof typeof NAV_GROUPS] ?? c.navGroup : "—"}</td>
+              <td className={tdClass}>{c.showInMenu ? <Badge tone="green">Цэсэнд</Badge> : <Badge>Нуугдсан</Badge>}{c._count.tiles > 0 && <span className="ml-1.5"><Badge>{`${c._count.tiles} tile`}</Badge></span>}</td>
               <td className={`${tdClass} text-right tabular-nums`}>{c._count.products}</td>
               <td className={`${tdClass} text-right tabular-nums`}>{c.sortOrder}</td>
               <td className={tdClass}>{c.showOnHome ? <Badge tone="green">Харагдана</Badge> : <Badge>Үгүй</Badge>}</td>

@@ -2,8 +2,9 @@
 
 import { X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
+import { t } from "@/i18n";
 
-/** Native <dialog> — focus trap, Escape, backdrop-ийг browser хариуцна */
+/** Native <dialog> — the browser handles focus trap, Escape and backdrop */
 export function Dialog({
   open,
   onClose,
@@ -32,7 +33,7 @@ export function Dialog({
     >
       <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
         <h2 className="text-[15px] font-medium">{title}</h2>
-        <button type="button" onClick={onClose} aria-label="Хаах" className="rounded p-1 hover:bg-navy/5">
+        <button type="button" onClick={onClose} aria-label={t.admin.close} className="rounded p-1 hover:bg-navy/5">
           <X className="size-4" />
         </button>
       </div>

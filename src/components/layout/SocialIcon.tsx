@@ -1,4 +1,4 @@
-// lucide-react 1.x-д брэндийн icon байхгүй тул нимгэн outline SVG.
+// lucide-react 1.x has no brand icons, so thin outline SVGs.
 export function SocialIcon({ network, className }: { network: "instagram" | "facebook"; className?: string }) {
   const common = {
     className,

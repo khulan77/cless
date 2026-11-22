@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { Permission } from "@/server/auth/permissions";
 
 export type NavIcon =
@@ -12,20 +13,20 @@ export type AdminNavItem = {
   soon?: boolean;
 };
 
-// Цэс эрхээр шүүгдэнэ (layout.tsx). Хуудас бүр өөрөө ч эрхээ дахин шалгана.
+// Filtered by permission in layout.tsx; every page re-checks its own permission.
 export const ADMIN_NAV: AdminNavItem[] = [
-  // Хянах самбар — MANAGER, ADMIN (STAFF шууд хуваарь руу)
-  { href: "/admin", label: "Хянах самбар", icon: "dashboard", permission: "schedule:all" },
-  { href: "/admin/schedule", label: "Миний хуваарь", icon: "schedule", permission: "schedule:own" },
-  { href: "/admin/products", label: "Бүтээгдэхүүн", icon: "product", permission: "product:write" },
-  { href: "/admin/services", label: "Үйлчилгээ", icon: "service", permission: "service:write" },
-  { href: "/admin/inventory", label: "Үлдэгдэл", icon: "stock", permission: "stock:read" },
-  { href: "/admin/collections", label: "Ангилал", icon: "collection", permission: "product:write" },
-  { href: "/admin/content", label: "Сайтын контент", icon: "content", permission: "settings:write" },
-  { href: "/admin/users", label: "Хэрэглэгчид", icon: "users", permission: "user:write" },
-  { href: "/admin/calendar", label: "Календарь", icon: "calendar", permission: "schedule:all", soon: true },
-  { href: "/admin/visits", label: "Айлчлал / POS", icon: "pos", permission: "visit:write", soon: true },
-  { href: "/admin/orders", label: "Захиалга", icon: "orders", permission: "sale:write", soon: true },
-  { href: "/admin/reports", label: "Тайлан", icon: "report", permission: "report:read", soon: true },
-  { href: "/admin/payroll", label: "Цалин", icon: "payroll", permission: "payroll:write", soon: true },
+  // Dashboard — MANAGER, ADMIN (STAFF is sent to their schedule)
+  { href: "/admin", label: t.admin.nav.dashboard, icon: "dashboard", permission: "schedule:all" },
+  { href: "/admin/schedule", label: t.admin.nav.schedule, icon: "schedule", permission: "schedule:own" },
+  { href: "/admin/products", label: t.admin.nav.products, icon: "product", permission: "product:write" },
+  { href: "/admin/services", label: t.admin.nav.services, icon: "service", permission: "service:write" },
+  { href: "/admin/inventory", label: t.admin.nav.inventory, icon: "stock", permission: "stock:read" },
+  { href: "/admin/collections", label: t.admin.nav.collections, icon: "collection", permission: "product:write" },
+  { href: "/admin/content", label: t.admin.nav.content, icon: "content", permission: "settings:write" },
+  { href: "/admin/users", label: t.admin.nav.users, icon: "users", permission: "user:write" },
+  { href: "/admin/calendar", label: t.admin.nav.calendar, icon: "calendar", permission: "schedule:all", soon: true },
+  { href: "/admin/visits", label: t.admin.nav.visits, icon: "pos", permission: "visit:write", soon: true },
+  { href: "/admin/orders", label: t.admin.nav.orders, icon: "orders", permission: "sale:write", soon: true },
+  { href: "/admin/reports", label: t.admin.nav.reports, icon: "report", permission: "report:read", soon: true },
+  { href: "/admin/payroll", label: t.admin.nav.payroll, icon: "payroll", permission: "payroll:write", soon: true },
 ];

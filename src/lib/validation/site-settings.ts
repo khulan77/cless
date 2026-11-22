@@ -11,6 +11,7 @@ export const BENEFIT_ICONS = {
   "scan-face": "Оношлогоо",
   "shield-check": "Аюулгүй",
   sparkles: "Гялбаа",
+  truck: "Хүргэлт",
 } as const;
 
 /** Админаас засагдах SiteSetting-ийн schema-ууд */
@@ -41,11 +42,17 @@ export const settingSchemas = {
     items: z
       .array(
         z.object({
-          icon: z.enum(["gift", "package", "scan-face", "shield-check", "sparkles"]),
+          icon: z.enum(["gift", "package", "scan-face", "shield-check", "sparkles", "truck"]),
           lines: z.tuple([requiredText(40), requiredText(40)]),
         }),
       )
       .length(4, "Яг 4 мөр байна."),
+  }),
+  productBenefits: z.object({
+    items: z
+      .array(z.object({ icon: z.enum(["gift", "package", "scan-face", "shield-check", "sparkles", "truck"]), label: requiredText(60) }))
+      .min(1, "Дор хаяж нэг мөр.")
+      .max(4, "4-өөс ихгүй."),
   }),
 } satisfies { [K in keyof SiteSettings]?: z.ZodType<SiteSettings[K]> };
 

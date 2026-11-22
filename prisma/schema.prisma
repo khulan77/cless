@@ -33,6 +33,21 @@ enum BadgeType {
   NEW
   ICONIC
   LIMITED
+  ONLINE_EXCLUSIVE
+}
+
+enum ProductKind {
+  SINGLE
+  BUNDLE
+}
+
+enum RelationType {
+  /// "Хамт хэрэглэх арчилгаа" — арчилгааны алхмын дарааллаар
+  PROTOCOL
+  /// "Танд таалагдаж магадгүй"
+  SIMILAR
+  /// "Төгс хослол" — санал болгох багц
+  BUNDLE_SUGGESTION
 }
 
 enum ItemKind {
@@ -170,24 +185,41 @@ model User {
 // ─────────────────────────── Каталог ───────────────────────────
 
 model Product {
-  id          String     @id @default(cuid())
-  slug        String     @unique
-  name        String
-  /// Ашиг тусын богино текст, "/" тусгаарлагчтай. Жишээ: "Цэвэршүүлэх / Батга"
-  subtitle    String
-  description String
-  howToUse    String
-  ingredients String?
-  badge       BadgeType?
-  isPublished Boolean    @default(false)
-  sortOrder   Int        @default(0)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id             String      @id @default(cuid())
+  slug           String      @unique
+  /// Брэндийн нэр — орчуулагдахгүй (MASQUE VIVANT)
+  name           String
+  kind           ProductKind @default(SINGLE)
+  /// "Арьсыг тэнцвэржүүлэх нүүрний маск"
+  tagline        String?
+  /// "Тос ихтэй, батга гарах хандлагатай арьсанд тохиромжтой."
+  recommendedFor String?
+  /// Ашиг тус: ["Тайвшруулах", "Нүх сүв нарийсгах"]
+  benefits       String[]    @default([])
+  description    String
+  skinScience    String?
+  /// Хэрэглэх заавар — мөр бүр нэг алхам
+  howToUse       String[]    @default([])
+  /// INCI — латинаар, орчуулахгүй
+  ingredients    String?
+  /// Байгаль орчны мэдээлэл: { "Савлагаа": "Шилэн сав" }
+  environmental  Json?
+  clinicalNotes  String[]    @default([])
+  seoTitle       String?
+  seoDescription String?
+  badge          BadgeType?
+  isPublished    Boolean     @default(false)
+  sortOrder      Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   images          ProductImage[]
   variants        Variant[]
   collections     ProductCollection[]
   commissionRules CommissionRule[]
+  relations       ProductRelation[]   @relation("RelationFrom")
+  relatedFrom     ProductRelation[]   @relation("RelationTo")
+  bundleItems     BundleItem[]
 
   @@index([isPublished, sortOrder])
   @@index([badge])
@@ -229,8 +261,41 @@ model Variant {
   consumedBy      ServiceConsumable[]
   saleItems       SaleItem[]
   recommendations VisitRecommendation[]
+  inBundles       BundleItem[]
 
   @@index([productId, sortOrder])
+}
+
+model ProductRelation {
+  id        String       @id @default(cuid())
+  productId String
+  relatedId String
+  type      RelationType
+  position  Int          @default(0)
+  createdAt DateTime     @default(now())
+
+  product Product @relation("RelationFrom", fields: [productId], references: [id], onDelete: Cascade)
+  related Product @relation("RelationTo", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, relatedId, type])
+  @@index([productId, type, position])
+}
+
+/// Багцын бүрэлдэхүүн. Багц (kind=BUNDLE) өөрийн Variant-аар зарагдана;
+/// бүрэлдэхүүний аль нэг нь дууссан бол багц дууссан.
+model BundleItem {
+  id              String   @id @default(cuid())
+  bundleProductId String
+  variantId       String
+  qty             Int      @default(1)
+  position        Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  bundle  Product @relation(fields: [bundleProductId], references: [id], onDelete: Cascade)
+  variant Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([bundleProductId, variantId])
+  @@index([variantId])
 }
 
 model PriceHistory {
@@ -273,34 +338,68 @@ model StockMovement {
 model Collection {
   id          String         @id @default(cuid())
   slug        String         @unique
+  /// Цэс, tile-д харагдах нэр: "Пигментаци ба толбо"
   name        String
   kind        CollectionKind
-  description String?
-  image       String?
-  /// Цэсний бүлэг (SiteSetting.navigation-д ашиглана). Жишээ: "face", "body-hair"
-  navGroup    String?
+  /// Шаталсан ангилал (Нүүрний арчилгаа › Серум › Хөгшрөлтийн эсрэг)
+  parentId    String?
+  /// Хуудасны H1 (байхгүй бол name): "ПИГМЕНТАЦИЙН ПРОТОКОЛ"
+  heading     String?
+  /// Баннерын доорх товч танилцуулга
+  intro       String?
+  /// Хуудасны доод SEO догол мөр
+  seoText     String?
+  bannerImage String?
+  /// Нүүр хуудас / ангиллын tile зураг
+  tileImage   String?
+  showInMenu  Boolean        @default(true)
   sortOrder   Int            @default(0)
   showOnHome  Boolean        @default(false)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  parent          Collection?         @relation("CollectionTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Collection[]        @relation("CollectionTree")
   products        ProductCollection[]
+  tiles           CollectionTile[]
   commissionRules CommissionRule[]
 
   @@index([kind, sortOrder])
+  @@index([parentId, sortOrder])
 }
 
 model ProductCollection {
   productId    String
   collectionId String
-  sortOrder    Int      @default(0)
+  /// Ангилал бүрт тусдаа дараалал (CONCERN-д арчилгааны алхам)
+  position     Int      @default(0)
   createdAt    DateTime @default(now())
 
   product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
 
   @@id([productId, collectionId])
-  @@index([collectionId, sortOrder])
+  @@index([collectionId, position])
+}
+
+/// Ангиллын grid-д бүтээгдэхүүний дунд орох редакцийн нүд
+model CollectionTile {
+  id           String   @id @default(cuid())
+  collectionId String
+  /// Grid дахь нүдний дугаар (1-ээс)
+  position     Int
+  image        String
+  eyebrow      String?
+  title        String
+  text         String?
+  ctaLabel     String?
+  ctaHref      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([collectionId, position])
 }
 
 // ─────────────────────────── Үйлчилгээ ───────────────────────────

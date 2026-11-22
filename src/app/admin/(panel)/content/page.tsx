@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  AnnouncementForm, BenefitsForm, FeaturedProductForm, HeroForm, PromoTrioForm, SplitPromoForm,
+  AnnouncementForm, BenefitsForm, FeaturedProductForm, HeroForm, ProductBenefitsForm, PromoTrioForm, SplitPromoForm,
 } from "@/components/admin/content/SettingForms";
 import { EmptyState, PageHeader, btnClass } from "@/components/admin/ui";
 import type { SiteSettings } from "@/lib/site-settings";
@@ -19,6 +19,7 @@ const TABS: { key: EditableSettingKey; label: string }[] = [
   { key: "splitPromo", label: "Хоёр талт promo" },
   { key: "featuredProduct", label: "Онцлох бүтээгдэхүүн" },
   { key: "benefits", label: "Давуу талууд" },
+  { key: "productBenefits", label: "Бүтээгдэхүүний давуу тал" },
 ];
 
 // Тохиргоо байхгүй үед эхлэх утга
@@ -31,6 +32,7 @@ const DEFAULTS: { [K in EditableSettingKey]: SiteSettings[K] } = {
   splitPromo: { eyebrow: "", title: "", text: "", cta: EMPTY_LINK, image: EMPTY_IMAGE },
   featuredProduct: { title: "", productSlug: "", image: EMPTY_IMAGE },
   benefits: { items: [0, 1, 2, 3].map(() => ({ icon: "gift" as const, lines: ["", ""] as [string, string] })) },
+  productBenefits: { items: [{ icon: "gift", label: "" }] },
 };
 
 export default async function ContentPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
@@ -67,6 +69,7 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
         {tab === "splitPromo" && <SplitPromoForm initial={value} />}
         {tab === "featuredProduct" && <FeaturedProduct initial={value} />}
         {tab === "benefits" && <BenefitsForm initial={value} />}
+        {tab === "productBenefits" && <ProductBenefitsForm initial={value} />}
         {!TABS.some((t) => t.key === tab) && <EmptyState title="Хэсэг олдсонгүй" />}
       </div>
     </>

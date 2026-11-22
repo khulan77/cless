@@ -12,6 +12,7 @@ import { slugify } from "@/lib/slug";
 import { serviceInputSchema, type ServiceInput } from "@/lib/validation/service";
 import { saveService } from "@/server/actions/services";
 import { VariantPicker } from "./VariantPicker";
+import { t } from "@/i18n";
 
 const num = (v: string) => (v === "" ? Number.NaN : Number(v));
 const numValue = (v: number) => (Number.isNaN(v) ? "" : v);
@@ -34,7 +35,7 @@ export function ServiceForm({ initial, variantLabels: initialLabels }: Props) {
       const errors: Record<string, string[]> = {};
       for (const i of parsed.error.issues) (errors[i.path.join(".") || "_"] ??= []).push(i.message);
       setFieldErrors(errors);
-      toast.error("Маягтын алдааг засна уу.");
+      toast.error(t.admin.fixFormErrors);
       return;
     }
     await run(form, {
@@ -48,30 +49,30 @@ export function ServiceForm({ initial, variantLabels: initialLabels }: Props) {
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-w-0 space-y-5">
-        <Card title="Үндсэн мэдээлэл">
+        <Card title={t.admin.serviceForm.basics}>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Нэр" htmlFor="name" error={err("name")}>
+            <Field label={t.admin.name} htmlFor="name" error={err("name")}>
               <Input id="name" value={form.name} onChange={(e) => { const name = e.target.value; setForm((f) => ({ ...f, name, slug: slugTouched ? f.slug : slugify(name) })); }} />
             </Field>
-            <Field label="Slug" htmlFor="slug" error={err("slug")}>
+            <Field label={t.admin.slug} htmlFor="slug" error={err("slug")}>
               <Input id="slug" value={form.slug} onChange={(e) => { setSlugTouched(true); set("slug", e.target.value.toLowerCase()); }} />
             </Field>
-            <Field label="Хугацаа (минут)" htmlFor="durationMin" error={err("durationMin")}>
+            <Field label={t.admin.serviceForm.duration} htmlFor="durationMin" error={err("durationMin")}>
               <Input id="durationMin" type="number" min={5} step={5} value={numValue(form.durationMin)} onChange={(e) => set("durationMin", num(e.target.value))} />
             </Field>
-            <Field label="Үнэ" htmlFor="price" error={err("price")}>
+            <Field label={t.admin.serviceForm.price} htmlFor="price" error={err("price")}>
               <MoneyInput id="price" value={form.price} onChange={(v) => set("price", v)} invalid={Boolean(err("price"))} className="w-full" />
             </Field>
-            <Field label="Тайлбар" htmlFor="description" error={err("description")} className="md:col-span-2">
+            <Field label={t.admin.description} htmlFor="description" error={err("description")} className="md:col-span-2">
               <Textarea id="description" rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} />
             </Field>
-            <Field label="Өртгийн тэмдэглэл" htmlFor="costNote" hint="Дотоод тэмдэглэл, сайтад харагдахгүй" className="md:col-span-2">
+            <Field label={t.admin.serviceForm.costNote} htmlFor="costNote" hint={t.admin.serviceForm.costNoteHint} className="md:col-span-2">
               <Textarea id="costNote" rows={2} value={form.costNote ?? ""} onChange={(e) => set("costNote", e.target.value)} />
             </Field>
           </div>
         </Card>
 
-        <Card title="Орц" description="1 үйлчилгээнд зарцуулагдах савны хэсэг. 0.1 = нэг савны 10%.">
+        <Card title={t.admin.serviceForm.consumables} description={t.admin.serviceForm.consumablesHint}>
           <VariantPicker
             exclude={form.consumables.map((c) => c.variantId)}
             onSelect={(o) => {
@@ -88,13 +89,13 @@ export function ServiceForm({ initial, variantLabels: initialLabels }: Props) {
                     type="number"
                     step={0.01}
                     min={0.01}
-                    aria-label="Савны хэсэг"
+                    aria-label={t.admin.serviceForm.consumableQty}
                     value={numValue(c.qtyPerService)}
                     onChange={(e) => set("consumables", form.consumables.map((x, j) => (j === i ? { ...x, qtyPerService: num(e.target.value) } : x)))}
                     className={`${inputClass} h-8 w-24 text-right ${err(`consumables.${i}.qtyPerService`) ? "border-red-500" : ""}`}
                   />
                   <span className="w-12 text-[12px] text-navy/50">{Number.isNaN(c.qtyPerService) ? "" : `${Math.round(c.qtyPerService * 1000) / 10}%`}</span>
-                  <button type="button" onClick={() => set("consumables", form.consumables.filter((_, j) => j !== i))} aria-label="Орц хасах" className="rounded p-1.5 text-navy/50 hover:bg-red-50 hover:text-red-700">
+                  <button type="button" onClick={() => set("consumables", form.consumables.filter((_, j) => j !== i))} aria-label={t.admin.serviceForm.removeConsumable} className="rounded p-1.5 text-navy/50 hover:bg-red-50 hover:text-red-700">
                     <Trash2 className="size-4" />
                   </button>
                 </li>
@@ -105,21 +106,21 @@ export function ServiceForm({ initial, variantLabels: initialLabels }: Props) {
       </div>
 
       <div className="space-y-5">
-        <Card title="Төлөв">
+        <Card title={t.admin.status}>
           <div className="space-y-4">
-            <Checkbox label="Идэвхтэй" checked={form.isActive} onChange={(e) => set("isActive", e.target.checked)} />
-            <p className="-mt-2 text-[12px] text-navy/50">Идэвхгүй болговол архивлагдана (устгахгүй).</p>
-            <Field label="Эрэмбэ" htmlFor="sortOrder" error={err("sortOrder")}>
+            <Checkbox label={t.admin.active} checked={form.isActive} onChange={(e) => set("isActive", e.target.checked)} />
+            <p className="-mt-2 text-[12px] text-navy/50">{t.admin.serviceForm.archiveHint}</p>
+            <Field label={t.admin.sortOrder} htmlFor="sortOrder" error={err("sortOrder")}>
               <Input id="sortOrder" type="number" min={0} value={numValue(form.sortOrder)} onChange={(e) => set("sortOrder", num(e.target.value))} />
             </Field>
           </div>
         </Card>
-        <Card title="Зураг">
+        <Card title={t.admin.image}>
           <SingleImageUploader value={form.image} onChange={(v) => set("image", v)} folder="services" />
         </Card>
         <div className="sticky bottom-4 flex gap-2 rounded-lg border border-line bg-white p-3 shadow-sm">
-          <Button type="submit" disabled={pending} className="flex-1">{pending ? "Хадгалж байна…" : "Хадгалах"}</Button>
-          <Button variant="secondary" onClick={() => router.push("/admin/services")}>Буцах</Button>
+          <Button type="submit" disabled={pending} className="flex-1">{pending ? t.admin.saving : t.admin.save}</Button>
+          <Button variant="secondary" onClick={() => router.push("/admin/services")}>{t.admin.back}</Button>
         </div>
       </div>
     </form>

@@ -5,13 +5,14 @@ import Image from "next/image";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { uploadImages } from "@/server/actions/upload";
+import { t } from "@/i18n";
 
 export type UploadFolder = "products" | "services" | "collections" | "content";
 export type GalleryImage = { id?: string; url: string; alt: string };
 
 async function uploadFiles(files: File[], folder: UploadFolder): Promise<string[]> {
   const urls: string[] = [];
-  // Нэг нэгээр илгээнэ (server action-ий body хязгаар)
+  // One file per request (server action body limit)
   for (const file of files) {
     const fd = new FormData();
     fd.set("folder", folder);
@@ -39,7 +40,7 @@ function Thumb({ url, alt }: { url: string; alt: string }) {
   );
 }
 
-/** Олон зураг: upload, alt текст, чирж эрэмбэлэх (мөн сумаар — гарнаас) */
+/** Multiple images: upload, alt text, drag to reorder (arrow buttons for keyboard) */
 export function GalleryUploader({
   value,
   onChange,
@@ -89,12 +90,12 @@ export function GalleryUploader({
             <div className="relative aspect-square cursor-grab overflow-hidden rounded bg-card active:cursor-grabbing">
               <Thumb url={img.url} alt={img.alt} />
               {i === 0 && (
-                <span className="absolute left-1 top-1 rounded bg-navy px-1.5 text-[10px] text-white">Үндсэн</span>
+                <span className="absolute left-1 top-1 rounded bg-navy px-1.5 text-[10px] text-white">{t.admin.upload.primary}</span>
               )}
               <button
                 type="button"
                 onClick={() => onChange(value.filter((_, j) => j !== i))}
-                aria-label="Зураг хасах"
+                aria-label={t.admin.upload.removeImage}
                 className="absolute right-1 top-1 grid size-6 place-items-center rounded bg-white/90 text-navy hover:bg-white"
               >
                 <X className="size-3.5" />
@@ -103,15 +104,15 @@ export function GalleryUploader({
             <input
               value={img.alt}
               onChange={(e) => onChange(value.map((v, j) => (j === i ? { ...v, alt: e.target.value } : v)))}
-              placeholder="Alt текст"
-              aria-label={`Зураг ${i + 1}-ийн alt текст`}
+              placeholder={t.admin.upload.altPlaceholder}
+              aria-label={t.admin.upload.altFor(i + 1)}
               className="mt-2 h-7 w-full rounded border border-line px-2 text-[12px]"
             />
             <div className="mt-1 flex justify-between">
-              <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} aria-label="Өмнө шилжүүлэх" className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+              <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} aria-label={t.admin.upload.moveLeft} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
                 <ChevronLeft className="size-4" />
               </button>
-              <button type="button" onClick={() => move(i, i + 1)} disabled={i === value.length - 1} aria-label="Хойш шилжүүлэх" className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+              <button type="button" onClick={() => move(i, i + 1)} disabled={i === value.length - 1} aria-label={t.admin.upload.moveRight} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
                 <ChevronRight className="size-4" />
               </button>
             </div>
@@ -123,7 +124,7 @@ export function GalleryUploader({
             className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-line text-[13px] text-navy/60 hover:bg-navy/[0.03]"
           >
             {busy ? <Loader2 className="size-5 animate-spin" /> : <ImagePlus className="size-5" strokeWidth={1.25} />}
-            {busy ? "Хуулж байна…" : "Зураг нэмэх"}
+            {busy ? t.admin.upload.uploading : t.admin.upload.addImage}
           </label>
           <input
             id={inputId}
@@ -139,17 +140,17 @@ export function GalleryUploader({
           />
         </li>
       </ul>
-      <p className="mt-2 text-[12px] text-navy/50">JPG, PNG, WEBP, AVIF · 5MB хүртэл · чирж эсвэл сумаар эрэмбэлнэ. Эхний зураг үндсэн.</p>
+      <p className="mt-2 text-[12px] text-navy/50">{t.admin.upload.hint}</p>
     </div>
   );
 }
 
-/** Нэг зураг */
+/** Single image */
 export function SingleImageUploader({
   value,
   onChange,
   folder,
-  label = "Зураг",
+  label = t.admin.image,
 }: {
   value: string | null;
   onChange: (v: string | null) => void;
@@ -166,7 +167,7 @@ export function SingleImageUploader({
       <div className="flex flex-col gap-2">
         <label htmlFor={inputId} className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-line px-2.5 text-[13px] hover:bg-navy/5">
           {busy ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" strokeWidth={1.25} />}
-          {value ? "Солих" : "Зураг оруулах"}
+          {value ? t.admin.upload.replace : t.admin.upload.upload}
         </label>
         <input
           id={inputId}
@@ -186,7 +187,7 @@ export function SingleImageUploader({
         />
         {value && (
           <button type="button" onClick={() => onChange(null)} className="text-left text-[12px] text-red-700 hover:underline">
-            Хасах
+            {t.admin.remove}
           </button>
         )}
       </div>

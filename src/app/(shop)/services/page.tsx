@@ -4,14 +4,15 @@ import { Img } from "@/components/ui/Img";
 import { formatMNT } from "@/lib/money";
 import { getActiveServices } from "@/server/queries/catalog";
 import { getSetting } from "@/server/queries/settings";
+import { t } from "@/i18n";
 
-export const metadata = { title: "Салоны үйлчилгээ" };
+export const metadata = { title: t.pages.services.title };
 
 export default async function ServicesPage() {
   const [services, banner] = await Promise.all([getActiveServices(), getSetting("servicesBanner")]);
   return (
     <Container as="section" className="py-12 md:py-16">
-      <h1 className="text-section mb-8 text-center md:mb-10">{banner?.title ?? "Салоны үйлчилгээ"}</h1>
+      <h1 className="text-section mb-8 text-center md:mb-10">{banner?.title ?? t.pages.services.title}</h1>
       {banner?.text && <p className="-mt-4 mb-10 text-center text-muted">{banner.text}</p>}
       <ul className="grid gap-1.5 md:grid-cols-2">
         {services.map((s) => (
@@ -26,7 +27,7 @@ export default async function ServicesPage() {
               <p className="mt-2 flex-1 text-[14px] text-muted">{s.description}</p>
               <div className="mt-4 flex items-center justify-between text-[14px]">
                 <span className="flex items-center gap-1.5 text-muted">
-                  <Clock className="size-4" strokeWidth={1.25} aria-hidden /> {s.durationMin} мин
+                  <Clock className="size-4" strokeWidth={1.25} aria-hidden /> {t.pages.services.minutes(s.durationMin)}
                 </span>
                 <span>{formatMNT(s.price)}</span>
               </div>
@@ -34,7 +35,7 @@ export default async function ServicesPage() {
           </li>
         ))}
       </ul>
-      <p className="mt-10 text-center text-[14px] text-muted">Цаг захиалахдаа салонтой утсаар холбогдоно уу.</p>
+      <p className="mt-10 text-center text-[14px] text-muted">{t.pages.services.bookingNote}</p>
     </Container>
   );
 }

@@ -23,6 +23,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         images: { orderBy: { sortOrder: "asc" } },
         variants: { orderBy: { sortOrder: "asc" } },
         collections: { select: { collectionId: true } },
+        relations: { orderBy: [{ type: "asc" }, { position: "asc" }], include: { related: { select: { name: true } } } },
+        bundleItems: {
+          orderBy: { position: "asc" },
+          include: { variant: { select: { sku: true, size: true, product: { select: { name: true } } } } },
+        },
       },
     }),
     listCollectionOptions(),
@@ -52,14 +57,33 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       <ProductForm
         collections={collections}
         stockByVariant={Object.fromEntries(product.variants.map((v) => [v.id, v.stock]))}
+        labels={{
+          ...Object.fromEntries(product.relations.map((r) => [r.relatedId, r.related.name])),
+          ...Object.fromEntries(
+            product.bundleItems.map((b) => [b.variantId, `${b.variant.product.name} · ${b.variant.size} (${b.variant.sku})`]),
+          ),
+        }}
         initial={{
           id: product.id,
           name: product.name,
           slug: product.slug,
-          subtitle: product.subtitle,
+          kind: product.kind,
+          tagline: product.tagline ?? "",
+          recommendedFor: product.recommendedFor ?? "",
+          benefits: product.benefits,
           description: product.description,
+          skinScience: product.skinScience ?? "",
           howToUse: product.howToUse,
           ingredients: product.ingredients ?? "",
+          environmental:
+            product.environmental && typeof product.environmental === "object" && !Array.isArray(product.environmental)
+              ? Object.entries(product.environmental as Record<string, unknown>).map(([key, value]) => ({ key, value: String(value) }))
+              : [],
+          clinicalNotes: product.clinicalNotes,
+          seoTitle: product.seoTitle ?? "",
+          seoDescription: product.seoDescription ?? "",
+          relations: product.relations.map((r) => ({ relatedId: r.relatedId, type: r.type })),
+          bundleItems: product.bundleItems.map((b) => ({ variantId: b.variantId, qty: b.qty })),
           badge: product.badge,
           isPublished: product.isPublished,
           sortOrder: product.sortOrder,

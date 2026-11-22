@@ -4,7 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { audit } from "@/server/audit";
-import { requirePermission } from "@/server/auth/session";
+import { requireAnyPermission, requirePermission } from "@/server/auth/session";
 import { UserError } from "@/server/errors";
 import { storage } from "@/server/storage";
 import { serviceInputSchema, type ServiceInput } from "@/lib/validation/service";
@@ -81,10 +81,10 @@ export async function saveService(input: ServiceInput) {
 
 export type VariantOption = { id: string; label: string; sku: string };
 
-/** Орц сонгоход: нэр / SKU-ээр хайна */
+/** Орц / багцын бүрэлдэхүүн сонгоход: нэр / SKU-ээр хайна */
 export async function searchVariants(query: string) {
   return runAction(async () => {
-    await requirePermission("service:write");
+    await requireAnyPermission("service:write", "product:write");
     const q = z.string().trim().max(100).parse(query);
     const rows = await db.variant.findMany({
       where: {
@@ -100,6 +100,6 @@ export async function searchVariants(query: string) {
       take: 15,
       select: { id: true, sku: true, size: true, product: { select: { name: true } } },
     });
-    return rows.map<VariantOption>((v) => ({ id: v.id, sku: v.sku, label: `${v.product.name} · ${v.size}` }));
+    return rows.map((v) => ({ id: v.id, hint: v.sku, label: `${v.product.name} · ${v.size}` }));
   });
 }

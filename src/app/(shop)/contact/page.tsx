@@ -1,7 +1,8 @@
 import { ComingSoon } from "@/components/ui/ComingSoon";
+import { t } from "@/i18n";
 
-export const metadata = { title: "Холбоо барих" };
+export const metadata = { title: t.pages.contact.title };
 
 export default function Page() {
-  return <ComingSoon title="Холбоо барих" text="Холбоо барих хуудас удахгүй нээгдэнэ. Хаяг, утасны дугаарыг доорх хэсгээс харна уу." />;
+  return <ComingSoon title={t.pages.contact.title} text={t.pages.contact.text} />;
 }
