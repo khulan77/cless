@@ -116,10 +116,11 @@ QPay, Resend-ийг дараа нь бөглөж болно (бөглөсний 
 ## 5. Анхны асаалт
 
 ```bash
-dc up -d db                          # 1. DB (build үед prerender хийхэд хэрэгтэй)
-dc --profile tools build             # 2. image build (~3–5 мин)
-dc --profile tools run --rm tools bun run db:deploy   # 3. migration
-dc up -d                             # 4. app, worker, caddy, backup
+dc up -d db                                           # 1. DB
+dc --profile tools build tools                        # 2. tools image (DB хэрэггүй)
+dc --profile tools run --rm tools bun run db:deploy   # 3. migration (app build-ээс ӨМНӨ)
+dc build app                                          # 4. app image (~3–5 мин, prerender-д DB хэрэгтэй)
+dc up -d                                              # 5. app, worker, caddy, backup
 dc ps                                # бүгд "running", app "healthy"
 ```
 

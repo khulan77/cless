@@ -61,10 +61,6 @@ services:
     build:
       context: .
       target: tools
-      args:
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
-      network: cless_internal
-      secrets: [database_url]
     profiles: [tools]
     depends_on:
       db: { condition: service_healthy, required: false }
@@ -78,7 +74,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-cless}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD тохируулна уу}
       POSTGRES_DB: ${POSTGRES_DB:-cless}
-      TZ: Asia/Ulaanbaatar
+    # DB-ийн цаг ЗААВАЛ UTC: баганууд TIMESTAMP(3) (timezone-гүй) + DEFAULT CURRENT_TIMESTAMP, апп UTC гэж
+    # уншдаг. TZ=Asia/Ulaanbaatar тавибал DB-ийн default утгууд +8 цаг болж outbox ажил 8 цаг хоцорно
+    # (локал тестээр баталгаажсан). Supabase, dev DB мөн UTC.
+    command: ["postgres", "-c", "timezone=UTC", "-c", "log_timezone=UTC"]
     # Порт гадагш НЭЭХГҮЙ — зөвхөн internal сүлжээнд
     volumes:
       - pgdata:/var/lib/postgresql/data

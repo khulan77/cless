@@ -39,11 +39,13 @@ log "2/6 DB асааж, backup авч байна"
 "${DC[@]}" up -d backup
 "${DC[@]}" exec -T backup /scripts/backup.sh || die "Backup амжилтгүй — шинэчлэлийг зогсоолоо"
 
-log "3/6 Image build (${NEW_TAG})"
-IMAGE_TAG="$NEW_TAG" "${DC[@]}" --profile tools build app tools || rollback "Build амжилтгүй"
-
-log "4/6 prisma migrate deploy"
+# Дараалал чухал: next build нь prerender хийхдээ ШИНЭ schema-г уншина → migrate эхэлж
+log "3/6 tools image build + prisma migrate deploy (${NEW_TAG})"
+IMAGE_TAG="$NEW_TAG" "${DC[@]}" --profile tools build tools || rollback "tools build амжилтгүй"
 IMAGE_TAG="$NEW_TAG" "${DC[@]}" --profile tools run --rm tools bun run db:deploy || rollback "Migration амжилтгүй"
+
+log "4/6 App image build (${NEW_TAG})"
+IMAGE_TAG="$NEW_TAG" "${DC[@]}" build app || rollback "App build амжилтгүй"
 
 log "5/6 Restart"
 set_tag "$NEW_TAG"

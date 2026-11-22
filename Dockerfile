@@ -28,22 +28,27 @@ COPY package.json bun.lock prisma.config.ts ./
 COPY prisma ./prisma
 RUN bun install --frozen-lockfile
 
-# ─── build ───
-FROM base AS build
+# ─── source: эх код + node_modules + Prisma client (DB хэрэггүй) ───
+FROM base AS source
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN bun run db:generate
+
+# ─── tools: migrate deploy, create-admin (зөвхөн `docker compose run --rm tools …`).
+# next build-ээс ХАМААРАХГҮЙ — анхны deploy-д хүснэгт үүсэхээс өмнө migrate хийх ёстой.
+FROM source AS tools
+CMD ["bun", "run", "db:deploy"]
+
+# ─── build ───
+FROM source AS build
 ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL} \
     NODE_ENV=production
-RUN bun run db:generate
-RUN --mount=type=secret,id=database_url,required=true \
-    DATABASE_URL="$(cat /run/secrets/database_url)" bun run build \
-  && bun scripts/build-worker.ts \
+# Worker bundle нь DB-гүй — next build-ээс өмнө (кэш давхарга тусдаа)
+RUN bun scripts/build-worker.ts \
   && bun scripts/build-worker.ts scripts/email-smoke.ts dist/worker
-
-# ─── tools: migrate deploy, create-admin (зөвхөн `docker compose run --rm tools …`) ───
-FROM build AS tools
-CMD ["bun", "run", "db:deploy"]
+RUN --mount=type=secret,id=database_url,required=true \
+    DATABASE_URL="$(cat /run/secrets/database_url)" bun run build
 
 # ─── runner ───
 FROM base AS runner
