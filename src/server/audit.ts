@@ -8,7 +8,8 @@ type Tx = Prisma.TransactionClient | typeof db;
 export async function audit(
   tx: Tx,
   entry: {
-    userId: string;
+    /** null = систем (worker) */
+    userId: string | null;
     action: string;
     entity: string;
     entityId: string;

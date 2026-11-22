@@ -12,6 +12,7 @@ import {
   type AdjustStockInput,
   type ReceiveStockInput,
 } from "@/lib/validation/stock";
+import { getCurrentBranch } from "@/server/modules/branches/service";
 import { parseInput, runAction } from "./result";
 
 /**
@@ -47,6 +48,7 @@ export async function receiveStock(input: ReceiveStockInput) {
       });
       const movement = await tx.stockMovement.create({
         data: {
+          branchId: (await getCurrentBranch(tx)).id,
           variantId: data.variantId,
           type: "PURCHASE",
           qty: data.qty,
@@ -88,6 +90,7 @@ export async function adjustStock(input: AdjustStockInput) {
       await tx.variant.update({ where: { id: data.variantId }, data: { stock: data.newQty } });
       const movement = await tx.stockMovement.create({
         data: {
+          branchId: (await getCurrentBranch(tx)).id,
           variantId: data.variantId,
           type: "ADJUSTMENT",
           qty: diff,

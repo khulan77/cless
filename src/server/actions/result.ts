@@ -27,7 +27,7 @@ export async function runAction<T>(fn: () => Promise<T>, successMessage?: string
     return { ok: true, data, message: successMessage };
   } catch (e) {
     unstable_rethrow(e);
-    if (e instanceof UserError) return { ok: false, error: e.message, fieldErrors: e.fieldErrors };
+    if (e instanceof UserError) return { ok: false, error: e.message, fieldErrors: e.fieldErrors, code: e.code };
     if (e instanceof ForbiddenError || e instanceof UnauthorizedError) {
       return { ok: false, error: e.message, status: e.status };
     }

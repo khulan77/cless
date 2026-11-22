@@ -55,18 +55,28 @@ enum ItemKind {
   PRODUCT
 }
 
-enum SaleSource {
+enum SaleChannel {
+  POS
   ONLINE
-  VISIT
 }
 
 enum SaleStatus {
   DRAFT
+  PENDING_PAYMENT
   PARTIALLY_PAID
   PAID
-  REFUNDED
+  CANCELLED
   PARTIALLY_REFUNDED
-  VOID
+  REFUNDED
+}
+
+/// eBarimt (12-р сараас)
+enum ReceiptStatus {
+  NOT_ISSUED
+  PENDING
+  ISSUED
+  FAILED
+  CANCELLED
 }
 
 enum FulfillmentStatus {
@@ -88,17 +98,45 @@ enum PayMethod {
 
 enum PayStatus {
   PENDING
+  PROCESSING
   SUCCEEDED
   FAILED
-  EXPIRED
+  CANCELLED
   REFUNDED
 }
 
 enum RefundStatus {
-  PENDING
+  REQUESTED
   APPROVED
-  REJECTED
   COMPLETED
+  REJECTED
+}
+
+enum CashShiftStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMoveType {
+  SALE
+  REFUND
+  PAY_IN
+  PAY_OUT
+}
+
+enum EmailStatus {
+  NOT_SENT
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum SkinType {
+  DRY
+  OILY
+  COMBINATION
+  NORMAL
+  SENSITIVE
 }
 
 enum ApptStatus {
@@ -140,6 +178,8 @@ enum JobType {
   EBARIMT
   EMAIL
   SMS
+  VISIT_EMAIL
+  QPAY_CANCEL_INVOICE
 }
 
 enum EbarimtType {
@@ -165,10 +205,14 @@ model User {
 
   staffAppointments   Appointment[]    @relation("ApptStaff")
   createdAppointments Appointment[]    @relation("ApptCreatedBy")
-  managedVisits       Visit[]
-  createdSales        Sale[]
+  conductedVisits     Visit[]
+  createdSales        Sale[]           @relation("SaleCreatedBy")
+  closedSales         Sale[]           @relation("SaleClosedBy")
+  discountApprovals   Sale[]           @relation("SaleDiscountApprovedBy")
   saleItems           SaleItem[]
-  confirmedPayments   Payment[]
+  createdPayments     Payment[]        @relation("PaymentCreatedBy")
+  confirmedPayments   Payment[]        @relation("PaymentConfirmedBy")
+  cashMovements       CashMovement[]
   requestedRefunds    Refund[]         @relation("RefundRequestedBy")
   approvedRefunds     Refund[]         @relation("RefundApprovedBy")
   priceChanges        PriceHistory[]
@@ -316,6 +360,8 @@ model PriceHistory {
 
 model StockMovement {
   id          String        @id @default(cuid())
+  /// TODO(multi-branch): үлдэгдлийг StockBalance(branchId, variantId) руу шилжүүлэхэд ашиглана
+  branchId    String
   variantId   String
   type        StockMoveType
   /// +орлого / -зарлага
@@ -326,10 +372,12 @@ model StockMovement {
   createdById String?
   createdAt   DateTime      @default(now())
 
+  branch    Branch  @relation(fields: [branchId], references: [id], onDelete: Restrict)
   variant   Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
   sale      Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
   createdBy User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
+  @@index([branchId, createdAt])
   @@index([variantId, createdAt])
   @@index([saleId])
   @@index([type, createdAt])
@@ -444,15 +492,17 @@ model ServiceConsumable {
 // ─────────────────────── Үйлчлүүлэгч, цаг, айлчлал ───────────────────────
 
 model Customer {
-  id        String    @id @default(cuid())
-  name      String
-  phone     String    @unique
-  email     String?
-  birthday  DateTime? @db.Date
-  skinType  String?
-  notes     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  name             String
+  phone            String    @unique
+  email            String?
+  birthday         DateTime? @db.Date
+  skinType         SkinType?
+  notes            String?
+  /// Маркетингийн имэйл (айлчлалын үйлчилгээний имэйлд хамаарахгүй)
+  marketingConsent Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   appointments Appointment[]
   visits       Visit[]
@@ -461,6 +511,7 @@ model Customer {
   wallet       Wallet?
 
   @@index([email])
+  @@index([name])
 }
 
 /// Давхцал хориглох constraint migration-д гараар нэмэгдсэн:
@@ -468,6 +519,7 @@ model Customer {
 /// WHERE (status NOT IN ('CANCELLED','NO_SHOW'))
 model Appointment {
   id          String     @id @default(cuid())
+  branchId    String
   customerId  String
   staffId     String
   serviceId   String
@@ -479,11 +531,13 @@ model Appointment {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
   customer  Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
   staff     User     @relation("ApptStaff", fields: [staffId], references: [id], onDelete: Restrict)
   service   Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   createdBy User?    @relation("ApptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   visit     Visit?
+  sales     Sale[]
 
   @@index([staffId, startsAt])
   @@index([customerId, startsAt])
@@ -491,33 +545,42 @@ model Appointment {
 }
 
 model Visit {
-  id             String    @id @default(cuid())
+  id             String      @id @default(cuid())
+  branchId       String
   customerId     String
-  managerId      String
-  appointmentId  String?   @unique
-  saleId         String?   @unique
-  skinType       String?
+  /// Оношлогоо хийсэн хүн
+  conductedById  String
+  appointmentId  String?     @unique
+  /// Борлуулалтгүй айлчлал (зөвхөн зөвлөгөө) байж болно
+  saleId         String?     @unique
+  skinType       SkinType?
+  /// CONCERN collection slug-ууд
   concerns       String[]
   diagnosisNotes String?
+  emailStatus    EmailStatus @default(NOT_SENT)
   emailSentAt    DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  emailError     String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
+  branch          Branch                @relation(fields: [branchId], references: [id], onDelete: Restrict)
   customer        Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  manager         User                  @relation(fields: [managerId], references: [id], onDelete: Restrict)
+  conductedBy     User                  @relation(fields: [conductedById], references: [id], onDelete: Restrict)
   appointment     Appointment?          @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   sale            Sale?                 @relation(fields: [saleId], references: [id], onDelete: SetNull)
   recommendations VisitRecommendation[]
 
   @@index([customerId, createdAt])
+  @@index([branchId, createdAt])
 }
 
 model VisitRecommendation {
   id           String   @id @default(cuid())
   visitId      String
   variantId    String
-  /// Жишээ: "Өглөө, орой — 2-3 дусал"
-  instructions String
+  /// Заавал биш — product.howToUse-ээс урьдчилан бөглөгдөнө
+  instructions String?
+  purchased    Boolean  @default(false)
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
 
@@ -529,66 +592,94 @@ model VisitRecommendation {
 
 // ─────────────────────────── Борлуулалт ───────────────────────────
 
+/// Борлуулалт. Төлөгдсөнийг устгахгүй, засахгүй — зөвхөн буцаалт (Refund).
+/// Төлөвийн машин: src/server/modules/sales/state.ts
 model Sale {
-  id              String             @id @default(cuid())
-  /// Хүнд уншигдах дугаар, жишээ: "S-2026-000123"
-  number          String             @unique
-  source          SaleSource
-  customerId      String?
-  createdById     String?
-  subtotal        Int
-  discount        Int                @default(0)
-  total           Int
-  paidAmount      Int                @default(0)
-  status          SaleStatus         @default(DRAFT)
-  note            String?
-  // Онлайн захиалгын холбоо барих / хүргэлт (snapshot)
-  contactName     String?
-  contactPhone    String?
-  contactEmail    String?
-  shippingAddress Json?
-  fulfillment     FulfillmentStatus?
-  /// DRAFT онлайн захиалгын нөөцлөлт дуусах хугацаа
-  expiresAt       DateTime?
-  paidAt          DateTime?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  id                   String             @id @default(cuid())
+  branchId             String
+  /// "CL-20261201-0001" — PENDING_PAYMENT болох үед олгоно (DRAFT-д null)
+  number               String?            @unique
+  channel              SaleChannel        @default(POS)
+  customerId           String?
+  appointmentId        String?
+  createdById          String
+  closedById           String?
+  status               SaleStatus         @default(DRAFT)
+  receiptStatus        ReceiptStatus      @default(NOT_ISSUED)
+  subtotal             Int                @default(0)
+  lineDiscountTotal    Int                @default(0)
+  saleDiscount         Int                @default(0)
+  saleDiscountReason   String?
+  /// Хязгаараас хэтэрсэн хөнгөлөлтийг баталсан ADMIN
+  discountApprovedById String?
+  total                Int                @default(0)
+  vatTotal             Int                @default(0)
+  paidAmount           Int                @default(0)
+  refundedAmount       Int                @default(0)
+  note                 String?
+  /// PENDING_PAYMENT болсон мөч — үүнээс хойш мөр өөрчлөхгүй
+  lockedAt             DateTime?
+  paidAt               DateTime?
+  cancelledAt          DateTime?
+  /// Optimistic lock
+  version              Int                @default(0)
+  // Онлайн захиалга (ирээдүй)
+  contactName          String?
+  contactPhone         String?
+  contactEmail         String?
+  shippingAddress      Json?
+  fulfillment          FulfillmentStatus?
+  expiresAt            DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  createdBy      User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  items          SaleItem[]
-  payments       Payment[]
-  refunds        Refund[]
-  stockMovements StockMovement[]
-  walletTxns     WalletTxn[]
-  visit          Visit?
-  ebarimt        EbarimtReceipt?
+  branch             Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  customer           Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  appointment        Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  createdBy          User            @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  closedBy           User?           @relation("SaleClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  discountApprovedBy User?           @relation("SaleDiscountApprovedBy", fields: [discountApprovedById], references: [id], onDelete: SetNull)
+  items              SaleItem[]
+  payments           Payment[]
+  refunds            Refund[]
+  stockMovements     StockMovement[]
+  walletTxns         WalletTxn[]
+  visit              Visit?
+  ebarimt            EbarimtReceipt?
 
-  @@index([status, createdAt])
-  @@index([source, createdAt])
+  @@index([branchId, status, createdAt])
   @@index([customerId])
+  @@index([status, lockedAt])
 }
 
 model SaleItem {
-  id               String   @id @default(cuid())
-  saleId           String
-  kind             ItemKind
-  variantId        String?
-  serviceId        String?
-  /// Үйлчилгээ хийсэн / бараа зарсан ажилтан (урамшуулалд)
-  staffId          String?
-  nameSnapshot     String
-  unitPrice        Int
-  unitCostSnapshot Int      @default(0)
-  qty              Int      @default(1)
-  discount         Int      @default(0)
-  /// unitPrice * qty - discount
-  lineTotal        Int
-  createdAt        DateTime @default(now())
+  id                    String   @id @default(cuid())
+  saleId                String
+  kind                  ItemKind
+  variantId             String?
+  serviceId             String?
+  /// Үйлчилгээ хийсэн ажилтан — SERVICE мөрөнд заавал
+  staffId               String?
+  nameSnapshot          String
+  skuSnapshot           String?
+  unitPrice             Int
+  /// PRODUCT: хувилбарын өртөг; SERVICE: орцын өртгийн нийлбэр (ашгийн тайланд)
+  unitCostSnapshot      Int      @default(0)
+  qty                   Int      @default(1)
+  lineDiscount          Int      @default(0)
+  lineDiscountReason    String?
+  /// Борлуулалтын хөнгөлөлтөөс ногдох хэсэг
+  allocatedSaleDiscount Int      @default(0)
+  /// unitPrice*qty − lineDiscount − allocatedSaleDiscount
+  lineTotal             Int      @default(0)
+  vatAmount             Int      @default(0)
+  refundedQty           Int      @default(0)
+  sortOrder             Int      @default(0)
+  createdAt             DateTime @default(now())
 
   sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  variant Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  service Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  variant Variant? @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  service Service? @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   staff   User?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
 
   @@index([saleId])
@@ -598,48 +689,85 @@ model SaleItem {
 }
 
 model Payment {
-  id            String    @id @default(cuid())
-  saleId        String
-  method        PayMethod
-  amount        Int
-  status        PayStatus @default(PENDING)
-  qpayInvoiceId String?   @unique
-  externalRef   String?
-  confirmedById String?
-  cashShiftId   String?
-  raw           Json?
-  paidAt        DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  saleId         String
+  method         PayMethod
+  amount         Int
+  status         PayStatus @default(PENDING)
+  /// Client үүсгэнэ (төлбөрийн оролдлого бүрт) — давхар дарахаас хамгаална
+  idempotencyKey String    @unique
+  /// Бэлэн: өгсөн мөнгө, хариулт
+  tendered       Int?
+  change         Int?
+  /// Карт: терминалын баримтаас
+  cardLast4      String?
+  approvalCode   String?
+  /// Данс / QPay гараар: гүйлгээний утга, дугаар
+  externalRef    String?
+  /// Дүн зөрсөн г.м. — админ шалгах шаардлагатай
+  reviewReason   String?
+  createdById    String
+  confirmedById  String?
+  cashShiftId    String?
+  paidAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  sale        Sale       @relation(fields: [saleId], references: [id], onDelete: Restrict)
-  confirmedBy User?      @relation(fields: [confirmedById], references: [id], onDelete: SetNull)
-  cashShift   CashShift? @relation(fields: [cashShiftId], references: [id], onDelete: SetNull)
-  refunds     Refund[]
+  sale          Sale                 @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  createdBy     User                 @relation("PaymentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  confirmedBy   User?                @relation("PaymentConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  cashShift     CashShift?           @relation(fields: [cashShiftId], references: [id], onDelete: SetNull)
+  transactions  PaymentTransaction[]
+  cashMovements CashMovement[]
 
   @@index([saleId])
-  @@index([status, createdAt])
+  @@index([status, method, createdAt])
   @@index([cashShiftId])
+}
+
+/// Гадны системийн гүйлгээ (QPay invoice). Нэг Payment-д олон оролдлого байж болно.
+model PaymentTransaction {
+  id                String    @id @default(cuid())
+  paymentId         String
+  provider          String
+  providerInvoiceId String    @unique
+  providerPaymentId String?
+  providerStatus    String
+  qrText            String?
+  qrImage           String?
+  deeplinks         Json?
+  expiresAt         DateTime
+  raw               Json
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
 }
 
 model Refund {
   id            String       @id @default(cuid())
   saleId        String
-  paymentId     String?
   amount        Int
   reason        String
-  /// Буцаасан мөрүүд: [{ saleItemId, qty, amount }]
-  items         Json?
+  status        RefundStatus @default(REQUESTED)
+  method        PayMethod
+  /// [{ saleItemId, qty, amount }]
+  items         Json
+  /// Савлагаа нээгдээгүй — үлдэгдэлд буцаасан эсэх
+  restock       Boolean      @default(false)
   requestedById String
   approvedById  String?
-  status        RefundStatus @default(PENDING)
+  completedAt   DateTime?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Restrict)
-  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
-  requestedBy User     @relation("RefundRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
-  approvedBy  User?    @relation("RefundApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  sale          Sale           @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  requestedBy   User           @relation("RefundRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  approvedBy    User?          @relation("RefundApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  cashMovements CashMovement[]
 
   @@index([saleId])
   @@index([status])
@@ -671,6 +799,8 @@ model EbarimtReceipt {
 model OutboxJob {
   id        String    @id @default(cuid())
   type      JobType
+  /// Давхар ажил үүсгэхгүй: "visit-email:<visitId>"
+  dedupeKey String?   @unique
   payload   Json
   status    JobStatus @default(PENDING)
   attempts  Int       @default(0)
@@ -731,24 +861,83 @@ model WalletTxn {
 
 // ─────────────────────────── Касс ───────────────────────────
 
+/// Кассын ээлж. Нэг салбарт нэг л OPEN ээлж (partial unique index — migration SQL).
 model CashShift {
-  id           String    @id @default(cuid())
+  id           String          @id @default(cuid())
+  branchId     String
+  status       CashShiftStatus @default(OPEN)
   openedById   String
-  closedById   String?
+  openedAt     DateTime        @default(now())
   openingCash  Int
+  closedById   String?
+  closedAt     DateTime?
+  /// openingCash + Σ CashMovement (хаах үед)
   expectedCash Int?
   countedCash  Int?
+  /// countedCash − expectedCash
+  difference   Int?
   note         String?
-  openedAt     DateTime  @default(now())
-  closedAt     DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
-  openedBy User      @relation("ShiftOpenedBy", fields: [openedById], references: [id], onDelete: Restrict)
-  closedBy User?     @relation("ShiftClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
-  payments Payment[]
+  branch    Branch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  openedBy  User           @relation("ShiftOpenedBy", fields: [openedById], references: [id], onDelete: Restrict)
+  closedBy  User?          @relation("ShiftClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  payments  Payment[]
+  movements CashMovement[]
 
-  @@index([openedAt])
+  @@index([branchId, openedAt])
+}
+
+model CashMovement {
+  id          String       @id @default(cuid())
+  shiftId     String
+  type        CashMoveType
+  /// +орлого / −зарлага
+  amount      Int
+  paymentId   String?
+  refundId    String?
+  note        String?
+  createdById String
+  createdAt   DateTime     @default(now())
+
+  shift     CashShift @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  payment   Payment?  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  refund    Refund?   @relation(fields: [refundId], references: [id], onDelete: Restrict)
+  createdBy User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([shiftId, createdAt])
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  /// Борлуулалтын дугаарын угтвар: "CL"
+  code      String   @unique
+  /// Имэйл, баримт дээр харагдах салоны нэр
+  name      String
+  address   String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales          Sale[]
+  shifts         CashShift[]
+  visits         Visit[]
+  appointments   Appointment[]
+  stockMovements StockMovement[]
+  counters       SaleCounter[]
+}
+
+/// Өдөр тутмын борлуулалтын дугаар (УБ цагаар). INSERT … ON CONFLICT DO UPDATE.
+model SaleCounter {
+  branchId   String
+  date       DateTime @db.Date
+  lastNumber Int      @default(0)
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@id([branchId, date])
 }
 
 // ─────────────────────── Урамшуулал, цалин ───────────────────────

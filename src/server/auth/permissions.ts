@@ -10,8 +10,25 @@ export const PERMISSIONS = [
   "schedule:own",
   "schedule:all",
   "appointment:write",
+  // POS / борлуулалт
+  "pos:use",
+  "sale:create",
+  "sale:read",
+  "payment:cash",
+  "payment:card",
+  "payment:qpay",
+  "payment:transfer:confirm",
+  "discount:over-limit",
+  "sale:refund",
+  "sale:void-paid",
+  // Үйлчлүүлэгч, айлчлал
+  "customer:read",
+  "customer:write",
   "visit:write",
-  "sale:write",
+  // Кассын ээлж
+  "shift:own",
+  "shift:all",
+  // Агуулах, каталог
   "stock:read",
   "stock:write",
   "product:write",
@@ -32,8 +49,17 @@ const MANAGER: readonly Permission[] = [
   ...STAFF,
   "schedule:all",
   "appointment:write",
+  "pos:use",
+  "sale:create",
+  "sale:read",
+  "payment:cash",
+  "payment:card",
+  "payment:qpay",
+  // discount:over-limit — үгүй: ADMIN-ий имэйл+нууц үгээр тухайн борлуулалтад баталгаажуулна
+  "customer:read",
+  "customer:write",
   "visit:write",
-  "sale:write",
+  "shift:own",
   "stock:read",
 ];
 

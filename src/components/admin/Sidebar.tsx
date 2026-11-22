@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  BarChart3, Boxes, CalendarClock, CalendarDays, ClipboardList, FileText, FolderTree, LayoutDashboard,
-  LogOut, Menu, Package, ShoppingCart, Sparkles, Users, Wallet, X, type LucideIcon,
+  Banknote, BarChart3, Boxes, CalendarClock, CalendarDays, Contact, CreditCard, FileText, FolderTree, LayoutDashboard,
+  LogOut, Menu, Package, Receipt, Sparkles, Users, Wallet, X, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -20,8 +20,10 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   content: FileText,
   users: Users,
   calendar: CalendarDays,
-  pos: ClipboardList,
-  orders: ShoppingCart,
+  pos: CreditCard,
+  orders: Receipt,
+  customers: Contact,
+  shift: Banknote,
   report: BarChart3,
   payroll: Wallet,
 };

@@ -11,6 +11,11 @@ import { PrismaClient, type Role } from "../src/generated/prisma/client";
 import { CLINICAL_NOTE, ENVIRONMENTAL, PERFECT_MATCH, bundleItems, collections, products } from "./seed-data/catalog";
 import type { SiteSettings } from "../src/lib/site-settings";
 
+// Production DB-д seed санамсаргүй ажиллахаас хамгаална (туршилтын үйлчлүүлэгч, тест нууц үг үүсгэдэг)
+if (process.env.NODE_ENV === "production") {
+  throw new Error("Seed нь NODE_ENV=production үед ажиллахгүй.");
+}
+
 const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL (эсвэл DIRECT_URL) тохируулагдаагүй байна");
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
@@ -50,6 +55,45 @@ function skuFor(slug: string, size: string) {
 }
 
 const TX = { maxWait: 15_000, timeout: 60_000 } as const;
+
+// ───────────────────────── Салбар, POS ─────────────────────────
+
+/** StockMovement-д ашиглана (seedBranch-аар оноогдоно) */
+let BRANCH_ID = "";
+
+async function seedBranch() {
+  // Нэр, хаяг, утсыг админ дараа нь засна — зөвхөн байхгүй үед үүсгэнэ
+  const branch = await db.branch.upsert({
+    where: { code: "CL" },
+    create: { code: "CL", name: "CLÉSS", address: "Улаанбаатар (хаяг тодорхойлогдоно)", phone: "+976 0000 0000" },
+    update: {},
+  });
+  BRANCH_ID = branch.id;
+}
+
+/** POS, татвар, QPay тохиргоо — create-only (админы засварыг дарж бичихгүй) */
+async function seedPosSettings() {
+  const values: Record<string, object> = {
+    pos: { maxManagerDiscountPercent: 10, allowNegativeStock: false, staleLockMinutes: 30 },
+    tax: { vatIncluded: true, vatRateBp: 1000 },
+    qpay: { mode: "manual" },
+  };
+  for (const [key, value] of Object.entries(values)) {
+    await db.siteSetting.upsert({ where: { key }, create: { key, value }, update: {} });
+  }
+}
+
+/** Туршилтын 3 үйлчлүүлэгч (dev) */
+async function seedDemoCustomers() {
+  const customers = [
+    { phone: "99110001", name: "Туршилт Сараа", email: "test.saraa@example.mn", skinType: "COMBINATION" as const },
+    { phone: "99110002", name: "Туршилт Болор", email: "test.bolor@example.mn", skinType: "SENSITIVE" as const },
+    { phone: "99110003", name: "Туршилт Номин", email: null, skinType: "DRY" as const },
+  ];
+  for (const c of customers) {
+    await db.customer.upsert({ where: { phone: c.phone }, create: c, update: {} });
+  }
+}
 
 async function seedCollections() {
   // Эцэг ангиллыг эхэлж (жагсаалтын дарааллаар)
@@ -157,7 +201,7 @@ async function seedProducts(adminId: string) {
         });
         if (v.stock > 0) {
           await tx.stockMovement.create({
-            data: { variantId: variant.id, type: "PURCHASE", qty: v.stock, unitCost: v.cost, note: "Seed: анхны үлдэгдэл", createdById: adminId },
+            data: { branchId: BRANCH_ID, variantId: variant.id, type: "PURCHASE", qty: v.stock, unitCost: v.cost, note: "Seed: анхны үлдэгдэл", createdById: adminId },
           });
         }
       }, TX);
@@ -512,6 +556,8 @@ async function seedSettings() {
 // ─────────────────────────────────────────────────────────────
 
 async function main() {
+  await seedBranch();
+  await seedPosSettings();
   await seedUsers();
   const admin = await db.user.findUniqueOrThrow({ where: { email: "admin@example.mn" } });
   await seedCollections();
@@ -521,6 +567,7 @@ async function main() {
   await seedServices();
   await seedCommissionRules();
   await seedSettings();
+  await seedDemoCustomers();
 
   const counts = await Promise.all([
     db.user.count(),

@@ -3,6 +3,8 @@ export class UserError extends Error {
   constructor(
     message: string,
     public fieldErrors?: Record<string, string[]>,
+    /** UI-д тусгай урсгал шаардлагатай үед (жишээ: DISCOUNT_APPROVAL_REQUIRED) */
+    public code?: string,
   ) {
     super(message);
     this.name = "UserError";

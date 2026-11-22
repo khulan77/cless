@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Админаас upload хийсэн файлууд
 /public/uploads/
+
+# dev имэйлүүд (RESEND_API_KEY байхгүй үед)
+/.emails/
