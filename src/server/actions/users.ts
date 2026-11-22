@@ -1,5 +1,6 @@
 "use server";
 
+import { bookableAfterRoleChange, defaultBookable } from "@/server/modules/appointments/bookable";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@/generated/prisma/client";
@@ -16,7 +17,7 @@ import {
 } from "@/lib/validation/user";
 import { parseInput, runAction } from "./result";
 
-const publicFields = { id: true, name: true, email: true, phone: true, role: true, isActive: true, baseSalary: true } as const;
+const publicFields = { id: true, name: true, email: true, phone: true, role: true, isActive: true, isBookable: true, baseSalary: true } as const;
 
 /** Идэвхтэй админуудыг түгжиж тоолно — зэрэг өөрчлөлтөөс сүүлийн админыг хамгаална */
 async function lockActiveAdmins(tx: Prisma.TransactionClient) {
@@ -34,7 +35,7 @@ export async function createUser(input: CreateUserInput) {
       const exists = await tx.user.findUnique({ where: { email: data.email }, select: { id: true } });
       if (exists) throw new UserError("Энэ имэйлтэй хэрэглэгч бүртгэлтэй байна.", { email: ["Давхардсан имэйл."] });
       const created = await tx.user.create({
-        data: { name: data.name, email: data.email, phone: data.phone, role: data.role, baseSalary: data.baseSalary, passwordHash },
+        data: { name: data.name, email: data.email, phone: data.phone, role: data.role, baseSalary: data.baseSalary, passwordHash, isBookable: defaultBookable(data.role) },
         select: publicFields,
       });
       await audit(tx, { userId: actor.id, action: "user.create", entity: "User", entityId: created.id, after: created });
@@ -69,7 +70,14 @@ export async function updateUser(input: UpdateUserInput) {
 
       const after = await tx.user.update({
         where: { id: data.id },
-        data: { name: data.name, phone: data.phone, role: data.role, baseSalary: data.baseSalary, isActive: data.isActive },
+        data: {
+          name: data.name,
+          phone: data.phone,
+          role: data.role,
+          baseSalary: data.baseSalary,
+          isActive: data.isActive,
+          isBookable: bookableAfterRoleChange(before, data.role),
+        },
         select: publicFields,
       });
       const action = before.isActive && !after.isActive ? "user.deactivate" : !before.isActive && after.isActive ? "user.activate" : "user.update";

@@ -12,7 +12,7 @@ export async function resetDb() {
     "SaleItem", "Sale", "SaleCounter", "OutboxJob", "StockMovement", "AuditLog", "LoginAttempt",
     "ServiceConsumable", "Service", "ProductCollection", "ProductImage", "BundleItem", "ProductRelation",
     "PriceHistory", "Variant", "Product", "Customer", "Appointment", "SiteSetting", "User",
-    "Collection", "WorkerHeartbeat"
+    "Collection", "WorkerHeartbeat", "Room", "StaffSchedule", "StaffTimeOff", "ServiceStaff"
     RESTART IDENTITY CASCADE`);
 }
 
@@ -40,13 +40,22 @@ export async function makeVariant(opts: { price: number; stock: number; cost?: n
   });
 }
 
-export async function makeService(opts: { price: number; name?: string; consumables?: { variantId: string; qty: number }[] }) {
+export async function makeService(opts: {
+  price: number;
+  name?: string;
+  durationMin?: number;
+  bufferMin?: number;
+  requiresRoom?: boolean;
+  consumables?: { variantId: string; qty: number }[];
+}) {
   return db.service.create({
     data: {
       slug: uid("s"),
       name: opts.name ?? "FACIAL",
       description: "d",
-      durationMin: 60,
+      durationMin: opts.durationMin ?? 60,
+      bufferMin: opts.bufferMin ?? 0,
+      requiresRoom: opts.requiresRoom ?? false,
       price: opts.price,
       consumables: opts.consumables ? { create: opts.consumables.map((c) => ({ variantId: c.variantId, qtyPerService: c.qty })) } : undefined,
     },
@@ -59,4 +68,16 @@ export async function makeCustomer(opts: { email?: string | null } = {}) {
 
 export async function variantStock(id: string) {
   return db.variant.findUniqueOrThrow({ where: { id }, select: { stock: true, reserved: true } });
+}
+
+/** Ажилтанд 7 хоногийн бүх өдөр ижил ажлын цаг (УБ) */
+export async function setWeekSchedule(staffId: string, start = "10:00", end = "19:00") {
+  await db.staffSchedule.createMany({ data: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ staffId, weekday, startTime: start, endTime: end })) });
+}
+
+export async function makeBookableStaff(name = "STAFF") {
+  const u = await makeUser("STAFF");
+  await db.user.update({ where: { id: u.id }, data: { isBookable: true, name } });
+  await setWeekSchedule(u.id);
+  return u;
 }

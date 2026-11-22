@@ -10,6 +10,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type Role } from "../src/generated/prisma/client";
 import { CLINICAL_NOTE, ENVIRONMENTAL, PERFECT_MATCH, bundleItems, collections, products } from "./seed-data/catalog";
 import type { SiteSettings } from "../src/lib/site-settings";
+import { addDays, ubAt, ubDateKey, ubWeekday } from "../src/lib/time";
 
 // Production DB-д seed санамсаргүй ажиллахаас хамгаална (туршилтын үйлчлүүлэгч, тест нууц үг үүсгэдэг)
 if (process.env.NODE_ENV === "production") {
@@ -18,7 +19,8 @@ if (process.env.NODE_ENV === "production") {
 
 const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL (эсвэл DIRECT_URL) тохируулагдаагүй байна");
-const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+// TimeZone=UTC — src/server/db.ts-ийн тайлбарыг үз (timestamptz 8 цагаар шилжихээс сэргийлнэ)
+const db = new PrismaClient({ adapter: new PrismaPg({ connectionString, options: "-c TimeZone=UTC" }) });
 
 // ───────────────────────── Хэрэглэгчид ─────────────────────────
 
@@ -40,7 +42,7 @@ async function seedUsers() {
     // Давтан ажиллуулахад нууц үгийг дарж бичихгүй.
     await db.user.upsert({
       where: { email: u.email },
-      create: { ...u, passwordHash },
+      create: { ...u, passwordHash, isBookable: u.role === "STAFF" },
       update: { name: u.name, role: u.role, phone: u.phone },
     });
   }
@@ -358,6 +360,9 @@ async function seedServices() {
       sortOrder: i,
       isActive: true,
       image: "/placeholders/services.svg",
+      // Нүүрний эмчилгээ — 10 мин цэвэрлэгээ; протокол өрөө шаардана (туршилтын утга)
+      bufferMin: s.durationMin >= 60 ? 10 : 0,
+      requiresRoom: s.durationMin >= 75,
     };
     const service = await db.service.upsert({
       where: { slug: s.slug },
@@ -555,6 +560,65 @@ async function seedSettings() {
 
 // ─────────────────────────────────────────────────────────────
 
+// ───────────────────────── Цаг захиалга (dev) ─────────────────────────
+
+/** 2 өрөө, гоо сайханчдын хуваарь (Да–Ба 10–19, Бя 11–17), өнөөдөр ба маргааш хэдэн цаг. Давтан ажиллуулахад нэмэхгүй. */
+async function seedBooking(createdById: string) {
+  for (const [i, name] of ["Өрөө 1", "Өрөө 2"].entries()) {
+    const exists = await db.room.findFirst({ where: { name } });
+    if (!exists) await db.room.create({ data: { branchId: BRANCH_ID, name, sortOrder: i } });
+  }
+  const staff = await db.user.findMany({ where: { role: "STAFF" }, orderBy: { email: "asc" } });
+  for (const u of staff) {
+    if ((await db.staffSchedule.count({ where: { staffId: u.id } })) > 0) continue;
+    await db.staffSchedule.createMany({
+      data: [
+        ...[1, 2, 3, 4, 5].map((weekday) => ({ staffId: u.id, weekday, startTime: "10:00", endTime: "19:00" })),
+        { staffId: u.id, weekday: 6, startTime: "11:00", endTime: "17:00" },
+      ],
+    });
+  }
+  if ((await db.appointment.count()) > 0 || staff.length < 2) return;
+
+  const customers = await db.customer.findMany({ where: { phone: { in: ["99110001", "99110002", "99110003"] } }, orderBy: { phone: "asc" } });
+  const services = await db.service.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" } });
+  const rooms = await db.room.findMany({ orderBy: { sortOrder: "asc" } });
+  if (customers.length < 3 || services.length < 3) return;
+
+  const today = ubDateKey();
+  const plan: { day: string; time: string; staff: number; customer: number; service: number }[] = [
+    { day: today, time: "11:00", staff: 0, customer: 0, service: 1 },
+    { day: today, time: "14:00", staff: 0, customer: 1, service: 2 },
+    { day: today, time: "12:00", staff: 1, customer: 2, service: 0 },
+    { day: addDays(today, 1), time: "10:30", staff: 1, customer: 0, service: 1 },
+    { day: addDays(today, 1), time: "15:00", staff: 0, customer: 1, service: 3 },
+  ];
+  for (const p of plan) {
+    const weekday = ubWeekday(p.day);
+    if (weekday === 0) continue; // Ням — амарна
+    if (weekday === 6 && (p.time < "11:00" || p.time >= "15:00")) continue;
+    const service = services[p.service % services.length]!;
+    const startsAt = ubAt(p.day, p.time);
+    const endsAt = new Date(startsAt.getTime() + service.durationMin * 60_000);
+    const bufferMin = service.durationMin >= 60 ? 10 : 0;
+    await db.appointment.create({
+      data: {
+        branchId: BRANCH_ID,
+        customerId: customers[p.customer]!.id,
+        staffId: staff[p.staff]!.id,
+        serviceId: service.id,
+        roomId: service.durationMin >= 75 ? (rooms[p.staff]?.id ?? null) : null,
+        startsAt,
+        endsAt,
+        blockedUntil: new Date(endsAt.getTime() + bufferMin * 60_000),
+        status: p.day === today ? "CONFIRMED" : "BOOKED",
+        priceSnapshot: service.price,
+        createdById,
+      },
+    });
+  }
+}
+
 async function main() {
   await seedBranch();
   await seedPosSettings();
@@ -568,6 +632,7 @@ async function main() {
   await seedCommissionRules();
   await seedSettings();
   await seedDemoCustomers();
+  await seedBooking(admin.id);
 
   const counts = await Promise.all([
     db.user.count(),

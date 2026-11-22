@@ -7,7 +7,7 @@ import { render } from "@react-email/render";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { absoluteUrl } from "@/lib/site-url";
-import { ubDateKey } from "@/lib/ub-time";
+import { ubDateKey } from "@/lib/time";
 
 export type VisitEmailData = {
   salon: { name: string; address: string | null; phone: string | null };

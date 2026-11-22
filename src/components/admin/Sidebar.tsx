@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  Banknote, BarChart3, Boxes, CalendarClock, CalendarDays, Contact, CreditCard, FileText, FolderTree, LayoutDashboard,
-  LogOut, Menu, Package, Receipt, Sparkles, Users, Wallet, X, type LucideIcon,
+  Banknote, BarChart3, Boxes, CalendarClock, CalendarDays, CalendarRange, Contact, CreditCard, DoorOpen, FileText, FolderTree,
+  LayoutDashboard, LogOut, Menu, Package, Receipt, Sparkles, Users, Wallet, X, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,6 +24,8 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   orders: Receipt,
   customers: Contact,
   shift: Banknote,
+  staffSchedule: CalendarRange,
+  room: DoorOpen,
   report: BarChart3,
   payroll: Wallet,
 };

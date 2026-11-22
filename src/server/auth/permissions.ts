@@ -9,7 +9,16 @@ import type { Role } from "@/generated/prisma/enums";
 export const PERMISSIONS = [
   "schedule:own",
   "schedule:all",
+  // Цаг захиалга
+  "appointment:read",
   "appointment:write",
+  "appointment:status",
+  "appointment:done-manual",
+  "staff-schedule:write",
+  "room:write",
+  "service-staff:write",
+  // Үйлчлүүлэгчийн утас, имэйл (STAFF-д харагдахгүй)
+  "customer:contact:read",
   // POS / борлуулалт
   "pos:use",
   "sale:create",
@@ -48,7 +57,10 @@ const STAFF: readonly Permission[] = ["schedule:own"];
 const MANAGER: readonly Permission[] = [
   ...STAFF,
   "schedule:all",
+  "appointment:read",
   "appointment:write",
+  "appointment:status",
+  "customer:contact:read",
   "pos:use",
   "sale:create",
   "sale:read",

@@ -1,7 +1,6 @@
 "use client";
 
-import { Check, FileText, Minus, Plus, Search, Trash2, UserRound, X } from "lucide-react";
-import Link from "next/link";
+import { Check, FileText, Minus, Plus, Search, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -9,21 +8,21 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Dialog } from "@/components/admin/Dialog";
 import { MoneyInput } from "@/components/admin/MoneyInput";
 import { useServerAction } from "@/components/admin/use-action";
-import { Badge, Button, Card, Checkbox, Field, Input, Select, Textarea, inputClass } from "@/components/admin/ui";
+import { Badge, Button, Card, Field, Input, Select, Textarea, inputClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import {
-  createCustomerAction,
   posCheckout,
   posDiscardDraft,
   posNewDraft,
   posSaveDraft,
   posSearchCatalog,
-  posSearchCustomers,
   saveVisitAction,
 } from "@/server/actions/pos";
+import { apptOpenPos } from "@/server/actions/appointments";
 import type { DraftData } from "@/server/modules/sales/drafts";
 import { exceedsDiscountLimit, priceSale, type DiscountInput } from "@/server/modules/sales/pricing";
+import { CustomerPicker, type PickedCustomer } from "@/components/admin/customers/CustomerPicker";
 import { PaymentPanel, type PaymentRow, type PaymentSale } from "./PaymentPanel";
 
 const s = t.admin.pos;
@@ -34,7 +33,7 @@ type SkinType = keyof typeof t.admin.skinTypes;
 
 type Discount = { type: "AMOUNT" | "PERCENT"; value: number } | null;
 export type CartLine = DraftData["lines"][number];
-export type PosCustomer = { id: string; name: string; phone: string; email: string | null };
+export type PosCustomer = PickedCustomer;
 type Catalog = Extract<Awaited<ReturnType<typeof posSearchCatalog>>, { ok: true }>["data"];
 type Rec = DraftData["visit"]["recs"][number];
 
@@ -67,6 +66,7 @@ export function PosTerminal({
   initial,
   drafts,
   concernOptions,
+  todayAppointments = [],
 }: {
   staff: { id: string; name: string }[];
   qpayMode: "api" | "manual";
@@ -77,6 +77,8 @@ export function PosTerminal({
   initial: PosInitial;
   drafts: PosDraftSummary[];
   concernOptions: { slug: string; name: string }[];
+  /** Today's BOOKED/CONFIRMED/ARRIVED appointments (opening one creates/opens its draft) */
+  todayAppointments?: { id: string; time: string; customer: string; service: string; staff: string; status: string }[];
 }) {
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -89,6 +91,7 @@ export function PosTerminal({
   const [saleDiscountReason, setSaleDiscountReason] = useState(d0.saleDiscountReason);
   const [saleId, setSaleId] = useState<string | null>(initial.saleId);
   const [visitId, setVisitId] = useState<string | null>(d0.visitId);
+  const appointmentId = d0.appointmentId;
   const [visitOpen, setVisitOpen] = useState(Boolean(d0.visit.skinType || d0.visit.concerns.length || d0.visit.notes || d0.visit.recs.length));
   const [skinType, setSkinType] = useState<SkinType | "">(d0.visit.skinType);
   const [concerns, setConcerns] = useState<string[]>(d0.visit.concerns);
@@ -102,6 +105,7 @@ export function PosTerminal({
   const checkout = useServerAction(posCheckout);
   const visitAction = useServerAction(saveVisitAction);
   const discard = useServerAction(posDiscardDraft);
+  const openAppt = useServerAction(apptOpenPos);
 
   // ── Draft: debounced autosave ──
   const draft: DraftData = useMemo(
@@ -111,9 +115,10 @@ export function PosTerminal({
       saleDiscount: cleanDiscount(saleDiscount),
       saleDiscountReason,
       visitId,
+      appointmentId,
       visit: { skinType, concerns, notes, recs },
     }),
-    [lines, customer, saleDiscount, saleDiscountReason, visitId, skinType, concerns, notes, recs],
+    [lines, customer, saleDiscount, saleDiscountReason, visitId, appointmentId, skinType, concerns, notes, recs],
   );
   const draftJson = JSON.stringify(draft);
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(d0));
@@ -280,6 +285,7 @@ export function PosTerminal({
       const v = await visitAction.run({
         visitId: vId,
         customerId: customer.id,
+        appointmentId,
         skinType: skinType || null,
         concerns,
         diagnosisNotes: notes || null,
@@ -294,6 +300,7 @@ export function PosTerminal({
         saleId: id,
         customerId: customer?.id ?? null,
         visitId: vId,
+        appointmentId,
         items: lines.map((l) => ({
           kind: l.kind,
           variantId: l.kind === "PRODUCT" ? l.refId : null,
@@ -488,7 +495,41 @@ export function PosTerminal({
 
       {/* ── Right: cart ── */}
       <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-        <CustomerPicker customer={customer} onChange={setCustomer} />
+        <CustomerPicker
+          customer={customer}
+          onChange={setCustomer}
+          extra={
+            todayAppointments.length > 0 && (
+              <div>
+                <p className="mb-1 text-[12px] font-medium uppercase tracking-[0.4px] text-navy/55">{s.todayAppts}</p>
+                <ul className="max-h-48 divide-y divide-line overflow-y-auto rounded-md border border-line">
+                  {todayAppointments.map((a) => (
+                    <li key={a.id}>
+                      <button
+                        type="button"
+                        disabled={openAppt.pending}
+                        aria-label={s.openAppt(a.time, a.customer)}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] hover:bg-navy/[0.03]"
+                        onClick={async () => {
+                          await flush();
+                          void openAppt.run(a.id, { onSuccess: (r) => router.push(`/admin/pos?sale=${r.saleId}`) });
+                        }}
+                      >
+                        <span className="min-w-0">
+                          <span className="font-medium tabular-nums">{a.time}</span> {a.customer}
+                          <span className="block truncate text-[12px] text-navy/55">
+                            {a.service} · {a.staff}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-[11px] text-navy/50">{a.status}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          }
+        />
 
         <Card title={s.cart}>
           {lines.length === 0 ? (
@@ -668,96 +709,5 @@ function DiscountInputs({ value, onChange, label, small }: { value: Discount; on
         {type === "AMOUNT" ? s.discountAmount : s.discountPercent}
       </button>
     </div>
-  );
-}
-
-function CustomerPicker({ customer, onChange }: { customer: PosCustomer | null; onChange: (c: PosCustomer | null) => void }) {
-  const [q, setQ] = useState("");
-  const [results, setResults] = useState<PosCustomer[]>([]);
-  const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", marketingConsent: false });
-  const create = useServerAction(createCustomerAction);
-
-  useEffect(() => {
-    if (q.trim().length < 2) return;
-    let stale = false;
-    const id = setTimeout(async () => {
-      const res = await posSearchCustomers(q);
-      if (res.ok && !stale) setResults(res.data);
-    }, 250);
-    return () => {
-      stale = true;
-      clearTimeout(id);
-    };
-  }, [q]);
-
-  return (
-    <Card title={s.customer} actions={customer && <Button size="sm" variant="ghost" onClick={() => onChange(null)}>{s.change}</Button>}>
-      {customer ? (
-        <div className="flex items-center gap-3">
-          <UserRound className="size-8 rounded-full bg-navy/5 p-1.5 text-navy/60" aria-hidden />
-          <div className="min-w-0 text-[14px]">
-            <Link href={`/admin/customers/${customer.id}`} target="_blank" className="block truncate font-medium hover:underline">
-              {customer.name}
-            </Link>
-            <p className="text-[12px] text-navy/55">
-              {customer.phone}
-              {customer.email ? ` · ${customer.email}` : ""}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.customerSearch} aria-label={s.customerSearch} />
-          {q.trim().length >= 2 && results.length > 0 && (
-            <ul className="divide-y divide-line rounded-md border border-line">
-              {results.map((c) => (
-                <li key={c.id}>
-                  <button type="button" className="w-full px-3 py-2 text-left text-[13.5px] hover:bg-navy/[0.03]" onClick={() => (onChange(c), setQ(""), setResults([]))}>
-                    {c.name} <span className="text-navy/50">· {c.phone}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] text-navy/50">{s.walkIn}</span>
-            <Button size="sm" variant="secondary" onClick={() => (setCreating(true), setForm((f) => ({ ...f, phone: /^\d/.test(q) ? q : f.phone, name: /^\d/.test(q) ? f.name : q })))}>
-              <Plus className="size-3.5" /> {s.newCustomer}
-            </Button>
-          </div>
-        </div>
-      )}
-      <Dialog open={creating} onClose={() => setCreating(false)} title={s.newCustomer}>
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void create.run({ ...form, email: form.email || null }, {
-              onSuccess: (c) => {
-                onChange(c);
-                setCreating(false);
-                setForm({ name: "", phone: "", email: "", marketingConsent: false });
-                setQ("");
-              },
-            });
-          }}
-        >
-          <Field label={s.name} htmlFor="nc-name" error={create.fieldErrors.name}>
-            <Input id="nc-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
-          </Field>
-          <Field label={s.phone} htmlFor="nc-phone" error={create.fieldErrors.phone}>
-            <Input id="nc-phone" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          </Field>
-          <Field label={s.email} htmlFor="nc-email" hint={s.emailHint} error={create.fieldErrors.email}>
-            <Input id="nc-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </Field>
-          <Checkbox label={s.marketing} checked={form.marketingConsent} onChange={(e) => setForm({ ...form, marketingConsent: e.target.checked })} />
-          <Button type="submit" className="w-full" disabled={create.pending}>
-            {s.save}
-          </Button>
-        </form>
-      </Dialog>
-    </Card>
   );
 }

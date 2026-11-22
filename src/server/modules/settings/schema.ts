@@ -19,6 +19,36 @@ export const qpaySettingsSchema = z.object({
   mode: z.enum(["api", "manual"]).catch("manual"),
 });
 
+const hm = z.string().regex(/^([01]\d|2[0-4]):[0-5]\d$/);
+export const intervalSchema = z
+  .object({ start: hm, end: hm })
+  .refine((i) => i.start < i.end, "Эхлэх цаг дуусахаас өмнө байх ёстой.");
+
+/** Салбарын ажлын цаг: weekday ("0" = Ням … "6" = Бямба) → интервалууд. Хоосон = амралтын өдөр. */
+const DEFAULT_HOURS: Record<string, { start: string; end: string }[]> = {
+  "0": [],
+  "1": [{ start: "10:00", end: "20:00" }],
+  "2": [{ start: "10:00", end: "20:00" }],
+  "3": [{ start: "10:00", end: "20:00" }],
+  "4": [{ start: "10:00", end: "20:00" }],
+  "5": [{ start: "10:00", end: "20:00" }],
+  "6": [{ start: "10:00", end: "20:00" }],
+};
+
+export const DEFAULT_CANCEL_REASONS = ["Үйлчлүүлэгч цуцалсан", "Цаг өөрчилсөн", "Өвчтэй", "Ажилтан боломжгүй", "Бусад"];
+
+export const bookingSettingsSchema = z.object({
+  hours: z.partialRecord(z.enum(["0", "1", "2", "3", "4", "5", "6"]), z.array(intervalSchema).max(6)).catch(DEFAULT_HOURS),
+  /** Календарийн мөр ба сул цагийн алхам */
+  slotMinutes: z.number().int().refine((v) => [5, 10, 15, 20, 30, 60].includes(v)).catch(15),
+  /** Одоогоос хамгийн багадаа хэдэн минутын дараах цаг санал болгох */
+  minLeadMinutes: z.number().int().min(0).max(24 * 60).catch(0),
+  cancelReasons: z.array(z.string().trim().min(1).max(80)).min(1).max(20).catch(DEFAULT_CANCEL_REASONS),
+  /** Сануулга илгээх (цаг эхлэхээс өмнө, цаг) */
+  reminderHours: z.number().int().min(1).max(72).catch(24),
+});
+
+export type BookingSettings = z.infer<typeof bookingSettingsSchema>;
 export type PosSettings = z.infer<typeof posSettingsSchema>;
 export type TaxSettings = z.infer<typeof taxSettingsSchema>;
 export type QPaySettings = z.infer<typeof qpaySettingsSchema>;

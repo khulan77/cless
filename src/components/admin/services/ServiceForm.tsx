@@ -60,6 +60,13 @@ export function ServiceForm({ initial, variantLabels: initialLabels }: Props) {
             <Field label={t.admin.serviceForm.duration} htmlFor="durationMin" error={err("durationMin")}>
               <Input id="durationMin" type="number" min={5} step={5} value={numValue(form.durationMin)} onChange={(e) => set("durationMin", num(e.target.value))} />
             </Field>
+            <Field label={t.admin.serviceForm.buffer} htmlFor="bufferMin" hint={t.admin.serviceForm.bufferHint} error={err("bufferMin")}>
+              <Input id="bufferMin" type="number" min={0} step={5} value={numValue(form.bufferMin)} onChange={(e) => set("bufferMin", num(e.target.value))} />
+            </Field>
+            <div className="flex flex-col justify-end gap-2">
+              <Checkbox label={t.admin.serviceForm.bookable} checked={form.bookable} onChange={(e) => set("bookable", e.target.checked)} />
+              <Checkbox label={t.admin.serviceForm.requiresRoom} checked={form.requiresRoom} onChange={(e) => set("requiresRoom", e.target.checked)} />
+            </div>
             <Field label={t.admin.serviceForm.price} htmlFor="price" error={err("price")}>
               <MoneyInput id="price" value={form.price} onChange={(v) => set("price", v)} invalid={Boolean(err("price"))} className="w-full" />
             </Field>
