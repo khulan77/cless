@@ -42,11 +42,7 @@ bun run worker      # зөвхөн worker
 ```
 
 - `RESEND_API_KEY`, `EMAIL_FROM` байхгүй үед имэйл илгээгдэхгүй — `.emails/<job-id>.html` файл болж үүснэ (gitignore), `Visit.emailStatus` = SENT.
-- Worker нь Vercel serverless дээр ажиллахгүй. Production-д `docker-compose.prod.yml`-ийн `worker` service (`restart: unless-stopped`):
-  ```bash
-  docker compose -f docker-compose.prod.yml --env-file .env up -d --build
-  docker compose -f docker-compose.prod.yml run --rm app bun run db:deploy   # migration
-  ```
+- Production deploy: [deploy/README.md](deploy/README.md)
 
 ### E2E (Playwright)
 
