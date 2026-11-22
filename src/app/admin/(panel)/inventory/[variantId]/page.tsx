@@ -6,7 +6,7 @@ import { Badge, Card, PageHeader, Table, btnClass, tdClass, thClass } from "@/co
 import type { StockMoveType } from "@/generated/prisma/enums";
 import { formatMNT } from "@/lib/money";
 import { db } from "@/server/db";
-import { can } from "@/server/auth/permissions";
+import { inventoryAccess, inventoryVariantSelect, redactCost, stockMovementSelect } from "@/server/inventory/visibility";
 import { requirePagePermission } from "@/server/auth/session";
 
 export const metadata = { title: "Хөдөлгөөний түүх" };
@@ -34,25 +34,25 @@ export default async function VariantHistoryPage({
   const { variantId } = await params;
   const page = parsePage((await searchParams).page);
 
-  const variant = await db.variant.findUnique({
-    where: { id: variantId },
-    include: { product: { select: { id: true, name: true } } },
-  });
-  if (!variant) notFound();
+  const access = inventoryAccess(user.role);
+  const found = await db.variant.findUnique({ where: { id: variantId }, select: inventoryVariantSelect(user.role) });
+  if (!found) notFound();
+  const variant = redactCost(found, user.role);
 
-  const [total, movements, sum] = await Promise.all([
+  const [total, rawMovements, sum] = await Promise.all([
     db.stockMovement.count({ where: { variantId } }),
     db.stockMovement.findMany({
       where: { variantId },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      include: { createdBy: { select: { name: true } }, sale: { select: { number: true } } },
+      select: stockMovementSelect(user.role),
     }),
     db.stockMovement.aggregate({ where: { variantId }, _sum: { qty: true } }),
   ]);
+  const movements = rawMovements.map((m) => redactCost(m, user.role));
   const ledger = sum._sum.qty ?? 0;
-  const canCost = can(user.role, "cost:read");
+  const canCost = access.canSeeCost;
 
   return (
     <>
@@ -62,8 +62,8 @@ export default async function VariantHistoryPage({
         actions={
           <>
             <Link href="/admin/inventory" className={btnClass("secondary")}>← Үлдэгдэл</Link>
-            {can(user.role, "stock:write") && (
-              <StockActions variantId={variant.id} label={variant.size} stock={variant.stock} costPrice={variant.costPrice} />
+            {access.canWrite && (
+              <StockActions variantId={variant.id} label={variant.size} stock={variant.stock} costPrice={variant.costPrice ?? undefined} />
             )}
           </>
         }

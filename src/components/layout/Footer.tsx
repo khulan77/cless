@@ -11,8 +11,21 @@ async function CurrentYear() {
   return <>{new Date().getFullYear()}</>;
 }
 
-export function Footer({ footer, wordmark, siteName }: { footer: FooterSetting; wordmark: string[]; siteName: string }) {
-  const { columns, contact, socials, newsletter, copyright } = footer;
+type Column = { title: string; links: { label: string; href: string }[] };
+
+export function Footer({
+  footer,
+  columns,
+  wordmark,
+  siteName,
+}: {
+  footer: FooterSetting;
+  /** Collection-оор баяжуулсан баганууд (resolveFooterColumns) */
+  columns: Column[];
+  wordmark: string[];
+  siteName: string;
+}) {
+  const { contact, socials, newsletter, copyright } = footer;
   return (
     <footer className="on-dark mt-auto bg-navy text-white">
       <Container className="pb-8 pt-16 md:pt-20">

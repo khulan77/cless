@@ -8,7 +8,7 @@ export function SplitPromo({ promo }: { promo: SplitPromoSetting }) {
     <Container as="section" aria-labelledby="split-title" className="mt-16 md:mt-24">
       <div className="grid md:grid-cols-2">
         <div className="order-2 flex flex-col items-center justify-center bg-promo px-6 py-14 text-center md:order-1 md:px-16">
-          <p className="text-micro mb-4">{promo.eyebrow}</p>
+          <p className="text-micro mb-4 uppercase tracking-[0.8px]">{promo.eyebrow}</p>
           <h2 id="split-title" className="text-section">
             {promo.title}
           </h2>

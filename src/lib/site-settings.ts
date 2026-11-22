@@ -61,8 +61,15 @@ export type GridSectionSetting = { title: string; labelPrefix?: string };
 export type BenefitIcon = "gift" | "package" | "scan-face" | "shield-check" | "sparkles";
 export type BenefitsSetting = { items: { icon: BenefitIcon; lines: [string, string] }[] };
 
+export type FooterColumn = {
+  title: string;
+  links: Link[];
+  /** Өгвөл линкүүдийг DB-ийн Collection-оос автоматаар нэмнэ (slug → /collections/[slug]) */
+  collections?: { kind: "CATEGORY" | "CONCERN"; navGroup?: string };
+};
+
 export type FooterSetting = {
-  columns: { title: string; links: Link[] }[];
+  columns: FooterColumn[];
   contact: { title: string; address: string; phone: string; email: string; hours: string[] };
   socials: { network: "instagram" | "facebook"; href: string; label: string }[];
   newsletter: { title: string; text: string; placeholder: string; button: string };

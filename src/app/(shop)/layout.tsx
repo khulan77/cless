@@ -1,7 +1,7 @@
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
-import { resolveNavigation } from "@/server/queries/catalog";
+import { resolveFooterColumns, resolveNavigation } from "@/server/queries/catalog";
 import { getSetting } from "@/server/queries/settings";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
@@ -11,7 +11,10 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
     getSetting("navigation"),
     getSetting("footer"),
   ]);
-  const nav = await resolveNavigation(navigation?.items ?? []);
+  const [nav, footerColumns] = await Promise.all([
+    resolveNavigation(navigation?.items ?? []),
+    resolveFooterColumns(footer?.columns ?? []),
+  ]);
   const wordmark = brand?.wordmark ?? [];
   const siteName = brand?.siteName ?? "";
 
@@ -28,7 +31,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <main id="main" className="flex-1">
         {children}
       </main>
-      {footer && <Footer footer={footer} wordmark={wordmark} siteName={siteName} />}
+      {footer && <Footer footer={footer} columns={footerColumns} wordmark={wordmark} siteName={siteName} />}
     </>
   );
 }

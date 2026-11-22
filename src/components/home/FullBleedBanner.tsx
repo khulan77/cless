@@ -8,7 +8,7 @@ export function FullBleedBanner({ banner, id }: { banner: BannerSetting; id: str
       <Img src={banner.image.src} alt={banner.image.alt} fill sizes="100vw" className="object-cover" />
       <div aria-hidden className="absolute inset-0 bg-navy/25" />
       <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
-        {banner.eyebrow && <p className="text-micro mb-4">{banner.eyebrow}</p>}
+        {banner.eyebrow && <p className="text-micro mb-4 uppercase tracking-[0.8px]">{banner.eyebrow}</p>}
         <h2 id={id} className="text-section md:text-[34px]">
           {banner.title}
         </h2>

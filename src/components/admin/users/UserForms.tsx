@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { MoneyInput } from "@/components/admin/MoneyInput";
 import { Button, Card, Checkbox, Field, Input, Select } from "@/components/admin/ui";
 import { useServerAction } from "@/components/admin/use-action";
 import { ROLE_LABELS } from "@/server/auth/permissions";
@@ -11,7 +12,6 @@ import {
 } from "@/lib/validation/user";
 import { createUser, resetPassword, updateUser } from "@/server/actions/users";
 
-const num = (v: string) => (v === "" ? Number.NaN : Number(v));
 
 function collect(issues: { path: PropertyKey[]; message: string }[]) {
   const errors: Record<string, string[]> = {};
@@ -45,8 +45,8 @@ export function CreateUserForm() {
               {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </Select>
           </Field>
-          <Field label="Үндсэн цалин (₮)" htmlFor="baseSalary" error={fieldErrors.baseSalary}>
-            <Input id="baseSalary" type="number" min={0} step={10000} value={Number.isNaN(form.baseSalary) ? "" : form.baseSalary} onChange={(e) => set("baseSalary", num(e.target.value))} />
+          <Field label="Үндсэн цалин" htmlFor="baseSalary" error={fieldErrors.baseSalary}>
+            <MoneyInput id="baseSalary" value={form.baseSalary} onChange={(v) => set("baseSalary", v)} invalid={Boolean(fieldErrors.baseSalary)} className="w-full" />
           </Field>
           <Field label="Түр нууц үг" htmlFor="password" error={fieldErrors.password} hint="8+ тэмдэгт. Хэрэглэгчид өөрөө дамжуулна.">
             <Input id="password" type="password" autoComplete="new-password" value={form.password} onChange={(e) => set("password", e.target.value)} />
@@ -85,8 +85,8 @@ export function EditUserForm({ initial, email, isSelf }: { initial: UpdateUserIn
               {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </Select>
           </Field>
-          <Field label="Үндсэн цалин (₮)" htmlFor="baseSalary" error={fieldErrors.baseSalary}>
-            <Input id="baseSalary" type="number" min={0} step={10000} value={Number.isNaN(form.baseSalary) ? "" : form.baseSalary} onChange={(e) => set("baseSalary", num(e.target.value))} />
+          <Field label="Үндсэн цалин" htmlFor="baseSalary" error={fieldErrors.baseSalary}>
+            <MoneyInput id="baseSalary" value={form.baseSalary} onChange={(v) => set("baseSalary", v)} invalid={Boolean(fieldErrors.baseSalary)} className="w-full" />
           </Field>
           <div className="md:col-span-2">
             <Checkbox label="Идэвхтэй (нэвтэрч чадна)" checked={form.isActive} disabled={isSelf} onChange={(e) => set("isActive", e.target.checked)} />

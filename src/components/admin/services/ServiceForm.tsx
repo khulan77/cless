@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SingleImageUploader } from "@/components/admin/ImageUploader";
+import { MoneyInput } from "@/components/admin/MoneyInput";
 import { Button, Card, Checkbox, Field, Input, Textarea, inputClass } from "@/components/admin/ui";
 import { useServerAction } from "@/components/admin/use-action";
 import { slugify } from "@/lib/slug";
@@ -45,8 +46,8 @@ export function ServiceForm({ initial, variantLabels: initialLabels }: Props) {
   };
 
   return (
-    <form onSubmit={onSubmit} noValidate className="grid gap-5 lg:grid-cols-[1fr_320px]">
-      <div className="space-y-5">
+    <form onSubmit={onSubmit} noValidate className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-5">
         <Card title="Үндсэн мэдээлэл">
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Нэр" htmlFor="name" error={err("name")}>
@@ -58,8 +59,8 @@ export function ServiceForm({ initial, variantLabels: initialLabels }: Props) {
             <Field label="Хугацаа (минут)" htmlFor="durationMin" error={err("durationMin")}>
               <Input id="durationMin" type="number" min={5} step={5} value={numValue(form.durationMin)} onChange={(e) => set("durationMin", num(e.target.value))} />
             </Field>
-            <Field label="Үнэ (₮)" htmlFor="price" error={err("price")}>
-              <Input id="price" type="number" min={0} step={1000} value={numValue(form.price)} onChange={(e) => set("price", num(e.target.value))} />
+            <Field label="Үнэ" htmlFor="price" error={err("price")}>
+              <MoneyInput id="price" value={form.price} onChange={(v) => set("price", v)} invalid={Boolean(err("price"))} className="w-full" />
             </Field>
             <Field label="Тайлбар" htmlFor="description" error={err("description")} className="md:col-span-2">
               <Textarea id="description" rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} />
