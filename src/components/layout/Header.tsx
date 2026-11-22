@@ -32,7 +32,7 @@ export function Header({ wordmark, siteName, nav, salon, shopMode, cartCount = 0
         </div>
 
         {/* TODO: replace with the official SVG logo */}
-        <Link href="/" aria-label={t.layout.homeLink(siteName)} className="flex flex-col items-center font-serif leading-none">
+        <Link href="/" aria-label={t.layout.homeLink(siteName)} className="flex min-h-11 flex-col items-center justify-center font-serif leading-none">
           {wordmark.map((line, i) => (
             <span
               key={line}

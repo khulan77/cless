@@ -39,7 +39,7 @@ export function AnnouncementBar({ messages, intervalMs }: Props) {
             type="button"
             onClick={() => go(-1)}
             aria-label={t.layout.prevAnnouncement}
-            className="grid size-8 shrink-0 place-items-center"
+            className="relative grid size-8 shrink-0 place-items-center before:absolute before:-inset-1.5 before:content-['']"
           >
             <ChevronLeft className="size-4" strokeWidth={1.25} aria-hidden />
           </button>
@@ -62,7 +62,7 @@ export function AnnouncementBar({ messages, intervalMs }: Props) {
             type="button"
             onClick={() => go(1)}
             aria-label={t.layout.nextAnnouncement}
-            className="grid size-8 shrink-0 place-items-center"
+            className="relative grid size-8 shrink-0 place-items-center before:absolute before:-inset-1.5 before:content-['']"
           >
             <ChevronRight className="size-4" strokeWidth={1.25} aria-hidden />
           </button>

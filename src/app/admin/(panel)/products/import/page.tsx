@@ -17,7 +17,7 @@ export default async function ProductImportPage() {
       <PageHeader
         title={T.title}
         description={T.description}
-        actions={<Link href="/admin/products" className={btnClass("secondary")}>{T.back}</Link>}
+        actions={<Link href="/admin/products" className={btnClass("secondary", "md", "max-sm:h-11")}>{T.back}</Link>}
       />
       <ImportWizard />
     </>

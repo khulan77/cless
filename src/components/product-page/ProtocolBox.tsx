@@ -34,7 +34,7 @@ function ProtocolItem({ product }: { product: ProductCardData }) {
           selected && <p className="mt-2 text-[13px] text-muted">{!selected.available ? t.stock.soldOut : selected.lowStock ? t.stock.low : t.stock.inSalon}</p>
         ) : selected?.available ? (
           // TODO (checkout phase): add to cart
-          <button type="button" className="link-underline mt-2 text-[13px]">
+          <button type="button" className="link-underline relative mt-2 text-[13px] before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']">
             {t.product.addToCart}
           </button>
         ) : (

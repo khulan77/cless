@@ -51,7 +51,7 @@ export function CollectionSwitcher({ current, siblings, parent }: Props) {
             setOpen(true);
           }
         }}
-        className="flex h-10 items-center gap-1.5 text-[15px] uppercase tracking-[0.04em]"
+        className="flex h-11 items-center gap-1.5 text-[15px] uppercase tracking-[0.04em]"
       >
         {current.name}
         <ChevronDown className={`size-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} strokeWidth={1.25} aria-hidden />

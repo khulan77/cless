@@ -22,7 +22,7 @@ export function CollectionToolbar({ current, siblings, parent, subcategories, to
               <li key={s.slug} className="shrink-0">
                 <Link
                   href={s.href}
-                  className="inline-flex h-8 items-center rounded-full border border-line px-3.5 text-[13px] transition-colors hover:border-navy"
+                  className="relative inline-flex h-8 items-center rounded-full border border-line px-3.5 text-[13px] transition-colors before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[''] hover:border-navy"
                 >
                   {s.name}
                 </Link>

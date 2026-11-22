@@ -9,7 +9,7 @@
   --color-card: #efeeec;
   --color-promo: #eeebe6;
   --color-line: rgb(14 34 67 / 0.2);
-  --color-muted: rgb(14 34 67 / 0.55);
+  --color-muted: rgb(14 34 67 / 0.64); /* ≥4.5:1 цагаан/#eeebe6/#efeeec дээр (WCAG AA) */
 
   --font-sans: var(--font-brand), ui-sans-serif, system-ui, sans-serif;
 
