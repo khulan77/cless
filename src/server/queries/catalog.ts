@@ -151,3 +151,89 @@ export async function resolveNavigation(items: NavItem[]): Promise<ResolvedNavIt
     })),
   );
 }
+
+// ─────────────── Collection / service хуудсууд ───────────────
+
+export async function getAllCollectionSlugs(): Promise<string[]> {
+  "use cache";
+  cacheLife(HOME_CACHE);
+  cacheTag("catalog", "collections");
+  return (await db.collection.findMany({ select: { slug: true } })).map((c) => c.slug);
+}
+
+export type CollectionPageData = {
+  slug: string;
+  name: string;
+  kind: CollectionKind;
+  description: string | null;
+  products: ProductCardData[];
+};
+
+export async function getCollectionPage(slug: string): Promise<CollectionPageData | null> {
+  "use cache";
+  cacheLife(HOME_CACHE);
+  cacheTag("catalog", `collection:${slug}`);
+
+  const c = await db.collection.findUnique({
+    where: { slug },
+    select: {
+      slug: true,
+      name: true,
+      kind: true,
+      description: true,
+      products: {
+        where: { product: { isPublished: true } },
+        orderBy: [{ product: { sortOrder: "asc" } }, { product: { name: "asc" } }],
+        select: { product: { select: productCardSelect } },
+      },
+    },
+  });
+  if (!c) return null;
+  return {
+    slug: c.slug,
+    name: c.name,
+    kind: c.kind,
+    description: c.description,
+    products: c.products.map((pc) => toCard(pc.product)).filter((p) => p.variants.length > 0),
+  };
+}
+
+export type ServiceListItem = {
+  slug: string;
+  name: string;
+  description: string;
+  durationMin: number;
+  price: number;
+  image: string | null;
+};
+
+export async function getActiveServices(): Promise<ServiceListItem[]> {
+  "use cache";
+  cacheLife(HOME_CACHE);
+  cacheTag("catalog", "services");
+  return db.service.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { slug: true, name: true, description: true, durationMin: true, price: true, image: true },
+  });
+}
+
+/** Footer-ийн баганыг Collection-оор баяжуулна */
+export async function resolveFooterColumns(
+  columns: { title: string; links: { label: string; href: string }[]; collections?: { kind: CollectionKind; navGroup?: string } }[],
+) {
+  return Promise.all(
+    columns.map(async (col) => ({
+      title: col.title,
+      links: col.collections
+        ? [
+            ...(await getCollections(col.collections.kind, { navGroup: col.collections.navGroup })).map((c) => ({
+              label: c.name,
+              href: c.href,
+            })),
+            ...col.links,
+          ]
+        : col.links,
+    })),
+  );
+}

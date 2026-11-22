@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Dialog } from "@/components/admin/Dialog";
+import { MoneyInput } from "@/components/admin/MoneyInput";
 import { Button, Field, Input, Textarea } from "@/components/admin/ui";
 import { useServerAction } from "@/components/admin/use-action";
 import { adjustStock, receiveStock } from "@/server/actions/stock";
@@ -18,7 +19,7 @@ export function StockActions({ variantId, label, stock, costPrice }: Props) {
   const adjust = useServerAction(adjustStock);
 
   const [qty, setQty] = useState("");
-  const [unitCost, setUnitCost] = useState(costPrice ? String(costPrice) : "");
+  const [unitCost, setUnitCost] = useState<number>(costPrice ?? Number.NaN);
   const [note, setNote] = useState("");
   const [newQty, setNewQty] = useState(String(stock));
   const [reason, setReason] = useState("");
@@ -49,7 +50,7 @@ export function StockActions({ variantId, label, stock, costPrice }: Props) {
           onSubmit={(e) => {
             e.preventDefault();
             void receive.run(
-              { variantId, qty: num(qty), unitCost: unitCost === "" ? null : num(unitCost), note: note || null },
+              { variantId, qty: num(qty), unitCost: Number.isNaN(unitCost) ? null : unitCost, note: note || null },
               { onSuccess: done },
             );
           }}
@@ -57,8 +58,8 @@ export function StockActions({ variantId, label, stock, costPrice }: Props) {
           <Field label="Тоо ширхэг" htmlFor="r-qty" error={receive.fieldErrors.qty}>
             <Input id="r-qty" type="number" min={1} autoFocus value={qty} onChange={(e) => setQty(e.target.value)} required />
           </Field>
-          <Field label="Нэгжийн өртөг (₮)" htmlFor="r-cost" error={receive.fieldErrors.unitCost} hint="Заавал биш">
-            <Input id="r-cost" type="number" min={0} value={unitCost} onChange={(e) => setUnitCost(e.target.value)} />
+          <Field label="Нэгжийн өртөг" htmlFor="r-cost" error={receive.fieldErrors.unitCost} hint="Заавал биш">
+            <MoneyInput id="r-cost" value={unitCost} onChange={setUnitCost} className="w-full" />
           </Field>
           <Field label="Тэмдэглэл" htmlFor="r-note" error={receive.fieldErrors.note}>
             <Textarea id="r-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Нийлүүлэгч, падааны дугаар…" />

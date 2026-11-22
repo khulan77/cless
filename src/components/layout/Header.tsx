@@ -44,14 +44,20 @@ export function Header({ wordmark, siteName, nav, cartCount = 0 }: Props) {
           <Link href="/account" aria-label="Миний бүртгэл" className="grid size-10 place-items-center">
             <User className={iconCls} strokeWidth={1.25} aria-hidden />
           </Link>
-          <Link href="/cart" aria-label={`Сагс, ${cartCount} бараа`} className="relative grid size-10 place-items-center">
+          <Link
+            href="/cart"
+            aria-label={cartCount > 0 ? `Сагс, ${cartCount} бараа` : "Сагс"}
+            className="relative grid size-10 place-items-center"
+          >
             <ShoppingBag className={iconCls} strokeWidth={1.25} aria-hidden />
-            <span
-              aria-hidden
-              className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-navy px-1 text-[10px] leading-4 text-white"
-            >
-              {cartCount}
-            </span>
+            {cartCount > 0 && (
+              <span
+                aria-hidden
+                className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-navy px-1 text-[10px] leading-4 text-white"
+              >
+                {cartCount}
+              </span>
+            )}
           </Link>
         </div>
       </div>

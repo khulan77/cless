@@ -51,6 +51,8 @@ const categories = [
   { slug: "eyes-lips", name: "Нүд ба уруул", navGroup: "face", showOnHome: false },
   { slug: "body", name: "Бие", navGroup: "body-hair", showOnHome: false },
   { slug: "hair", name: "Үс", navGroup: "body-hair", showOnHome: false },
+  // Цэсний "Бэлэг" холбоос /collections/gifts руу заана (цэсний бүлэггүй)
+  { slug: "gifts", name: "Бэлэг", navGroup: null, showOnHome: false },
 ];
 
 const concerns = [
@@ -72,7 +74,7 @@ async function seedCollections() {
       navGroup: c.navGroup,
       showOnHome: c.showOnHome,
       sortOrder: i,
-      image: `/placeholders/category-${i + 1}.svg`,
+      image: i < 8 ? `/placeholders/category-${i + 1}.svg` : null,
       description: `${c.name} — тайлбар удахгүй нэмэгдэнэ.`,
     };
     await db.collection.upsert({ where: { slug: c.slug }, create: { slug: c.slug, ...data }, update: data });
@@ -111,9 +113,9 @@ const products: SeedProduct[] = [
     badge: "ICONIC",
     collections: ["lotion-p50", "skin-texture", "blemishes"],
     variants: [
-      { size: "250 ml", price: 280_000, cost: 150_000, stock: 14 },
-      { size: "150 ml", price: 190_000, cost: 100_000, stock: 9 },
-      { size: "50 ml", price: 80_000, cost: 40_000, stock: 0 },
+      { size: "250 мл", price: 280_000, cost: 150_000, stock: 14 },
+      { size: "150 мл", price: 190_000, cost: 100_000, stock: 9 },
+      { size: "50 мл", price: 80_000, cost: 40_000, stock: 0 },
     ],
   },
   {
@@ -123,8 +125,8 @@ const products: SeedProduct[] = [
     badge: "ICONIC",
     collections: ["lotion-p50", "pigmentation"],
     variants: [
-      { size: "250 ml", price: 320_000, cost: 170_000, stock: 6 },
-      { size: "150 ml", price: 220_000, cost: 115_000, stock: 0 },
+      { size: "250 мл", price: 320_000, cost: 170_000, stock: 6 },
+      { size: "150 мл", price: 220_000, cost: 115_000, stock: 0 },
     ],
   },
   {
@@ -134,8 +136,8 @@ const products: SeedProduct[] = [
     badge: "ICONIC",
     collections: ["serums", "blemishes"],
     variants: [
-      { size: "30 ml", price: 240_000, cost: 120_000, stock: 11 },
-      { size: "8 ml", price: 85_000, cost: 40_000, stock: 4 },
+      { size: "30 мл", price: 240_000, cost: 120_000, stock: 11 },
+      { size: "8 мл", price: 85_000, cost: 40_000, stock: 4 },
     ],
   },
   {
@@ -144,7 +146,7 @@ const products: SeedProduct[] = [
     subtitle: "Цэвэршүүлэх / Нүх сүв",
     badge: "ICONIC",
     collections: ["masks", "blemishes", "skin-texture"],
-    variants: [{ size: "100 ml", price: 260_000, cost: 130_000, stock: 7 }],
+    variants: [{ size: "100 мл", price: 260_000, cost: 130_000, stock: 7 }],
   },
   {
     slug: "creme-mec",
@@ -152,7 +154,7 @@ const products: SeedProduct[] = [
     subtitle: "Хөгшрөлтийн эсрэг / Чангалах",
     badge: "ICONIC",
     collections: ["creams", "anti-ageing", "firming"],
-    variants: [{ size: "50 ml", price: 450_000, cost: 230_000, stock: 5 }],
+    variants: [{ size: "50 мл", price: 450_000, cost: 230_000, stock: 5 }],
   },
   {
     slug: "progeskin",
@@ -161,8 +163,8 @@ const products: SeedProduct[] = [
     badge: "NEW",
     collections: ["serums", "plumping", "anti-ageing"],
     variants: [
-      { size: "30 ml", price: 420_000, cost: 210_000, stock: 8 },
-      { size: "8 ml", price: 140_000, cost: 70_000, stock: 0 },
+      { size: "30 мл", price: 420_000, cost: 210_000, stock: 8 },
+      { size: "8 мл", price: 140_000, cost: 70_000, stock: 0 },
     ],
   },
   {
@@ -172,8 +174,8 @@ const products: SeedProduct[] = [
     badge: "NEW",
     collections: ["serums", "sensitive-skin"],
     variants: [
-      { size: "30 ml", price: 260_000, cost: 130_000, stock: 12 },
-      { size: "8 ml", price: 90_000, cost: 45_000, stock: 3 },
+      { size: "30 мл", price: 260_000, cost: 130_000, stock: 12 },
+      { size: "8 мл", price: 90_000, cost: 45_000, stock: 3 },
     ],
   },
   {
@@ -183,8 +185,8 @@ const products: SeedProduct[] = [
     badge: null,
     collections: ["cleansers-milks", "skin-texture"],
     variants: [
-      { size: "250 ml", price: 180_000, cost: 90_000, stock: 10 },
-      { size: "100 ml", price: 95_000, cost: 48_000, stock: 2 },
+      { size: "250 мл", price: 180_000, cost: 90_000, stock: 10 },
+      { size: "100 мл", price: 95_000, cost: 48_000, stock: 2 },
     ],
   },
   {
@@ -193,7 +195,7 @@ const products: SeedProduct[] = [
     subtitle: "Батга / Тэнцвэржүүлэх",
     badge: null,
     collections: ["creams", "blemishes"],
-    variants: [{ size: "50 ml", price: 210_000, cost: 105_000, stock: 0 }],
+    variants: [{ size: "50 мл", price: 210_000, cost: 105_000, stock: 0 }],
   },
   {
     slug: "creme-masque-vernix",
@@ -201,7 +203,7 @@ const products: SeedProduct[] = [
     subtitle: "Чийгшүүлэлт / Нөхөн сэргээх",
     badge: "NEW",
     collections: ["masks", "hydration", "sensitive-skin"],
-    variants: [{ size: "100 ml", price: 300_000, cost: 150_000, stock: 6 }],
+    variants: [{ size: "100 мл", price: 300_000, cost: 150_000, stock: 6 }],
   },
   {
     slug: "serum-contour-des-yeux",
@@ -209,7 +211,7 @@ const products: SeedProduct[] = [
     subtitle: "Нүдний орчим / Хавангийн эсрэг",
     badge: null,
     collections: ["eyes-lips", "anti-ageing"],
-    variants: [{ size: "15 ml", price: 230_000, cost: 115_000, stock: 9 }],
+    variants: [{ size: "15 мл", price: 230_000, cost: 115_000, stock: 9 }],
   },
   {
     slug: "creme-corps",
@@ -217,12 +219,14 @@ const products: SeedProduct[] = [
     subtitle: "Бие / Чийгшүүлэлт / Чангалах",
     badge: null,
     collections: ["body", "hydration", "firming"],
-    variants: [{ size: "200 ml", price: 190_000, cost: 95_000, stock: 20 }],
+    variants: [{ size: "200 мл", price: 190_000, cost: 95_000, stock: 20 }],
   },
 ];
 
 function skuFor(slug: string, size: string) {
-  return `BR-${slug}-${size.replace(/\s+/g, "").toLowerCase()}`.toUpperCase();
+  // SKU латин үсэгтэй байна: "30 мл" → "30ML"
+  const latin = size.replace(/мл/gi, "ml").replace(/\s+/g, "");
+  return `BR-${slug}-${latin}`.toUpperCase();
 }
 
 async function seedProducts(adminId: string) {
@@ -325,9 +329,9 @@ const services = [
     durationMin: 60,
     price: 250_000,
     consumables: [
-      { sku: skuFor("lait-vip-o2", "250 ml"), qty: 0.04 },
-      { sku: skuFor("lotion-p50", "250 ml"), qty: 0.03 },
-      { sku: skuFor("creme-masque-vernix", "100 ml"), qty: 0.1 },
+      { sku: skuFor("lait-vip-o2", "250 мл"), qty: 0.04 },
+      { sku: skuFor("lotion-p50", "250 мл"), qty: 0.03 },
+      { sku: skuFor("creme-masque-vernix", "100 мл"), qty: 0.1 },
     ],
   },
   {
@@ -337,10 +341,10 @@ const services = [
     durationMin: 90,
     price: 380_000,
     consumables: [
-      { sku: skuFor("lait-vip-o2", "250 ml"), qty: 0.04 },
-      { sku: skuFor("lotion-p50", "250 ml"), qty: 0.03 },
-      { sku: skuFor("progeskin", "30 ml"), qty: 0.05 },
-      { sku: skuFor("creme-mec", "50 ml"), qty: 0.04 },
+      { sku: skuFor("lait-vip-o2", "250 мл"), qty: 0.04 },
+      { sku: skuFor("lotion-p50", "250 мл"), qty: 0.03 },
+      { sku: skuFor("progeskin", "30 мл"), qty: 0.05 },
+      { sku: skuFor("creme-mec", "50 мл"), qty: 0.04 },
     ],
   },
   {
@@ -350,8 +354,8 @@ const services = [
     durationMin: 75,
     price: 320_000,
     consumables: [
-      { sku: skuFor("lotion-p50-pigm-400", "250 ml"), qty: 0.04 },
-      { sku: skuFor("masque-vivant", "100 ml"), qty: 0.1 },
+      { sku: skuFor("lotion-p50-pigm-400", "250 мл"), qty: 0.04 },
+      { sku: skuFor("masque-vivant", "100 мл"), qty: 0.1 },
     ],
   },
   {
@@ -361,9 +365,9 @@ const services = [
     durationMin: 60,
     price: 230_000,
     consumables: [
-      { sku: skuFor("lotion-p50", "250 ml"), qty: 0.03 },
-      { sku: skuFor("serum-vivant", "30 ml"), qty: 0.05 },
-      { sku: skuFor("masque-vivant", "100 ml"), qty: 0.1 },
+      { sku: skuFor("lotion-p50", "250 мл"), qty: 0.03 },
+      { sku: skuFor("serum-vivant", "30 мл"), qty: 0.05 },
+      { sku: skuFor("masque-vivant", "100 мл"), qty: 0.1 },
     ],
   },
 ];
@@ -419,7 +423,7 @@ const settings: SiteSettings = {
     messages: [
       "Захиалга бүрт 3 дээж бэлэг",
       "Салон дээр арьсны үнэгүй оношлогоо — урьдчилан цаг аваарай",
-      "Улаанбаатар хотод 2 өдрийн дотор хүргэнэ",
+      "Biologique Recherche-ийн Монгол дахь албан ёсны дистрибьютер",
     ],
   },
   brand: {
@@ -429,10 +433,10 @@ const settings: SiteSettings = {
   },
   navigation: {
     items: [
-      { label: "Бэлэг", href: "/gifts" },
+      { label: "Бэлэг", href: "/collections/gifts" },
       {
         label: "Нүүрний арчилгаа",
-        href: "/face",
+        href: "/collections",
         groups: [
           { title: "Ангилал", kind: "CATEGORY", navGroup: "face" },
           { title: "Арьсны асуудлаар", kind: "CONCERN" },
@@ -440,7 +444,7 @@ const settings: SiteSettings = {
       },
       {
         label: "Бие ба үс",
-        href: "/body-hair",
+        href: "/collections",
         groups: [{ title: "Ангилал", kind: "CATEGORY", navGroup: "body-hair" }],
       },
       { label: "Үйлчилгээ", href: "/services" },
@@ -451,7 +455,7 @@ const settings: SiteSettings = {
   hero: {
     image: { src: "/placeholders/hero.svg", alt: "Арьс арчилгааны ритуал — hero зураг" },
     title: ["Арьс бүр өвөрмөц", "Арчилгаа ч мөн адил"],
-    cta: { label: "Дэлгүүр үзэх", href: "/face" },
+    cta: { label: "Дэлгүүр үзэх", href: "/collections" },
   },
   promoTrio: {
     items: [
@@ -471,7 +475,7 @@ const settings: SiteSettings = {
         image: { src: "/placeholders/promo-3.svg", alt: "Бэлгийн багц" },
         title: "Бэлгийн багц",
         text: "Хайртай хүмүүстээ зориулсан тусгай хайрцагтай бэлэг.",
-        cta: { label: "Бэлэг сонгох", href: "/gifts" },
+        cta: { label: "Бэлэг сонгох", href: "/collections/gifts" },
       },
     ],
   },
@@ -479,7 +483,7 @@ const settings: SiteSettings = {
     eyebrow: "Хязгаарлагдмал",
     title: "Өвлийн арчилгааны багц",
     text: "Хүйтэн, хуурай агаарт арьсаа хамгаалах чийгшүүлэх протокол. Тоо хэмжээ хязгаартай.",
-    cta: { label: "Багц үзэх", href: "/gifts" },
+    cta: { label: "Багц үзэх", href: "/collections/gifts" },
     image: { src: "/placeholders/split.svg", alt: "Өвлийн арчилгааны багц" },
   },
   featuredProduct: {
@@ -489,7 +493,7 @@ const settings: SiteSettings = {
   },
   iconicCarousel: {
     title: "Иконик бүтээгдэхүүн",
-    cta: { label: "Бүгдийг харах", href: "/face" },
+    cta: { label: "Бүгдийг харах", href: "/collections" },
   },
   salonBanner: {
     eyebrow: "Шинэ",
@@ -518,11 +522,9 @@ const settings: SiteSettings = {
     columns: [
       {
         title: "Дэлгүүр",
-        links: [
-          { label: "Нүүрний арчилгаа", href: "/face" },
-          { label: "Бие ба үс", href: "/body-hair" },
-          { label: "Бэлэг", href: "/gifts" },
-        ],
+        // Ангиллууд DB-ээс (Collection.slug) автоматаар нэмэгдэнэ
+        collections: { kind: "CATEGORY" },
+        links: [{ label: "Бүх ангилал", href: "/collections" }],
       },
       {
         title: "Үйлчилгээ",
@@ -535,7 +537,6 @@ const settings: SiteSettings = {
         title: "Компани",
         links: [
           { label: "Бидний тухай", href: "/about" },
-          { label: "Хүргэлт ба буцаалт", href: "/shipping" },
           { label: "Нууцлалын бодлого", href: "/privacy" },
         ],
       },
@@ -563,7 +564,8 @@ const settings: SiteSettings = {
 
 async function seedSettings() {
   for (const [key, value] of Object.entries(settings)) {
-    await db.siteSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
+    // Create-only: админы засварласан контентыг seed дахин ажиллахад дарж бичихгүй
+    await db.siteSetting.upsert({ where: { key }, create: { key, value }, update: {} });
   }
 }
 

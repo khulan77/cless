@@ -24,7 +24,7 @@ export function CollectionForm({ initial, productCount = 0 }: { initial: Collect
   return (
     <form
       noValidate
-      className="grid gap-5 lg:grid-cols-[1fr_320px]"
+      className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]"
       onSubmit={async (e) => {
         e.preventDefault();
         const parsed = collectionInputSchema.safeParse(form);

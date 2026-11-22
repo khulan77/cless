@@ -12,7 +12,7 @@ export function ConcernGrid({ setting, concerns }: { setting: GridSectionSetting
       <ul className="grid grid-cols-2 gap-1.5 md:grid-cols-4">
         {concerns.map((c) => (
           <li key={c.slug}>
-            <Link href={c.href} className="on-dark group relative block aspect-[3/4] overflow-hidden bg-navy">
+            <Link href={c.href} className="on-dark group relative block aspect-[3/2] overflow-hidden bg-navy">
               {c.image && (
                 <Img
                   src={c.image}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { GalleryUploader } from "@/components/admin/ImageUploader";
+import { MoneyInput } from "@/components/admin/MoneyInput";
 import { Button, Card, Checkbox, Field, Input, Select, Textarea, inputClass } from "@/components/admin/ui";
 import { useServerAction } from "@/components/admin/use-action";
 import { slugify } from "@/lib/slug";
@@ -63,8 +64,8 @@ export function ProductForm({ initial, collections, stockByVariant = {} }: Props
   const concerns = collections.filter((c) => c.kind === "CONCERN");
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-5 lg:grid-cols-[1fr_320px]" noValidate>
-      <div className="space-y-5">
+    <form onSubmit={onSubmit} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]" noValidate>
+      <div className="min-w-0 space-y-5">
         <Card title="Үндсэн мэдээлэл">
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Нэр" htmlFor="name" error={err("name")}>
@@ -120,13 +121,13 @@ export function ProductForm({ initial, collections, stockByVariant = {} }: Props
         >
           {err("variants") && <p className="mb-3 text-[12px] text-red-600">{err("variants")![0]}</p>}
           <div className="-mx-5 -mb-5 overflow-x-auto">
-            <table className="w-full min-w-[860px] text-[13px]">
+            <table className="w-full min-w-[900px] text-[13px]">
               <thead>
                 <tr className="text-left text-[11.5px] uppercase tracking-[0.4px] text-navy/55">
                   <th className="px-3 py-2 pl-5 font-medium">SKU</th>
                   <th className="px-2 py-2 font-medium">Хэмжээ</th>
-                  <th className="px-2 py-2 font-medium">Үнэ ₮</th>
-                  <th className="px-2 py-2 font-medium">Өртөг ₮</th>
+                  <th className="px-2 py-2 font-medium">Үнэ</th>
+                  <th className="px-2 py-2 font-medium">Өртөг</th>
                   <th className="px-2 py-2 font-medium">Бага босго</th>
                   <th className="px-2 py-2 font-medium">Үлдэгдэл</th>
                   <th className="px-2 py-2 font-medium">Идэвхтэй</th>
@@ -144,13 +145,13 @@ export function ProductForm({ initial, collections, stockByVariant = {} }: Props
                         {cell("sku") && <p className="mt-1 text-[11px] text-red-600">{cell("sku")![0]}</p>}
                       </td>
                       <td className="px-2 py-2">
-                        <input aria-label="Хэмжээ" value={v.size} onChange={(e) => setVariant(i, { size: e.target.value })} placeholder="30 ml" className={`${cls("size")} w-24`} />
+                        <input aria-label="Хэмжээ" value={v.size} onChange={(e) => setVariant(i, { size: e.target.value })} placeholder="30 мл" className={`${cls("size")} w-24`} />
                       </td>
                       <td className="px-2 py-2">
-                        <input aria-label="Үнэ" type="number" min={0} step={1000} value={numValue(v.price)} onChange={(e) => setVariant(i, { price: num(e.target.value) })} className={`${cls("price")} w-32 text-right tabular-nums`} />
+                        <MoneyInput aria-label="Үнэ" value={v.price} onChange={(price) => setVariant(i, { price })} invalid={Boolean(cell("price"))} className="h-8 w-36" />
                       </td>
                       <td className="px-2 py-2">
-                        <input aria-label="Өртөг" type="number" min={0} step={1000} value={numValue(v.costPrice)} onChange={(e) => setVariant(i, { costPrice: num(e.target.value) })} className={`${cls("costPrice")} w-32 text-right tabular-nums`} />
+                        <MoneyInput aria-label="Өртөг" value={v.costPrice} onChange={(costPrice) => setVariant(i, { costPrice })} invalid={Boolean(cell("costPrice"))} className="h-8 w-36" />
                       </td>
                       <td className="px-2 py-2">
                         <input aria-label="Бага үлдэгдлийн босго" type="number" min={0} value={numValue(v.lowStockAt)} onChange={(e) => setVariant(i, { lowStockAt: num(e.target.value) })} className={`${cls("lowStockAt")} w-20 text-right`} />

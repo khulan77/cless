@@ -6,7 +6,7 @@ import { Badge, Checkbox, EmptyState, PageHeader, Table, inputClass, tdClass, th
 import type { Prisma } from "@/generated/prisma/client";
 import { formatMNT } from "@/lib/money";
 import { db } from "@/server/db";
-import { can } from "@/server/auth/permissions";
+import { inventoryAccess, inventoryVariantSelect, redactCost } from "@/server/inventory/visibility";
 import { requirePagePermission } from "@/server/auth/session";
 
 export const metadata = { title: "Үлдэгдэл" };
@@ -16,8 +16,8 @@ const PAGE_SIZE = 30;
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requirePagePermission("stock:read");
-  const canWrite = can(user.role, "stock:write");
-  const canCost = can(user.role, "cost:read");
+  // Өртгийг cost:read эрхгүй бол DB-ээс уншихгүй (MANAGER)
+  const { canWrite, canSeeCost: canCost } = inventoryAccess(user.role);
 
   const sp = await searchParams;
   const q = str(sp.q);
@@ -36,19 +36,17 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
     }),
   };
 
-  const [total, variants] = await Promise.all([
+  const [total, rawVariants] = await Promise.all([
     db.variant.count({ where }),
     db.variant.findMany({
       where,
       orderBy: [{ product: { sortOrder: "asc" } }, { product: { name: "asc" } }, { sortOrder: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      select: {
-        id: true, sku: true, size: true, stock: true, reserved: true, lowStockAt: true, costPrice: true, isActive: true,
-        product: { select: { id: true, name: true } },
-      },
+      select: inventoryVariantSelect(user.role),
     }),
   ]);
+  const variants = rawVariants.map((v) => redactCost(v, user.role));
 
   return (
     <>
@@ -92,10 +90,10 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
                   <td className={`${tdClass} text-right tabular-nums ${isLow ? "font-medium text-red-700" : ""}`}>{v.stock}</td>
                   <td className={`${tdClass} text-right tabular-nums text-navy/60`}>{v.reserved}</td>
                   <td className={`${tdClass} text-right tabular-nums text-navy/60`}>{v.lowStockAt}</td>
-                  {canCost && <td className={`${tdClass} text-right tabular-nums`}>{formatMNT(v.costPrice)}</td>}
+                  {canCost && <td className={`${tdClass} text-right tabular-nums`}>{v.costPrice != null ? formatMNT(v.costPrice) : "—"}</td>}
                   <td className={tdClass}>
                     {canWrite ? (
-                      <StockActions variantId={v.id} label={label} stock={v.stock} costPrice={v.costPrice} />
+                      <StockActions variantId={v.id} label={label} stock={v.stock} costPrice={v.costPrice ?? undefined} />
                     ) : (
                       <div className="text-right">
                         <Link href={`/admin/inventory/${v.id}`} className="text-[13px] underline underline-offset-4">Түүх</Link>
