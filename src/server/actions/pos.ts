@@ -15,6 +15,7 @@ import { createRefund, type RefundInput } from "@/server/modules/refunds/service
 import { searchPosCatalog } from "@/server/modules/sales/queries";
 import type { ApprovalInput, CartInput } from "@/server/modules/sales/schema";
 import { cancel, checkout, unlock } from "@/server/modules/sales/service";
+import { createDraft, discardDraft, saveDraft, type DraftDataInput } from "@/server/modules/sales/drafts";
 import { saveVisit, type VisitInput } from "@/server/modules/visits/service";
 import { runAction } from "./result";
 
@@ -37,6 +38,30 @@ export async function posSearchCustomers(q: string) {
     await requirePermission("customer:read");
     return searchCustomers(String(q ?? "").slice(0, 100));
   });
+}
+
+// ─────────────── Ноорог (DRAFT сагс) ───────────────
+
+/** Autosave — toast гаргахгүй (UI өөрөө "Хадгалагдсан" төлөв харуулна) */
+export async function posSaveDraft(input: { saleId?: string | null; data: DraftDataInput }) {
+  return runAction(async () => {
+    const user = await requirePermission("sale:create");
+    return saveDraft(input, user.id);
+  });
+}
+
+export async function posNewDraft() {
+  return runAction(async () => {
+    const user = await requirePermission("sale:create");
+    return { saleId: await createDraft(user.id) };
+  });
+}
+
+export async function posDiscardDraft(saleId: string) {
+  return runAction(async () => {
+    await requirePermission("sale:create");
+    return { result: await discardDraft(saleId) };
+  }, "Ноорог устгагдлаа.");
 }
 
 // ─────────────── Борлуулалт ───────────────

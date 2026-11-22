@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 20267",
+    "dev:all": "bun scripts/dev-all.ts",
     "build": "next build",
     "start": "next start --port 20267",
     "lint": "eslint",
@@ -15,6 +16,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "worker": "bun --preload ./src/worker/preload.ts src/worker/index.ts"
   },
   "dependencies": {
@@ -35,6 +37,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/bun": "latest",
     "@types/node": "^20",

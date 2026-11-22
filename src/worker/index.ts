@@ -4,8 +4,12 @@
  *  - Outbox (имэйл, QPay invoice цуцлах): 5 секунд тутам
  *  - QPay PROCESSING төлбөр шалгах: 1 минут тутам (callback алдагдсан ч гацахгүй)
  *  - Удаан түгжигдсэн борлуулалтыг тайлах: 1 минут тутам (тохиргоо: pos.staleLockMinutes)
+ *  - 24 цагаас хуучирсан POS ноорог устгах: 10 минут тутам
+ *  - Heartbeat (хянах самбар): 30 секунд тутам
  */
+import { beat } from "@/server/modules/outbox/heartbeat";
 import { processOutbox } from "@/server/modules/outbox/worker";
+import { purgeStaleDrafts } from "@/server/modules/sales/drafts";
 import { pollProcessingQPayPayments } from "@/server/modules/payments/service";
 import { unlockStaleSales } from "@/server/modules/sales/service";
 import { getPosSettings } from "@/server/modules/settings/pos-settings";
@@ -42,4 +46,6 @@ void Promise.all([
   loop("outbox", OUTBOX_MS, () => processOutbox()),
   loop("qpay-poll", MINUTE_MS, () => pollProcessingQPayPayments()),
   loop("stale-sales", MINUTE_MS, async () => unlockStaleSales((await getPosSettings()).staleLockMinutes)),
+  loop("stale-drafts", 10 * MINUTE_MS, () => purgeStaleDrafts(24)),
+  loop("heartbeat", 30_000, () => beat({ pid: process.pid }).then(() => 0)),
 ]).then(() => process.exit(0));

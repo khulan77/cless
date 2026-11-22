@@ -131,7 +131,12 @@ export async function getSaleDetail(id: string) {
       items: { orderBy: { sortOrder: "asc" }, include: { staff: { select: { name: true } } } },
       payments: { orderBy: { createdAt: "asc" }, include: { createdBy: { select: { name: true } }, transactions: { select: { providerInvoiceId: true, providerStatus: true } } } },
       refunds: { orderBy: { createdAt: "asc" }, include: { requestedBy: { select: { name: true } } } },
-      visit: { select: { id: true, emailStatus: true, emailError: true, emailSentAt: true } },
+      visit: {
+        include: {
+          conductedBy: { select: { name: true } },
+          recommendations: { orderBy: { sortOrder: "asc" }, include: { variant: { select: { size: true, product: { select: { name: true } } } } } },
+        },
+      },
     },
   });
 }

@@ -1,66 +1,105 @@
 import Link from "next/link";
-import { PosTerminal, type PosResume } from "@/components/admin/pos/PosTerminal";
+import { redirect } from "next/navigation";
+import { PosTerminal, type PosInitial } from "@/components/admin/pos/PosTerminal";
 import { Badge, PageHeader, btnClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
+import { db } from "@/server/db";
 import { getCurrentBranch } from "@/server/modules/branches/service";
 import { getOpenShift } from "@/server/modules/cash-shifts/service";
 import { effectiveQPayMode } from "@/server/modules/payments/providers/qpay";
+import { draftDataSchema, latestDraftId, listDrafts, type DraftData } from "@/server/modules/sales/drafts";
 import { getPosSale, listServiceStaff, openPosSales } from "@/server/modules/sales/queries";
 import { getPosSettings, getQPaySettings, getTaxSettings } from "@/server/modules/settings/pos-settings";
-import { db } from "@/server/db";
+import { listConcerns } from "@/server/modules/visits/service";
 
 export const metadata = { title: "Касс / POS" };
 export const instant = false;
+
+type PosSale = NonNullable<Awaited<ReturnType<typeof getPosSale>>>;
+
+/** draftData байхгүй (unlock хийсэн) бол мөр, айлчлалаас сэргээнэ */
+async function dataFromSale(sale: PosSale): Promise<DraftData> {
+  const parsed = sale.draftData ? draftDataSchema.safeParse(sale.draftData) : null;
+  if (parsed?.success) return parsed.data;
+  const visit = sale.visit
+    ? await db.visit.findUnique({
+        where: { id: sale.visit.id },
+        include: { recommendations: { orderBy: { sortOrder: "asc" }, include: { variant: { select: { size: true, product: { select: { name: true } } } } } } },
+      })
+    : null;
+  return draftDataSchema.parse({
+    lines: sale.items.map((i) => ({
+      key: i.id,
+      kind: i.kind === "SERVICE" ? "SERVICE" : "PRODUCT",
+      refId: (i.kind === "SERVICE" ? i.serviceId : i.variantId) ?? "",
+      name: i.nameSnapshot,
+      detail: i.skuSnapshot ?? "",
+      unitPrice: i.unitPrice,
+      qty: i.qty,
+      staffId: i.staffId ?? "",
+      discount: i.lineDiscount > 0 ? { type: "AMOUNT", value: i.lineDiscount } : null,
+      discountReason: i.lineDiscountReason ?? "",
+    })),
+    customer: sale.customer,
+    saleDiscount: sale.saleDiscount > 0 ? { type: "AMOUNT", value: sale.saleDiscount } : null,
+    saleDiscountReason: sale.saleDiscountReason ?? "",
+    visitId: visit?.id ?? null,
+    visit: visit
+      ? {
+          skinType: visit.skinType ?? "",
+          concerns: visit.concerns,
+          notes: visit.diagnosisNotes ?? "",
+          recs: visit.recommendations.map((r) => ({ variantId: r.variantId, name: `${r.variant.product.name} · ${r.variant.size}`, instructions: r.instructions ?? "" })),
+        }
+      : undefined,
+  });
+}
 
 export default async function PosPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requirePagePermission("pos:use");
   const sp = await searchParams;
   const saleParam = typeof sp.sale === "string" ? sp.sale : null;
+  const fresh = sp.new === "1";
+
+  // Параметргүй бол хэрэглэгчийн сүүлийн ноорог руу шилжүүлнэ — URL-д saleId байх ёстой,
+  // эс тэгвээс lock хийсний дараах refresh өөр (хоосон) сагс ачаална
+  if (!saleParam && !fresh) {
+    const latest = await latestDraftId(user.id);
+    if (latest) redirect(`/admin/pos?sale=${latest}`);
+  }
 
   const branch = await getCurrentBranch();
-  const [staff, shift, qpay, pos, tax, open, resumeSale] = await Promise.all([
+  const targetId = saleParam;
+  const [staff, shift, qpay, pos, tax, open, drafts, concerns, sale] = await Promise.all([
     listServiceStaff(),
     getOpenShift(db, branch.id),
     getQPaySettings(),
     getPosSettings(),
     getTaxSettings(),
     openPosSales(),
-    saleParam ? getPosSale(saleParam) : null,
+    listDrafts(user.id),
+    listConcerns(),
+    targetId ? getPosSale(targetId) : null,
   ]);
 
-  let resume: PosResume | null = null;
-  if (resumeSale && ["DRAFT", "PENDING_PAYMENT", "PARTIALLY_PAID"].includes(resumeSale.status)) {
-    resume = {
-      sale: {
-        id: resumeSale.id,
-        number: resumeSale.number ?? "",
-        total: resumeSale.total,
-        paidAmount: resumeSale.paidAmount,
-        status: resumeSale.status,
-        draft: resumeSale.status === "DRAFT",
+  let initial: PosInitial = { saleId: null, data: draftDataSchema.parse({}), payment: null };
+  if (sale && sale.status === "DRAFT") {
+    initial = { saleId: sale.id, data: await dataFromSale(sale), payment: null };
+  } else if (sale && (sale.status === "PENDING_PAYMENT" || sale.status === "PARTIALLY_PAID" || sale.status === "PAID")) {
+    // PAID: төлбөрийн дараах refresh (server action-ийн кэш шинэчлэл) амжилтын дэлгэцийг хадгална
+    initial = {
+      saleId: sale.id,
+      data: await dataFromSale(sale),
+      payment: {
+        sale: { id: sale.id, number: sale.number ?? "", total: sale.total, paidAmount: sale.paidAmount, status: sale.status },
+        payments: sale.payments.map((p) => ({ id: p.id, method: p.method, amount: p.amount, status: p.status, change: p.change, reviewReason: p.reviewReason })),
       },
-      payments: resumeSale.payments.map((p) => ({ id: p.id, method: p.method, amount: p.amount, status: p.status, change: p.change, reviewReason: p.reviewReason })),
-      lines: resumeSale.items.map((i) => ({
-        key: i.id,
-        kind: i.kind === "SERVICE" ? "SERVICE" : "PRODUCT",
-        refId: (i.kind === "SERVICE" ? i.serviceId : i.variantId) ?? "",
-        name: i.nameSnapshot,
-        detail: i.skuSnapshot ?? "",
-        unitPrice: i.unitPrice,
-        qty: i.qty,
-        staffId: i.staffId ?? "",
-        discount: i.lineDiscount > 0 ? { type: "AMOUNT", value: i.lineDiscount } : null,
-        discountReason: i.lineDiscountReason ?? "",
-      })),
-      customer: resumeSale.customer,
-      visitId: resumeSale.visit?.id ?? null,
-      saleDiscount: resumeSale.saleDiscount > 0 ? { type: "AMOUNT", value: resumeSale.saleDiscount } : null,
-      saleDiscountReason: resumeSale.saleDiscountReason ?? "",
     };
   }
+  const pending = open.filter((o) => o.status !== "DRAFT");
 
   return (
     <>
@@ -81,13 +120,13 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
           )
         }
         actions={
-          open.length > 0 && (
+          pending.length > 0 && (
             <details className="relative">
               <summary className={btnClass("secondary")}>
-                {t.admin.pos.openSales} ({open.length})
+                {t.admin.pos.openSales} ({pending.length})
               </summary>
               <ul className="absolute right-0 z-10 mt-1 w-80 divide-y divide-line rounded-md border border-line bg-white text-[13px] shadow-lg">
-                {open.map((o) => (
+                {pending.map((o) => (
                   <li key={o.id}>
                     <Link href={`/admin/pos?sale=${o.id}`} className="flex justify-between gap-2 px-3 py-2 hover:bg-navy/[0.03]">
                       <span>
@@ -104,14 +143,16 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
         }
       />
       <PosTerminal
-        key={resume?.sale.id ?? "new"}
+        key={initial.saleId ?? "new"}
         staff={staff}
         qpayMode={effectiveQPayMode(qpay.mode)}
         shiftOpen={Boolean(shift)}
         canTransfer={can(user.role, "payment:transfer:confirm")}
         maxDiscountPercent={can(user.role, "discount:over-limit") ? 100 : pos.maxManagerDiscountPercent}
         vat={{ included: tax.vatIncluded, rateBp: tax.vatRateBp }}
-        resume={resume}
+        initial={initial}
+        drafts={drafts.map((d) => ({ ...d, updatedAt: d.updatedAt.toISOString() }))}
+        concernOptions={concerns}
       />
     </>
   );

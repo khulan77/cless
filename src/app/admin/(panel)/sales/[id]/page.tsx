@@ -8,6 +8,9 @@ import { saleStatusTone } from "@/lib/sale-status";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { getSaleDetail } from "@/server/modules/sales/queries";
+import { concernNames } from "@/server/modules/visits/service";
+import { VisitSummary } from "@/components/admin/visits/VisitSummary";
+import { ubDateKey } from "@/lib/ub-time";
 
 export const metadata = { title: "Борлуулалт" };
 export const instant = false;
@@ -20,6 +23,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
   const sale = await getSaleDetail(id);
   if (!sale) notFound();
 
+  const concerns = sale.visit ? await concernNames(sale.visit.concerns) : [];
   const refundable = can(user.role, "sale:refund") && (sale.status === "PAID" || sale.status === "PARTIALLY_REFUNDED");
   const resumable = ["DRAFT", "PENDING_PAYMENT", "PARTIALLY_PAID"].includes(sale.status) && can(user.role, "pos:use");
 
@@ -115,6 +119,26 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
               </ul>
             )}
           </Card>
+
+          {sale.visit && (
+            <Card title="Айлчлал / оношлогоо">
+              <VisitSummary
+                visit={{
+                  conductedBy: sale.visit.conductedBy.name,
+                  date: ubDateKey(sale.visit.createdAt),
+                  skinType: sale.visit.skinType,
+                  concerns,
+                  notes: sale.visit.diagnosisNotes,
+                  recommendations: sale.visit.recommendations.map((r) => ({
+                    id: r.id,
+                    name: `${r.variant.product.name} · ${r.variant.size}`,
+                    instructions: r.instructions,
+                    purchased: r.purchased,
+                  })),
+                }}
+              />
+            </Card>
+          )}
 
           {sale.refunds.length > 0 && (
             <Card title="Буцаалт">

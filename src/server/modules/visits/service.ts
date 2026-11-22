@@ -22,6 +22,18 @@ export const visitSchema = z.object({
 });
 export type VisitInput = z.input<typeof visitSchema>;
 
+/** Оношлогооны "анхаарах асуудал" — CONCERN төрлийн ангиллууд (slug хадгална) */
+export async function listConcerns(client: Pick<typeof db, "collection"> = db) {
+  return client.collection.findMany({ where: { kind: "CONCERN" }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { slug: true, name: true } });
+}
+
+/** slug → нэр (устсан ангиллын slug-ийг тэр чигээр нь үлдээнэ) */
+export async function concernNames(slugs: string[]) {
+  if (slugs.length === 0) return [];
+  const rows = await db.collection.findMany({ where: { slug: { in: slugs } }, select: { slug: true, name: true } });
+  return slugs.map((s) => rows.find((r) => r.slug === s)?.name ?? s);
+}
+
 /** howToUse алхмуудыг зааврын текст болгоно (POS-д урьдчилан бөглөх) */
 export function instructionsFromHowToUse(steps: string[]): string {
   return steps
@@ -39,6 +51,12 @@ export async function saveVisit(raw: VisitInput, actorId: string) {
     const customer = await tx.customer.findUnique({ where: { id: data.customerId }, select: { id: true, skinType: true } });
     if (!customer) throw new UserError("Үйлчлүүлэгч олдсонгүй.");
 
+    const concerns = [...new Set(data.concerns)];
+    if (concerns.length) {
+      const known = await tx.collection.count({ where: { kind: "CONCERN", slug: { in: concerns } } });
+      if (known !== concerns.length) throw new UserError("Анхаарах асуудлын жагсаалтад байхгүй утга байна.", { concerns: ["Жагсаалтаас сонгоно уу."] });
+    }
+
     const variantIds = [...new Set(data.recommendations.map((r) => r.variantId))];
     const variants = await tx.variant.findMany({
       where: { id: { in: variantIds } },
@@ -50,7 +68,7 @@ export async function saveVisit(raw: VisitInput, actorId: string) {
       customerId: data.customerId,
       appointmentId: data.appointmentId ?? null,
       skinType: data.skinType ?? null,
-      concerns: data.concerns,
+      concerns,
       diagnosisNotes: data.diagnosisNotes ?? null,
     };
 

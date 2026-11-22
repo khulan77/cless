@@ -5,6 +5,7 @@ import { audit } from "@/server/audit";
 import { db } from "@/server/db";
 import { UserError } from "@/server/errors";
 import { enqueue } from "@/server/modules/outbox/service";
+import { concernNames } from "@/server/modules/visits/service";
 import { sendEmail, type SendResult } from "./mailer";
 import { renderVisitEmail, type VisitEmailData } from "./visit-email";
 
@@ -31,7 +32,7 @@ export async function loadVisitEmail(visitId: string): Promise<{ to: string | nu
       date: v.createdAt,
       conductedBy: v.conductedBy.name,
       skinType: v.skinType,
-      concerns: v.concerns,
+      concerns: await concernNames(v.concerns),
       notes: v.diagnosisNotes,
       recommendations: v.recommendations.map((r) => ({
         name: r.variant.product.name,

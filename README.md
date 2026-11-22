@@ -32,6 +32,40 @@ bun run dev                   # http://127.0.0.1:20267
 
 Шалгах: `bun run typecheck`, `bun run lint`, `bun run test`, `bun run build`.
 
+### Worker (имэйл, QPay шалгалт, ноорог цэвэрлэх)
+
+POS-ийн айлчлалын имэйл, QPay төлбөрийн шалгалт, удаан түгжигдсэн борлуулалт тайлах, 24 цагаас хуучирсан ноорог устгах ажлыг тусдаа **worker** процесс гүйцэтгэнэ. Worker ажиллахгүй бол имэйл "Дараалалд" төлөвт гацна; хянах самбарт "Worker сүүлд ажилласан: N минутын өмнө" (5 минутаас удаан бол улаан) харагдана.
+
+```bash
+bun run dev:all     # Next dev + worker зэрэг (dev-д үүнийг ашиглана)
+bun run worker      # зөвхөн worker
+```
+
+- `RESEND_API_KEY`, `EMAIL_FROM` байхгүй үед имэйл илгээгдэхгүй — `.emails/<job-id>.html` файл болж үүснэ (gitignore), `Visit.emailStatus` = SENT.
+- Worker нь Vercel serverless дээр ажиллахгүй. Production-д `docker-compose.prod.yml`-ийн `worker` service (`restart: unless-stopped`):
+  ```bash
+  docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+  docker compose -f docker-compose.prod.yml run --rm app bun run db:deploy   # migration
+  ```
+
+### E2E (Playwright)
+
+Өөрийн локал DB-д (`cless_e2e`, ажиллах бүрт цэвэрлэнэ — Supabase-д хэзээ ч хүрэхгүй) production build + worker-ийг асааж POS-ийн бүтэн урсгалыг шалгана.
+
+```bash
+bunx playwright install chromium   # нэг удаа (эсвэл E2E_CHROMIUM_PATH=<chromium>)
+bun run build && bun run test:e2e
+```
+
+### Нээлтийн өмнө: туршилтын гүйлгээ цэвэрлэх
+
+```bash
+bun scripts/reset-transactions.ts            # юу устахыг харуулна (dry run)
+bun scripts/reset-transactions.ts --confirm  # устгана (NODE_ENV=production үед ажиллахгүй)
+```
+
+Борлуулалт, төлбөр, айлчлал, кассын ээлж, туршилтын үйлчлүүлэгч (цаг захиалга/хэтэвчгүй), борлуулалттай холбоотой StockMovement-ийг устгаж `Variant.stock`-ийг дахин тооцно. Каталог, орлого/тооллого, хэрэглэгч, тохиргоо, AuditLog үлдэнэ. `--keep-customers` — үйлчлүүлэгчдийг үлдээнэ.
+
 Админ: http://127.0.0.1:20267/admin (seed хэрэглэгчээр нэвтэрнэ).
 
 > `bun run build` нь нүүр хуудсыг build үед prerender хийдэг тул DB-д холбогдох боломжтой байх ёстой.
