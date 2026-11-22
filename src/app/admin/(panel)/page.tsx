@@ -4,6 +4,9 @@ import { Badge, Card, PageHeader, tdClass, thClass } from "@/components/admin/ui
 import { db } from "@/server/db";
 import { can } from "@/server/auth/permissions";
 import { requireUser } from "@/server/auth/session";
+import { t } from "@/i18n";
+import { formatMNT } from "@/lib/money";
+import { todaySummary } from "@/server/modules/sales/queries";
 
 export const metadata = { title: "Хянах самбар" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
@@ -25,6 +28,7 @@ export default async function DashboardPage() {
   const tomorrow = new Date(today.getTime() + 24 * 3600_000);
   const lowStockWhere = { isActive: true, stock: { lte: db.variant.fields.lowStockAt } };
 
+  const today$ = can(user.role, "sale:read") ? todaySummary() : Promise.resolve(null);
   const [published, drafts, lowCount, lowList, services, appointments, users] = await Promise.all([
     db.product.count({ where: { isPublished: true } }),
     db.product.count({ where: { isPublished: false } }),
@@ -39,6 +43,7 @@ export default async function DashboardPage() {
     db.appointment.count({ where: { startsAt: { gte: today, lt: tomorrow }, status: { notIn: ["CANCELLED", "NO_SHOW"] } } }),
     can(user.role, "user:write") ? db.user.count({ where: { isActive: true } }) : Promise.resolve(null),
   ]);
+  const sales = await today$;
 
   const stats = [
     { label: "Нийтлэгдсэн бүтээгдэхүүн", value: published, hint: `${drafts} ноорог`, href: can(user.role, "product:write") ? "/admin/products" : undefined },
@@ -71,6 +76,37 @@ export default async function DashboardPage() {
           );
         })}
       </div>
+
+      {sales && (
+        <Card title="Өнөөдрийн борлуулалт" className="mt-6" actions={<Link href="/admin/sales" className="text-[13px] underline underline-offset-4">Бүгдийг харах</Link>}>
+          <div className="grid gap-5 md:grid-cols-[260px_minmax(0,1fr)]">
+            <div className="space-y-2">
+              <p className="text-[32px] font-light tabular-nums">{formatMNT(sales.revenue)}</p>
+              <p className="text-[13px] text-navy/60">
+                {sales.salesCount} борлуулалт · {sales.visits} айлчлал
+              </p>
+              <p className="text-[13px] text-navy/60">{sales.byMethod.map((m) => `${t.admin.payMethod[m.method]}: ${formatMNT(m.amount)}`).join(" · ") || "Төлбөр алга"}</p>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[12px] font-medium uppercase tracking-[0.4px] text-navy/55">Шилдэг 5</p>
+              {sales.top.length === 0 ? (
+                <p className="text-[14px] text-navy/55">Өнөөдөр борлуулалт хийгдээгүй.</p>
+              ) : (
+                <ol className="divide-y divide-line text-[13.5px]">
+                  {sales.top.map((x, i) => (
+                    <li key={x.name} className="flex justify-between gap-2 py-1.5">
+                      <span>
+                        {i + 1}. {x.name} <span className="text-navy/50">× {x.qty}</span>
+                      </span>
+                      <span className="tabular-nums">{formatMNT(x.amount)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card title="Бага үлдэгдэл" className="mt-6" actions={<Link href="/admin/inventory?low=1" className="text-[13px] underline underline-offset-4">Бүгдийг харах</Link>}>
         {lowList.length === 0 ? (
