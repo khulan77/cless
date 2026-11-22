@@ -30,5 +30,12 @@ await c.query(
    SELECT 'e2e_' || u."id" || '_' || d, u."id", d, '00:00', '24:00' FROM "User" u CROSS JOIN generate_series(0, 6) d WHERE u."role" = 'STAFF'`,
 );
 await c.query(`DELETE FROM "Appointment"`);
+// Үлдэгдэл → сайтын кэш тест: нэг бүтээгдэхүүнд яг 1 ширхэг (movement-тэй нийцтэй)
+await c.query(
+  `WITH v AS (SELECT "id", "stock" FROM "Variant" WHERE "sku" = 'BR-SERUM-BIOFIXINE-30ML')
+   INSERT INTO "StockMovement" ("id", "branchId", "variantId", "type", "qty", "note")
+   SELECT 'e2e_last_unit', 'branch_cl', v."id", 'ADJUSTMENT', 1 - v."stock", 'E2E: сүүлийн 1 ширхэг' FROM v WHERE v."stock" <> 1`,
+);
+await c.query(`UPDATE "Variant" SET "stock" = 1, "reserved" = 0 WHERE "sku" = 'BR-SERUM-BIOFIXINE-30ML'`);
 await c.end();
 console.log("[e2e] DB бэлэн:", new URL(E2E_DATABASE_URL).pathname.slice(1));

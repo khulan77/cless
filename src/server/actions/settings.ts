@@ -9,6 +9,13 @@ import { requirePermission } from "@/server/auth/session";
 import { UserError } from "@/server/errors";
 import { EDITABLE_SETTING_KEYS, settingSchemas, type EditableSettingKey } from "@/lib/validation/site-settings";
 import { parseInput, runAction } from "./result";
+import {
+  saveEmailSettings,
+  savePosSettings,
+  saveQPayMode,
+  saveSalonSettings,
+  type SalonInput,
+} from "@/server/modules/settings/admin-settings";
 
 export async function saveSetting(input: { key: EditableSettingKey; value: unknown }) {
   return runAction(async () => {
@@ -33,4 +40,40 @@ export async function saveSetting(input: { key: EditableSettingKey; value: unkno
     updateTag("settings");
     revalidatePath("/");
   }, "Сайтын контент хадгалагдлаа.");
+}
+
+// ─────────────── ADMIN → Тохиргоо ───────────────
+
+export async function saveSalonAction(input: SalonInput) {
+  return runAction(async () => {
+    const user = await requirePermission("settings:write");
+    await saveSalonSettings(input, user.id);
+    // Footer, холбоо барих хуудас, layout
+    updateTag("settings");
+    revalidatePath("/admin/settings");
+  }, "Салоны мэдээлэл хадгалагдлаа.");
+}
+
+export async function savePosSettingsAction(input: Parameters<typeof savePosSettings>[0]) {
+  return runAction(async () => {
+    const user = await requirePermission("settings:write");
+    await savePosSettings(input, user.id);
+    revalidatePath("/admin/settings");
+  }, "POS тохиргоо хадгалагдлаа.");
+}
+
+export async function saveEmailSettingsAction(input: Parameters<typeof saveEmailSettings>[0]) {
+  return runAction(async () => {
+    const user = await requirePermission("settings:write");
+    await saveEmailSettings(input, user.id);
+    revalidatePath("/admin/settings");
+  }, "Имэйлийн тохиргоо хадгалагдлаа.");
+}
+
+export async function saveQPayModeAction(mode: "manual" | "api") {
+  return runAction(async () => {
+    const user = await requirePermission("settings:write");
+    await saveQPayMode(mode, user.id);
+    revalidatePath("/admin/settings");
+  }, "QPay горим хадгалагдлаа.");
 }

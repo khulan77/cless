@@ -5,6 +5,10 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 import {
+  emailSettingsSchema,
+  systemSettingsSchema,
+  type EmailSettings,
+  type SystemSettings,
   bookingSettingsSchema,
   posSettingsSchema,
   qpaySettingsSchema,
@@ -15,7 +19,7 @@ import {
   type TaxSettings,
 } from "./schema";
 
-export type { BookingSettings, PosSettings, QPaySettings, TaxSettings };
+export type { BookingSettings, EmailSettings, PosSettings, QPaySettings, SystemSettings, TaxSettings };
 
 type Client = Prisma.TransactionClient | typeof db;
 
@@ -41,4 +45,12 @@ export async function getBookingSettings(client: Client = db): Promise<BookingSe
   // Хадгалагдсан утгад зарим гариг дутуу байвал амралтын өдөр гэж үзнэ
   for (const d of ["0", "1", "2", "3", "4", "5", "6"] as const) parsed.hours[d] ??= [];
   return parsed;
+}
+
+export async function getEmailSettings(client: Client = db): Promise<EmailSettings> {
+  return emailSettingsSchema.parse(await read(client, "email"));
+}
+
+export async function getSystemSettings(client: Client = db): Promise<SystemSettings> {
+  return systemSettingsSchema.parse(await read(client, "system"));
 }

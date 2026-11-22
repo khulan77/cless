@@ -619,7 +619,21 @@ async function seedBooking(createdById: string) {
   }
 }
 
+/**
+ * Бодит (нээлт хийсэн) DB-д seed ажиллахгүй: туршилтын хэрэглэгч, үйлчлүүлэгч, цаг үүсгэдэг.
+ * - SiteSetting "system".launchedAt (ADMIN "Нээлт хийгдсэн" гэж тэмдэглэсэн) эсвэл
+ * - PAID борлуулалт байвал зогсоно.
+ */
+async function assertSeedAllowed() {
+  const system = await db.siteSetting.findUnique({ where: { key: "system" } }).catch(() => null);
+  const launchedAt = (system?.value as { launchedAt?: string } | null)?.launchedAt;
+  if (launchedAt) throw new Error(`Seed зогслоо: DB "нээлт хийгдсэн" гэж тэмдэглэгдсэн (${launchedAt}).`);
+  const paid = await db.sale.count({ where: { status: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] } } }).catch(() => 0);
+  if (paid > 0) throw new Error(`Seed зогслоо: DB-д ${paid} төлөгдсөн борлуулалт байна (бодит өгөгдөл байж болзошгүй).`);
+}
+
 async function main() {
+  await assertSeedAllowed();
   await seedBranch();
   await seedPosSettings();
   await seedUsers();

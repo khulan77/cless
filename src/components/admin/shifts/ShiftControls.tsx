@@ -34,7 +34,7 @@ export function OpenShiftForm() {
   );
 }
 
-export function ShiftOpenControls({ shiftId, expected }: { shiftId: string; expected: number }) {
+export function ShiftOpenControls({ shiftId, expected, threshold = 0 }: { shiftId: string; expected: number; threshold?: number }) {
   const router = useRouter();
   const [move, setMove] = useState<{ type: "PAY_IN" | "PAY_OUT"; amount: number; note: string }>({ type: "PAY_OUT", amount: Number.NaN, note: "" });
   const [counted, setCounted] = useState<number>(Number.NaN);
@@ -128,6 +128,11 @@ export function ShiftOpenControls({ shiftId, expected }: { shiftId: string; expe
             </dd>
           </div>
         </dl>
+        {diff !== null && threshold > 0 && Math.abs(diff) > threshold && (
+          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-[13px] text-red-800">
+            {s.bigDifference(formatMNT(threshold))}
+          </p>
+        )}
         {diff !== 0 && (
           <Field label={s.closeNote} htmlFor="sh-note" error={c.fieldErrors.note} hint={s.noteRequired}>
             <Textarea id="sh-note" className="min-h-16" value={note} onChange={(e) => setNote(e.target.value)} autoFocus />

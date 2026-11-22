@@ -7,7 +7,23 @@ export const posSettingsSchema = z.object({
   allowNegativeStock: z.boolean().catch(false),
   /** Төлбөргүй гацсан PENDING_PAYMENT-ийг автоматаар буцаах хугацаа (минут) */
   staleLockMinutes: z.number().int().min(5).max(24 * 60).catch(30),
+  /** Касс хаахад үүнээс их (абсолют) зөрүү гарвал онцгой анхааруулна, ₮ */
+  shiftDifferenceThreshold: z.number().int().min(0).max(10_000_000).catch(5000),
 });
+
+/** Имэйлийн илгээгч. Хоосон бол EMAIL_FROM env-ийг ашиглана. */
+export const emailSettingsSchema = z.object({
+  fromName: z.string().trim().max(80).catch(""),
+  fromAddress: z.string().trim().max(200).catch(""),
+  replyTo: z.string().trim().max(200).catch(""),
+});
+export type EmailSettings = z.infer<typeof emailSettingsSchema>;
+
+/** Системийн төлөв: "Нээлт хийгдсэн" (seed/reset хориглоно) */
+export const systemSettingsSchema = z.object({
+  launchedAt: z.string().nullable().catch(null),
+});
+export type SystemSettings = z.infer<typeof systemSettingsSchema>;
 
 export const taxSettingsSchema = z.object({
   vatIncluded: z.boolean().catch(true),

@@ -13,6 +13,23 @@ export const phoneSchema = z
 
 export const SOCIAL_HOSTS = { instagram: "instagram.com", facebook: "facebook.com" } as const;
 
+/** Хоосон эсвэл Google Maps-ийн https холбоос */
+export const mapsUrlSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((v) => {
+    if (!v) return true;
+    try {
+      const u = new URL(v);
+      return u.protocol === "https:" && /(^|\.)(google\.[a-z.]+|goo\.gl|maps\.app\.goo\.gl)$/.test(u.hostname);
+    } catch {
+      return false;
+    }
+  }, "Google Maps-ийн https://… холбоос оруулна уу.")
+  .optional()
+  .transform((v) => v || undefined);
+
 /** Хоосон (footer-т харагдахгүй) эсвэл тухайн сүлжээний https хаяг */
 export function isSocialUrl(network: keyof typeof SOCIAL_HOSTS, value: string): boolean {
   if (value === "") return true;
@@ -101,6 +118,8 @@ export const settingSchemas = {
         .array(z.string().trim())
         .transform((rows) => rows.filter(Boolean))
         .pipe(z.array(requiredText(80)).min(1, "Дор хаяж нэг мөр ажлын цаг оруулна уу.").max(7, "7-оос ихгүй мөр.")),
+      /** Google Maps-ийн холбоос (заавал биш) */
+      mapsUrl: mapsUrlSchema,
     }),
     socials: z
       .array(

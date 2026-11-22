@@ -6,7 +6,7 @@ export const ROLES = ["ADMIN", "MANAGER", "STAFF"] as const;
 const email = z.string({ error: REQUIRED }).trim().toLowerCase().pipe(z.email("Имэйл хаяг буруу байна."));
 export const passwordSchema = z
   .string({ error: REQUIRED })
-  .min(8, "Нууц үг дор хаяж 8 тэмдэгт.")
+  .min(10, "Нууц үг дор хаяж 10 тэмдэгт.")
   .max(100, "100 тэмдэгтээс ихгүй.");
 
 export const createUserSchema = z.object({

@@ -55,7 +55,7 @@ export function Header({ wordmark, siteName, nav, cartCount = 0 }: Props) {
             {cartCount > 0 && (
               <span
                 aria-hidden
-                className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-navy px-1 text-[10px] leading-4 text-white group-data-[transparent=true]/header:bg-white group-data-[transparent=true]/header:text-navy"
+                className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-navy px-1 text-[10px] leading-4 text-white header-cart-count"
               >
                 {cartCount}
               </span>

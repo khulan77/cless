@@ -6,13 +6,14 @@ import { auth } from "@/auth";
 import { db } from "@/server/db";
 import { ForbiddenError, UnauthorizedError } from "@/server/errors";
 import { can, type Permission } from "./permissions";
+import { isSessionValid } from "./session-rules";
 
 export type CurrentUser = Awaited<ReturnType<typeof loadUser>>;
 
 async function loadUser(id: string) {
   return db.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, role: true, isActive: true },
+    select: { id: true, name: true, email: true, role: true, isActive: true, mustChangePassword: true, passwordChangedAt: true },
   });
 }
 
@@ -27,8 +28,7 @@ export const getCurrentUser = cache(async () => {
   const id = session?.user?.id;
   if (!id) return null;
   const user = await loadUser(id);
-  if (!user || !user.isActive) return null;
-  return user;
+  return user && isSessionValid(user, session.user.pwdAt) ? user : null;
 });
 
 /** Хуудсанд: нэвтрээгүй бол login руу */
@@ -45,11 +45,24 @@ export async function requirePagePermission(permission: Permission) {
   return user;
 }
 
+/** Түр нууц үгтэй хэрэглэгч эхлээд нууц үгээ солино — бусад үйлдэл хориотой */
+function assertPasswordChanged(user: NonNullable<CurrentUser>) {
+  if (user.mustChangePassword) throw new ForbiddenError("Эхлээд нууц үгээ солино уу.");
+}
+
 /** Server Action-д: эхэнд нь заавал дуудна. Эрхгүй бол ForbiddenError (403). */
 export async function requirePermission(permission: Permission) {
   const user = await getCurrentUser();
   if (!user) throw new UnauthorizedError();
+  assertPasswordChanged(user);
   if (!can(user.role, permission)) throw new ForbiddenError();
+  return user;
+}
+
+/** Server Action-д: нэвтэрсэн хэн ч (өөрийн нууц үг солих г.м.). Түр нууц үгтэй байсан ч болно. */
+export async function requireSignedIn() {
+  const user = await getCurrentUser();
+  if (!user) throw new UnauthorizedError();
   return user;
 }
 
@@ -57,6 +70,7 @@ export async function requirePermission(permission: Permission) {
 export async function requireAnyPermission(...permissions: Permission[]) {
   const user = await getCurrentUser();
   if (!user) throw new UnauthorizedError();
+  assertPasswordChanged(user);
   if (!permissions.some((p) => can(user.role, p))) throw new ForbiddenError();
   return user;
 }

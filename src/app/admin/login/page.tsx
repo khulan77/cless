@@ -7,10 +7,10 @@ import { LoginForm } from "./LoginForm";
 export const metadata: Metadata = { title: "Нэвтрэх" };
 export const instant = false;
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string; changed?: string }> }) {
   const user = await getCurrentUser();
   if (user) redirect(homePathFor(user.role));
-  const { callbackUrl } = await searchParams;
+  const { callbackUrl, changed } = await searchParams;
 
   return (
     <div className="grid min-h-dvh place-items-center bg-promo px-4">
@@ -21,6 +21,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <span className="mt-1 text-[8px] tracking-[0.5em]">PARIS</span>
         </div>
         <h1 className="text-section mb-8 text-center text-[20px]">Удирдлагад нэвтрэх</h1>
+        {changed === "1" && (
+          <p role="status" className="mb-6 bg-promo px-3 py-2 text-center text-[13px]">
+            Нууц үг солигдлоо. Шинэ нууц үгээрээ нэвтэрнэ үү.
+          </p>
+        )}
         <LoginForm callbackUrl={callbackUrl} />
       </div>
     </div>
