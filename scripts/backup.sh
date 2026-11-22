@@ -4,9 +4,8 @@
 #
 # Орчны хувьсагч:
 #   DIRECT_URL | DATABASE_URL   — холболт (DIRECT_URL-ийг түрүүлж ашиглана; pooler биш)
-#   BACKUP_DIR=/backups, BACKUP_KEEP_DAYS=14
-#   BACKUP_S3_BUCKET, BACKUP_S3_ENDPOINT, BACKUP_S3_ACCESS_KEY_ID, BACKUP_S3_SECRET_ACCESS_KEY,
-#   BACKUP_S3_REGION (сонголттой), BACKUP_S3_PREFIX (default "cless")
+#   BACKUP_DIR=/backups, BACKUP_KEEP_DAYS=14 (серверийн локал хуулбар)
+#   Гадагш хуулах (BACKUP_REMOTE, …): scripts/backup-offsite.sh-ийг үз
 set -euo pipefail
 
 DIR="${BACKUP_DIR:-/backups}"
@@ -36,15 +35,6 @@ fi
 # Хадгалах хугацаа
 find "$DIR" -maxdepth 1 -type f \( -name 'cless-*.dump' -o -name 'uploads-*.tar.gz' \) -mmin +$((KEEP * 1440)) -print -delete
 
-# S3-compatible (сонголттой)
-if [ -n "${BACKUP_S3_BUCKET:-}" ]; then
-  export RCLONE_CONFIG_REMOTE_TYPE=s3
-  export RCLONE_CONFIG_REMOTE_PROVIDER=Other
-  export RCLONE_CONFIG_REMOTE_ENDPOINT="${BACKUP_S3_ENDPOINT:?BACKUP_S3_ENDPOINT}"
-  export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID="${BACKUP_S3_ACCESS_KEY_ID:?BACKUP_S3_ACCESS_KEY_ID}"
-  export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY="${BACKUP_S3_SECRET_ACCESS_KEY:?BACKUP_S3_SECRET_ACCESS_KEY}"
-  export RCLONE_CONFIG_REMOTE_REGION="${BACKUP_S3_REGION:-auto}"
-  DEST="remote:${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX:-cless}"
-  rclone copy "$DIR" "$DEST" --include "*-$STAMP.*" --s3-no-check-bucket
-  echo "S3: $DEST руу хуулагдлаа"
-fi
+# Серверээс ГАДАГШ (S3/B2) — BACKUP_REMOTE тохируулсан бол. Алдаа гарвал локал backup үлдэнэ,
+# гэхдээ non-zero код буцаана (scheduler/лог алдааг харуулна).
+"$(dirname "$0")/backup-offsite.sh" push "$STAMP"

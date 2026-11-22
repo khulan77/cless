@@ -182,11 +182,72 @@ dc ps                     # төлөв, health
 
 ## 9. Backup
 
-- Өдөр бүр **03:00** (`BACKUP_AT`) → `./backups/cless-YYYYMMDD-HHMMSS.dump` + `uploads-….tar.gz`
-- **14 хоног** (`BACKUP_KEEP_DAYS`) хадгална
-- `BACKUP_S3_*` бөглөвөл S3-compatible (Cloudflare R2, Backblaze B2, AWS S3) руу хуулна — **серверээс гадуур хуулбар заавал байлгахыг зөвлөж байна**
+| Хаана | Юу | Хадгалах хугацаа |
+| --- | --- | --- |
+| Сервер `./backups/` | `cless-YYYYMMDD-HHMMSS.dump` (DB) + `uploads-….tar.gz` (зураг) | 14 хоног (`BACKUP_KEEP_DAYS`) |
+| Гадаад storage `daily/` | өдөр бүрийн хуулбар | 14 хоног (`BACKUP_REMOTE_KEEP_DAYS`) |
+| Гадаад storage `weekly/` | Ням гарагийн хуулбар (`BACKUP_WEEKLY_DOW=7`) | 8 долоо хоног (`BACKUP_REMOTE_KEEP_WEEKS`) |
 
-Гараар авах:
+> ⚠️ **Гадаад storage ЗААВАЛ.** VPS бүхэлдээ устахад (provider-ийн алдаа, төлбөр, хакердалт) `./backups/` хамт устна.
+> `BACKUP_REMOTE` хоосон бол backup лог бүрт «АНХААР» гэж бичнэ.
+
+### 9.1 Гадаад storage тохируулах
+
+Бүртгэлийг **үйлчлүүлэгчийн нэр дээр** нээнэ (төлбөр, эзэмшил тэднийх). Аль нэгийг сонгоно:
+
+| Provider | `.env.production` |
+| --- | --- |
+| **Cloudflare R2** (гадагш татахад төлбөргүй) | `BACKUP_REMOTE=s3`, `BACKUP_S3_PROVIDER=Cloudflare`, `BACKUP_S3_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com`, `BACKUP_S3_REGION=auto`, R2 API token-ийн key/secret |
+| **Backblaze B2** | `BACKUP_REMOTE=b2`, `BACKUP_B2_ACCOUNT_ID=<keyID>`, `BACKUP_B2_APPLICATION_KEY=<applicationKey>` |
+| Wasabi / AWS S3 / бусад S3 | `BACKUP_REMOTE=s3`, `BACKUP_S3_PROVIDER=Wasabi\|AWS\|Other`, endpoint, region, key/secret |
+
+Бүгдэд: `BACKUP_REMOTE_BUCKET=<bucket>`, `BACKUP_REMOTE_PREFIX=cless`.
+
+1. Provider дээр **private** bucket үүсгэнэ (жишээ: `cless-backups`).
+2. **Зөвхөн тэр bucket-д** унших/бичих/устгах эрхтэй API key үүсгэнэ (account-ийн master key ашиглахгүй).
+3. Шифрлэлтийн нууц үг: `openssl rand -base64 32` → `BACKUP_ENCRYPT_PASSWORD`. **Энэ нууц үгийг серверээс гадна (нууц үгийн менежер, үйлчлүүлэгчийн хадгаламж) хадгална** — алдвал гадаад backup-ийг тайлах боломжгүй, сервер устахад `.env.production` хамт устна.
+4. Шалгах:
+
+```bash
+dc up -d backup                                 # .env.production-ийг дахин уншина
+dc exec backup /scripts/backup-offsite.sh check # ✓ … бичих/унших/устгах OK
+dc exec backup /scripts/backup.sh               # бүтэн backup + гадагш хуулах
+dc exec backup /scripts/backup-offsite.sh list  # daily/, weekly/ (шифр тайлсан нэрээр)
+```
+
+Файлууд шифрлэгдсэн (`rclone crypt`) — storage provider нэр, агуулгыг харахгүй. Хуулсан файл бүрийн хэмжээг тулгана; алдаа гарвал локал backup үлдэх ба `backup.sh` non-zero кодоор дуусна.
+
+### 9.2 Хуваарь (systemd timer — зөвлөж байна)
+
+Default-аар `backup` container өөрөө өдөр бүр 03:00-д ажиллуулна. systemd timer нь сервер унтарсан байсан бол асахдаа алгассан backup-ийг нөхдөг (`Persistent=true`), алдааг `systemctl`/journal-д харуулна:
+
+```bash
+# 1. Container доторх давхар хуваарийг унтраах
+sed -i 's/^BACKUP_AT=.*/BACKUP_AT=off/' .env.production && dc up -d backup
+
+# 2. Timer суулгах
+sudo cp deploy/systemd/cless-backup.service deploy/systemd/cless-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now cless-backup.timer
+
+# 3. Шалгах
+systemctl list-timers cless-backup.timer          # дараагийн ажиллах цаг
+sudo systemctl start cless-backup.service         # одоо нэг удаа ажиллуулах
+journalctl -u cless-backup.service -n 50          # лог
+systemctl status cless-backup.service             # сүүлийн үр дүн (failed эсэх)
+```
+
+`.service` нь `User=deploy`, `WorkingDirectory=/opt/cless` гэж үздэг — өөр бол засна.
+
+cron ашиглах бол (timer-ийн оронд, `BACKUP_AT=off`):
+
+```bash
+crontab -e
+# Өдөр бүр 03:00 (серверийн цаг Asia/Ulaanbaatar — §1.4)
+0 3 * * * cd /opt/cless && docker compose --env-file .env.production -f docker-compose.prod.yml exec -T backup /scripts/backup.sh >> /var/log/cless-backup.log 2>&1
+```
+
+### 9.3 Гараар
 
 ```bash
 dc exec backup /scripts/backup.sh
@@ -212,6 +273,23 @@ ls backups/
 4. Мөрийн тоог (Product, Variant, Sale, User) хэвлэнэ, `app`/`worker`-ийг асаана
 
 Сэргээсний дараа хуучин backup-ийн schema одоогийн кодоос хоцорсон байж болно → `dc --profile tools run --rm tools bun run db:deploy`.
+
+### 10.1 Сервер бүхэлдээ устсан бол (гадаад storage-аас)
+
+1. Шинэ VPS-д §1–§4-ийг хийнэ. `.env.production`-д `BACKUP_REMOTE*`, `BACKUP_ENCRYPT_PASSWORD`-ийг **хуучин утгаар** бөглөнө.
+2. DB, tools, backup-ийг асааж schema үүсгэлгүйгээр сэргээнэ:
+
+```bash
+dc up -d db && dc up -d --build backup
+dc exec backup /scripts/backup-offsite.sh list                       # хамгийн сүүлийн файлыг сонгоно
+dc exec backup /scripts/backup-offsite.sh fetch daily/cless-20261127-030000.dump
+dc exec backup /scripts/backup-offsite.sh fetch daily/uploads-20261127-030000.tar.gz
+./scripts/restore.sh backups/cless-20261127-030000.dump --uploads backups/uploads-20261127-030000.tar.gz
+dc --profile tools build tools && dc --profile tools run --rm tools bun run db:deploy
+dc build app && dc up -d
+```
+
+(Локал Docker дээр туршсан: локал backup, DB, зургийг устгаад гадаад storage-аас татаж сэргээхэд 39 хүснэгтийн мөрийн тоо + агуулгын md5, зургийн sha256 бүгд таарсан.)
 
 ## 11. Гадны DB (Supabase г.м.) ашиглах
 

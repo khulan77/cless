@@ -1,0 +1,11 @@
+# Өдөр бүр 03:00 (Улаанбаатар). Сервер унтарсан байсан бол асахдаа алгассан ажлыг нөхнө (Persistent).
+[Unit]
+Description=CLÉSS backup — өдөр бүр 03:00 Asia/Ulaanbaatar
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 Asia/Ulaanbaatar
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target
