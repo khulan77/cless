@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default function ProductPage({ params }: Props) {
   return (
-    <Suspense fallback={<div className="min-h-[80vh]" />}>
+    <Suspense fallback={<div className="min-h-svh" />}>
       <ProductView params={params} />
     </Suspense>
   );
