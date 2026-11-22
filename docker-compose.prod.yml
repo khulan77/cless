@@ -1,0 +1,41 @@
+# Production: app (Next) + worker (outbox, QPay шалгалт, ноорог цэвэрлэх).
+# Worker нь Vercel serverless дээр ажиллахгүй — урт хугацааны тусдаа процесс.
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+# Migration: docker compose -f docker-compose.prod.yml run --rm app bun run db:deploy
+x-app-env: &app-env
+  DATABASE_URL: ${DATABASE_URL}
+  DIRECT_URL: ${DIRECT_URL}
+  AUTH_SECRET: ${AUTH_SECRET}
+  AUTH_TRUST_HOST: "true"
+  NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+  QPAY_BASE_URL: ${QPAY_BASE_URL:-}
+  QPAY_USERNAME: ${QPAY_USERNAME:-}
+  QPAY_PASSWORD: ${QPAY_PASSWORD:-}
+  QPAY_INVOICE_CODE: ${QPAY_INVOICE_CODE:-}
+  QPAY_INVOICE_RECEIVER_CODE: ${QPAY_INVOICE_RECEIVER_CODE:-}
+  QPAY_CALLBACK_SECRET: ${QPAY_CALLBACK_SECRET:-}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  EMAIL_FROM: ${EMAIL_FROM:-}
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+    image: cless-app
+    restart: unless-stopped
+    environment: *app-env
+    ports:
+      - "20267:20267"
+
+  worker:
+    image: cless-app
+    depends_on:
+      - app
+    command: ["bun", "run", "worker"]
+    restart: unless-stopped
+    environment: *app-env
+    # Нэг л worker хангалттай; олон ажиллуулсан ч FOR UPDATE SKIP LOCKED давхардуулахгүй
+    stop_grace_period: 15s

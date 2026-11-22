@@ -617,6 +617,9 @@ model Sale {
   paidAmount           Int                @default(0)
   refundedAmount       Int                @default(0)
   note                 String?
+  /// POS-ийн хадгалагдаагүй сагс (DRAFT үед): мөр, үйлчлүүлэгч, хөнгөлөлт, оношлогооны ноорог.
+  /// Үнэ нь зөвхөн харуулах — checkout үед серверт дахин тооцно. Lock хийхэд null болно.
+  draftData            Json?
   /// PENDING_PAYMENT болсон мөч — үүнээс хойш мөр өөрчлөхгүй
   lockedAt             DateTime?
   paidAt               DateTime?
@@ -650,6 +653,7 @@ model Sale {
   @@index([branchId, status, createdAt])
   @@index([customerId])
   @@index([status, lockedAt])
+  @@index([createdById, status, updatedAt])
 }
 
 model SaleItem {
@@ -1037,4 +1041,13 @@ model LoginAttempt {
   createdAt DateTime @default(now())
 
   @@index([key, createdAt])
+}
+
+/// Background worker-ийн амьд эсэх (хянах самбарт "сүүлд ажилласан")
+model WorkerHeartbeat {
+  /// "outbox" г.м. worker-ийн нэр
+  id        String   @id
+  lastRunAt DateTime
+  info      Json?
+  updatedAt DateTime @updatedAt
 }

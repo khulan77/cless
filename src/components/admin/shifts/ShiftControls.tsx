@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { MoneyInput } from "@/components/admin/MoneyInput";
 import { useServerAction } from "@/components/admin/use-action";
 import { Button, Card, Field, Input, Select, Textarea } from "@/components/admin/ui";
@@ -38,6 +39,7 @@ export function ShiftOpenControls({ shiftId, expected }: { shiftId: string; expe
   const [move, setMove] = useState<{ type: "PAY_IN" | "PAY_OUT"; amount: number; note: string }>({ type: "PAY_OUT", amount: Number.NaN, note: "" });
   const [counted, setCounted] = useState<number>(Number.NaN);
   const [note, setNote] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const m = useServerAction(cashMoveAction);
   const c = useServerAction(closeShiftAction);
   const diff = Number.isNaN(counted) ? null : counted - expected;
@@ -77,8 +79,7 @@ export function ShiftOpenControls({ shiftId, expected }: { shiftId: string; expe
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!window.confirm(s.confirmClose)) return;
-            void c.run({ shiftId, countedCash: counted, note: note || null }, { onSuccess: () => router.push(`/admin/shifts/${shiftId}`) });
+            if (!Number.isNaN(counted)) setConfirmOpen(true);
           }}
         >
           <p className="text-[14px]">
@@ -92,16 +93,48 @@ export function ShiftOpenControls({ shiftId, expected }: { shiftId: string; expe
               {s.difference}: <span className="tabular-nums">{diff > 0 ? "+" : ""}{formatMNT(diff)}</span>
             </p>
           )}
-          {diff !== null && diff !== 0 && (
-            <Field label={s.closeNote} htmlFor="sh-note" error={c.fieldErrors.note}>
-              <Textarea id="sh-note" className="min-h-16" value={note} onChange={(e) => setNote(e.target.value)} />
-            </Field>
-          )}
           <Button type="submit" variant="danger" disabled={c.pending || Number.isNaN(counted)}>
             {s.close}
           </Button>
         </form>
       </Card>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={s.closeTitle}
+        confirmLabel={s.close}
+        danger
+        pending={c.pending}
+        confirmDisabled={diff !== 0 && note.trim().length === 0}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() =>
+          c.run({ shiftId, countedCash: counted, note: note.trim() || null }, { onSuccess: () => (setConfirmOpen(false), router.push(`/admin/shifts/${shiftId}`)) })
+        }
+      >
+        <dl className="space-y-1.5 text-[14px]">
+          <div className="flex justify-between">
+            <dt className="text-navy/65">{s.expected}</dt>
+            <dd className="tabular-nums">{formatMNT(expected)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-navy/65">{s.counted}</dt>
+            <dd className="tabular-nums">{Number.isNaN(counted) ? "—" : formatMNT(counted)}</dd>
+          </div>
+          <div className={`flex justify-between font-medium ${diff === 0 ? "text-emerald-700" : "text-red-700"}`}>
+            <dt>{s.difference}</dt>
+            <dd className="tabular-nums" data-testid="close-diff">
+              {diff !== null && diff > 0 ? "+" : ""}
+              {formatMNT(diff ?? 0)}
+            </dd>
+          </div>
+        </dl>
+        {diff !== 0 && (
+          <Field label={s.closeNote} htmlFor="sh-note" error={c.fieldErrors.note} hint={s.noteRequired}>
+            <Textarea id="sh-note" className="min-h-16" value={note} onChange={(e) => setNote(e.target.value)} autoFocus />
+          </Field>
+        )}
+        <p className="text-[13px] text-navy/60">{s.closeHint}</p>
+      </ConfirmDialog>
     </div>
   );
 }

@@ -1,56 +1,58 @@
 "use client";
 
-import { Minus, Plus, Search, Trash2, UserRound, X } from "lucide-react";
+import { Check, FileText, Minus, Plus, Search, Trash2, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Dialog } from "@/components/admin/Dialog";
 import { MoneyInput } from "@/components/admin/MoneyInput";
 import { useServerAction } from "@/components/admin/use-action";
 import { Badge, Button, Card, Checkbox, Field, Input, Select, Textarea, inputClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
-import { createCustomerAction, posCheckout, posSearchCatalog, posSearchCustomers, saveVisitAction } from "@/server/actions/pos";
+import {
+  createCustomerAction,
+  posCheckout,
+  posDiscardDraft,
+  posNewDraft,
+  posSaveDraft,
+  posSearchCatalog,
+  posSearchCustomers,
+  saveVisitAction,
+} from "@/server/actions/pos";
+import type { DraftData } from "@/server/modules/sales/drafts";
 import { exceedsDiscountLimit, priceSale, type DiscountInput } from "@/server/modules/sales/pricing";
 import { PaymentPanel, type PaymentRow, type PaymentSale } from "./PaymentPanel";
 
 const s = t.admin.pos;
 const APPROVAL_REQUIRED = "DISCOUNT_APPROVAL_REQUIRED";
+const DRAFT_LOCKED = "DRAFT_LOCKED";
+const AUTOSAVE_MS = 500;
 type SkinType = keyof typeof t.admin.skinTypes;
 
 type Discount = { type: "AMOUNT" | "PERCENT"; value: number } | null;
-export type CartLine = {
-  key: string;
-  kind: "PRODUCT" | "SERVICE";
-  refId: string;
-  name: string;
-  detail: string;
-  unitPrice: number;
-  qty: number;
-  staffId: string;
-  discount: Discount;
-  discountReason: string;
-  howToUse?: string[];
-};
+export type CartLine = DraftData["lines"][number];
 export type PosCustomer = { id: string; name: string; phone: string; email: string | null };
 type Catalog = Extract<Awaited<ReturnType<typeof posSearchCatalog>>, { ok: true }>["data"];
-type Rec = { variantId: string; name: string; instructions: string };
+type Rec = DraftData["visit"]["recs"][number];
 
-export type PosResume = {
-  sale: PaymentSale & { draft: boolean };
-  payments: PaymentRow[];
-  lines: CartLine[];
-  customer: PosCustomer | null;
-  visitId: string | null;
-  saleDiscount: Discount;
-  saleDiscountReason: string;
+export type PosInitial = {
+  /** null = unsaved new cart (the first change creates the draft) */
+  saleId: string | null;
+  data: DraftData;
+  /** Locked sale awaiting payment */
+  payment: { sale: PaymentSale; payments: PaymentRow[] } | null;
 };
+export type PosDraftSummary = { id: string; number: string | null; customerName: string | null; lines: number; subtotal: number; updatedAt: string };
 
 const toInput = (d: Discount): DiscountInput | null =>
   !d || !(d.value > 0) ? null : d.type === "AMOUNT" ? { type: "AMOUNT", value: d.value } : { type: "PERCENT", bp: Math.round(d.value * 100) };
 const toField = (d: Discount) =>
   !d || !(d.value > 0) ? null : d.type === "AMOUNT" ? { type: "AMOUNT" as const, value: d.value } : { type: "PERCENT" as const, percent: d.value };
+/** NaN (empty input) would become null in JSON — drop it before saving */
+const cleanDiscount = (d: Discount): Discount => (d && Number.isFinite(d.value) ? d : null);
 
 let seq = 0;
 const lineKey = () => `l${Date.now().toString(36)}${seq++}`;
@@ -62,7 +64,9 @@ export function PosTerminal({
   canTransfer,
   maxDiscountPercent,
   vat,
-  resume,
+  initial,
+  drafts,
+  concernOptions,
 }: {
   staff: { id: string; name: string }[];
   qpayMode: "api" | "manual";
@@ -70,31 +74,120 @@ export function PosTerminal({
   canTransfer: boolean;
   maxDiscountPercent: number;
   vat: { included: boolean; rateBp: number };
-  resume: PosResume | null;
+  initial: PosInitial;
+  drafts: PosDraftSummary[];
+  concernOptions: { slug: string; name: string }[];
 }) {
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
+  const d0 = initial.data;
   const [query, setQuery] = useState("");
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [lines, setLines] = useState<CartLine[]>(resume?.sale.draft ? resume.lines : []);
-  const [customer, setCustomer] = useState<PosCustomer | null>(resume?.customer ?? null);
-  const [saleDiscount, setSaleDiscount] = useState<Discount>(resume?.saleDiscount ?? null);
-  const [saleDiscountReason, setSaleDiscountReason] = useState(resume?.saleDiscountReason ?? "");
-  const [draftSaleId, setDraftSaleId] = useState<string | null>(resume?.sale.draft ? resume.sale.id : null);
-  const [visitId, setVisitId] = useState<string | null>(resume?.visitId ?? null);
-  const [visitOpen, setVisitOpen] = useState(false);
-  const [skinType, setSkinType] = useState<SkinType | "">("");
-  const [concerns, setConcerns] = useState("");
-  const [notes, setNotes] = useState("");
-  const [recs, setRecs] = useState<Rec[]>([]);
+  const [lines, setLines] = useState<CartLine[]>(d0.lines);
+  const [customer, setCustomer] = useState<PosCustomer | null>(d0.customer);
+  const [saleDiscount, setSaleDiscount] = useState<Discount>(d0.saleDiscount);
+  const [saleDiscountReason, setSaleDiscountReason] = useState(d0.saleDiscountReason);
+  const [saleId, setSaleId] = useState<string | null>(initial.saleId);
+  const [visitId, setVisitId] = useState<string | null>(d0.visitId);
+  const [visitOpen, setVisitOpen] = useState(Boolean(d0.visit.skinType || d0.visit.concerns.length || d0.visit.notes || d0.visit.recs.length));
+  const [skinType, setSkinType] = useState<SkinType | "">(d0.visit.skinType);
+  const [concerns, setConcerns] = useState<string[]>(d0.visit.concerns);
+  const [notes, setNotes] = useState(d0.visit.notes);
+  const [recs, setRecs] = useState<Rec[]>(d0.visit.recs);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [approval, setApproval] = useState({ email: "", password: "" });
-  const [payment, setPayment] = useState<{ sale: PaymentSale; payments: PaymentRow[] } | null>(
-    resume && !resume.sale.draft ? { sale: resume.sale, payments: resume.payments } : null,
-  );
+  const [payment, setPayment] = useState(initial.payment);
+  const [discardId, setDiscardId] = useState<string | null>(null);
 
   const checkout = useServerAction(posCheckout);
   const visitAction = useServerAction(saveVisitAction);
+  const discard = useServerAction(posDiscardDraft);
+
+  // ── Draft: debounced autosave ──
+  const draft: DraftData = useMemo(
+    () => ({
+      lines: lines.map((l) => ({ ...l, discount: cleanDiscount(l.discount) })),
+      customer,
+      saleDiscount: cleanDiscount(saleDiscount),
+      saleDiscountReason,
+      visitId,
+      visit: { skinType, concerns, notes, recs },
+    }),
+    [lines, customer, saleDiscount, saleDiscountReason, visitId, skinType, concerns, notes, recs],
+  );
+  const draftJson = JSON.stringify(draft);
+  const [savedJson, setSavedJson] = useState(() => JSON.stringify(d0));
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "error">("idle");
+  const savedJsonRef = useRef(savedJson);
+  const saving = useRef<Promise<string | null> | null>(null);
+  const latest = useRef({ draft, draftJson, saleId, locked: payment !== null });
+  useEffect(() => {
+    latest.current = { draft, draftJson, saleId, locked: payment !== null };
+  });
+  const dirty = payment === null && draftJson !== savedJson;
+
+  /** Saves the current state and returns the saleId (concurrent calls are chained) */
+  const flush = useCallback(async (): Promise<string | null> => {
+    if (saving.current) await saving.current;
+    const { draft: d, draftJson: json, saleId: id, locked } = latest.current;
+    // Never save a locked sale (payment stage) back as a draft
+    if (locked || json === savedJsonRef.current) return id;
+    const run = (async () => {
+      setSaveState("saving");
+      const res = await posSaveDraft({ saleId: id, data: d }).catch(() => null);
+      if (!res || !res.ok) {
+        setSaveState("error");
+        if (res && !res.ok && res.code === DRAFT_LOCKED) toast.error(res.error);
+        return id;
+      }
+      savedJsonRef.current = json;
+      setSavedJson(json);
+      setSaveState("idle");
+      if (res.data.saleId !== id) {
+        setSaleId(res.data.saleId);
+        latest.current.saleId = res.data.saleId;
+        // Update the URL without remounting so a reload opens the same draft
+        window.history.replaceState(null, "", `/admin/pos?sale=${res.data.saleId}`);
+      }
+      return res.data.saleId;
+    })();
+    saving.current = run;
+    try {
+      return await run;
+    } finally {
+      saving.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const id = setTimeout(() => void flush(), AUTOSAVE_MS);
+    return () => clearTimeout(id);
+  }, [draftJson, dirty, flush]);
+
+  // Unsaved changes: reload/close → browser warning;
+  // in-app links → save first, then navigate
+  useEffect(() => {
+    if (!dirty && saveState !== "saving") return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as HTMLElement).closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.origin !== window.location.origin) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const href = a.pathname + a.search + a.hash;
+      void flush().then(() => router.push(href));
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [dirty, saveState, flush, router]);
 
   // Debounced search
   useEffect(() => {
@@ -161,29 +254,26 @@ export function PosTerminal({
     setVisitOpen(true);
     setRecs((r) => (r.some((x) => x.variantId === v.id) ? r : [...r, { variantId: v.id, name: `${v.name} · ${v.size}`, instructions: v.howToUse.map((h, i) => `${i + 1}. ${h}`).join("\n") }]));
   };
+  const toggleConcern = (slug: string) => setConcerns((c) => (c.includes(slug) ? c.filter((x) => x !== slug) : [...c, slug]));
 
-  const hasVisit = Boolean(skinType || concerns.trim() || notes.trim() || recs.length);
+  const hasVisit = Boolean(skinType || concerns.length || notes.trim() || recs.length);
 
-  const reset = () => {
-    setLines([]);
-    setCustomer(null);
-    setSaleDiscount(null);
-    setSaleDiscountReason("");
-    setDraftSaleId(null);
-    setVisitId(null);
-    setSkinType("");
-    setConcerns("");
-    setNotes("");
-    setRecs([]);
-    setPayment(null);
-    setApproval({ email: "", password: "" });
-    router.replace("/admin/pos");
-    router.refresh();
-    searchRef.current?.focus();
+  /** Switch draft / new draft — save the current one first */
+  const go = async (href: string) => {
+    await flush();
+    router.push(href);
+  };
+  const newSale = async () => {
+    await flush();
+    const res = await posNewDraft();
+    if (res.ok) router.push(`/admin/pos?sale=${res.data.saleId}`);
+    else toast.error(res.error);
   };
 
   const doCheckout = async (withApproval: boolean) => {
     if (lines.length === 0) return;
+    // Save the draft first (checkout locks that DRAFT)
+    const id = await flush();
     let vId = visitId;
     if (hasVisit) {
       if (!customer) return toast.error(s.visitNeedsCustomer);
@@ -191,7 +281,7 @@ export function PosTerminal({
         visitId: vId,
         customerId: customer.id,
         skinType: skinType || null,
-        concerns: concerns.split(",").map((c) => c.trim()).filter(Boolean),
+        concerns,
         diagnosisNotes: notes || null,
         recommendations: recs.map((r) => ({ variantId: r.variantId, instructions: r.instructions || null })),
       });
@@ -199,41 +289,79 @@ export function PosTerminal({
       vId = v.data.id;
       setVisitId(vId);
     }
-    const res = await checkout.run(
-      {
-        cart: {
-          saleId: draftSaleId,
-          customerId: customer?.id ?? null,
-          visitId: vId,
-          items: lines.map((l) => ({
-            kind: l.kind,
-            variantId: l.kind === "PRODUCT" ? l.refId : null,
-            serviceId: l.kind === "SERVICE" ? l.refId : null,
-            qty: l.qty,
-            staffId: l.kind === "SERVICE" ? l.staffId || null : null,
-            lineDiscount: toField(l.discount),
-            lineDiscountReason: l.discountReason || null,
-          })),
-          saleDiscount: toField(saleDiscount),
-          saleDiscountReason: saleDiscountReason || null,
-        },
-        approval: withApproval ? approval : null,
+    const res = await checkout.run({
+      cart: {
+        saleId: id,
+        customerId: customer?.id ?? null,
+        visitId: vId,
+        items: lines.map((l) => ({
+          kind: l.kind,
+          variantId: l.kind === "PRODUCT" ? l.refId : null,
+          serviceId: l.kind === "SERVICE" ? l.refId : null,
+          qty: l.qty,
+          staffId: l.kind === "SERVICE" ? l.staffId || null : null,
+          lineDiscount: toField(l.discount),
+          lineDiscountReason: l.discountReason || null,
+        })),
+        saleDiscount: toField(saleDiscount),
+        saleDiscountReason: saleDiscountReason || null,
       },
-    );
+      approval: withApproval ? approval : null,
+    });
     if (!res.ok) {
       if (res.code === APPROVAL_REQUIRED) setApprovalOpen(true);
       return;
     }
     setApprovalOpen(false);
-    setDraftSaleId(res.data.saleId);
+    setSaleId(res.data.saleId);
+    if (res.data.saleId !== id) window.history.replaceState(null, "", `/admin/pos?sale=${res.data.saleId}`);
     setPayment({
       sale: { id: res.data.saleId, number: res.data.number, total: res.data.total, paidAmount: 0, status: res.data.status },
       payments: [],
     });
   };
 
+  const otherDrafts = drafts.filter((d) => d.id !== saleId);
+  const draftBar = (
+    <div className="mb-4 flex flex-wrap items-center gap-2 lg:col-span-2">
+      <span className="text-[13px] font-medium text-navy/70">{s.drafts(otherDrafts.length + (saleId || dirty ? 1 : 0))}</span>
+      <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-navy bg-white px-2.5 text-[13px]" aria-current="true">
+        <FileText className="size-3.5" aria-hidden />
+        {customer?.name ?? s.walkIn}
+        <span className="text-navy/50" aria-live="polite">
+          {saveState === "saving" ? s.saving : saveState === "error" ? s.saveFailed : dirty ? s.unsaved : saleId ? <Check className="inline size-3.5" aria-label={s.saved} /> : null}
+        </span>
+      </span>
+      {otherDrafts.map((d) => (
+        <span key={d.id} className="inline-flex h-8 items-center rounded-md border border-line bg-white text-[13px]">
+          <button type="button" className="h-full px-2.5 hover:bg-navy/[0.03]" onClick={() => void go(`/admin/pos?sale=${d.id}`)}>
+            {d.customerName ?? s.walkIn} <span className="text-navy/50">· {s.lineCount(d.lines)}</span>
+          </button>
+          <button type="button" className="h-full border-l border-line px-1.5 text-navy/45 hover:text-red-700" aria-label={`${s.discardDraft}: ${d.customerName ?? s.walkIn}`} onClick={() => setDiscardId(d.id)}>
+            <X className="size-3.5" />
+          </button>
+        </span>
+      ))}
+      <Button size="sm" variant="secondary" onClick={() => void newSale()}>
+        <Plus className="size-3.5" /> {s.newSale}
+      </Button>
+      <ConfirmDialog
+        open={discardId !== null}
+        title={s.discardDraft}
+        confirmLabel={s.discardDraft}
+        danger
+        pending={discard.pending}
+        onClose={() => setDiscardId(null)}
+        onConfirm={() => discard.run(discardId!, { onSuccess: () => (setDiscardId(null), router.refresh()) })}
+      >
+        <p className="text-[14px]">{s.discardDraftHint}</p>
+      </ConfirmDialog>
+    </div>
+  );
+
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+      {draftBar}
       {/* ── Left: catalog ── */}
       <div className="space-y-4">
         <div className="relative">
@@ -305,10 +433,27 @@ export function PosTerminal({
                     ))}
                   </Select>
                 </Field>
-                <Field label={s.concerns} hint={s.concernsHint} htmlFor="pos-concerns">
-                  <Input id="pos-concerns" value={concerns} onChange={(e) => setConcerns(e.target.value)} />
-                </Field>
               </div>
+              <fieldset>
+                <legend className="mb-1.5 text-[13px] font-medium text-navy/80">{s.concerns}</legend>
+                <div className="flex flex-wrap gap-1.5">
+                  {concernOptions.map((c) => {
+                    const on = concerns.includes(c.slug);
+                    return (
+                      <button
+                        key={c.slug}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleConcern(c.slug)}
+                        className={`rounded-full border px-3 py-1 text-[13px] ${on ? "border-navy bg-navy text-white" : "border-line bg-white text-navy/75 hover:border-navy/40"}`}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[12px] text-navy/50">{s.concernsHint}</p>
+              </fieldset>
               <Field label={s.notes} htmlFor="pos-notes">
                 <Textarea id="pos-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
               </Field>
@@ -453,7 +598,7 @@ export function PosTerminal({
         </form>
       </Dialog>
 
-      <Dialog open={payment !== null} onClose={() => (payment?.sale.status === "PAID" ? reset() : setPayment(null))} title={t.admin.payment.title(payment?.sale.number ?? "")}>
+      <Dialog open={payment !== null} onClose={() => void newSale()} title={t.admin.payment.title(payment?.sale.number ?? "")}>
         {payment && (
           <PaymentPanel
             key={payment.sale.id}
@@ -462,8 +607,13 @@ export function PosTerminal({
             qpayMode={qpayMode}
             shiftOpen={shiftOpen}
             canTransfer={canTransfer}
-            onDone={reset}
-            onUnlocked={() => setPayment(null)}
+            onDone={() => void newSale()}
+            onUnlocked={() => {
+              // Lines are a DRAFT again in the DB — save the cart as a draft again
+              savedJsonRef.current = "";
+              setSavedJson("");
+              setPayment(null);
+            }}
           />
         )}
       </Dialog>

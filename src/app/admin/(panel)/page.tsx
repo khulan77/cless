@@ -7,6 +7,7 @@ import { requireUser } from "@/server/auth/session";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { todaySummary } from "@/server/modules/sales/queries";
+import { workerStatus } from "@/server/modules/outbox/heartbeat";
 
 export const metadata = { title: "Хянах самбар" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
     db.appointment.count({ where: { startsAt: { gte: today, lt: tomorrow }, status: { notIn: ["CANCELLED", "NO_SHOW"] } } }),
     can(user.role, "user:write") ? db.user.count({ where: { isActive: true } }) : Promise.resolve(null),
   ]);
-  const sales = await today$;
+  const [sales, worker] = await Promise.all([today$, workerStatus()]);
 
   const stats = [
     { label: "Нийтлэгдсэн бүтээгдэхүүн", value: published, hint: `${drafts} ноорог`, href: can(user.role, "product:write") ? "/admin/products" : undefined },
@@ -76,6 +77,18 @@ export default async function DashboardPage() {
           );
         })}
       </div>
+
+      <p
+        role={worker.stale ? "alert" : "status"}
+        className={`mt-4 inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] ${worker.stale ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}
+      >
+        <span className={`size-2 rounded-full ${worker.stale ? "bg-red-600" : "bg-emerald-600"}`} aria-hidden />
+        {worker.minutesAgo === null
+          ? "Worker хэзээ ч ажиллаагүй — имэйл, QPay шалгалт явахгүй байна (bun run worker)."
+          : worker.minutesAgo === 0
+            ? "Worker сүүлд ажилласан: дөнгөж сая"
+            : `Worker сүүлд ажилласан: ${worker.minutesAgo} минутын өмнө${worker.stale ? " — имэйл, QPay шалгалт зогссон байж болзошгүй" : ""}`}
+      </p>
 
       {sales && (
         <Card title="Өнөөдрийн борлуулалт" className="mt-6" actions={<Link href="/admin/sales" className="text-[13px] underline underline-offset-4">Бүгдийг харах</Link>}>

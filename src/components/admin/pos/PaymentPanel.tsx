@@ -1,9 +1,10 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Mail } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { MoneyInput } from "@/components/admin/MoneyInput";
 import { useServerAction } from "@/components/admin/use-action";
 import { Badge, Button, Field, Input, btnClass } from "@/components/admin/ui";
@@ -51,6 +52,7 @@ export function PaymentPanel({
   const [qr, setQr] = useState<(NonNullable<PaymentView["qpay"]> & { paymentId: string }) | null>(null);
   const [lastChange, setLastChange] = useState<number | null>(null);
   const keyRef = useRef(newKey());
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const pay = useServerAction(posCreatePayment);
   const verify = useServerAction(posVerifyPayment);
@@ -128,6 +130,7 @@ export function PaymentPanel({
         <p className="text-[18px] font-medium">{p.success}</p>
         <p className="text-[28px] font-light tabular-nums">{formatMNT(sale.total)}</p>
         {lastChange !== null && lastChange > 0 && <p className="text-[16px] text-emerald-700">{p.changeDue(formatMNT(lastChange))}</p>}
+        <EmailStatus saleId={sale.id} />
         <div className="flex flex-wrap justify-center gap-2 pt-2">
           <Link href={`/admin/sales/${sale.id}/receipt`} target="_blank" className={btnClass("secondary")}>
             {p.print}
@@ -304,16 +307,81 @@ export function PaymentPanel({
           <Button variant="ghost" size="sm" disabled={unlock.pending} onClick={() => unlock.run(sale.id, { onSuccess: onUnlocked })}>
             {p.unlock}
           </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            disabled={cancelSale.pending}
-            onClick={() => window.confirm(p.confirmCancel) && cancelSale.run(sale.id, { onSuccess: onDone })}
-          >
+          <Button variant="danger" size="sm" disabled={cancelSale.pending} onClick={() => setConfirmCancel(true)}>
             {p.cancelSale}
           </Button>
         </div>
       )}
+      <ConfirmDialog
+        open={confirmCancel}
+        title={p.cancelTitle}
+        confirmLabel={p.cancelSale}
+        danger
+        pending={cancelSale.pending}
+        onClose={() => setConfirmCancel(false)}
+        onConfirm={() => cancelSale.run(sale.id, { onSuccess: () => (setConfirmCancel(false), onDone()) })}
+      >
+        <p className="text-[14px]">{p.cancelHint}</p>
+      </ConfirmDialog>
     </div>
+  );
+}
+
+type EmailInfo = { customerId: string | null; email: string | null; visitId: string | null; emailStatus: string | null };
+
+/** Success screen: whether the care instructions e-mail is being sent (polls until SENT/FAILED) */
+function EmailStatus({ saleId }: { saleId: string }) {
+  const [info, setInfo] = useState<EmailInfo | null>(null);
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    let stop = false;
+    let n = 0;
+    const tick = async () => {
+      try {
+        const res = await fetch(`/api/pos/sales/${saleId}/email`, { cache: "no-store" });
+        if (res.ok && !stop) {
+          const v = (await res.json()) as EmailInfo;
+          setInfo(v);
+          if (!v.email || !v.visitId || v.emailStatus === "SENT" || v.emailStatus === "FAILED") return;
+        }
+      } catch {
+        // network error — retry on the next tick
+      }
+      n++;
+      if (n === 15) setSlow(true);
+      if (!stop && n < 90) setTimeout(tick, 2000);
+    };
+    void tick();
+    return () => {
+      stop = true;
+    };
+  }, [saleId]);
+
+  if (!info) return null;
+  const box = "mx-auto flex max-w-sm items-start gap-2 rounded-md px-3 py-2 text-left text-[13px]";
+  if (!info.email) {
+    return (
+      <p className={`${box} bg-amber-50 text-amber-800`} role="status">
+        <Mail className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <span>
+          {p.noEmail}{" "}
+          {info.customerId && (
+            <Link href={`/admin/customers/${info.customerId}`} className="underline underline-offset-2">
+              {p.addEmail}
+            </Link>
+          )}
+        </span>
+      </p>
+    );
+  }
+  if (!info.visitId) return <p className={`${box} bg-navy/[0.04] text-navy/70`} role="status">{p.noVisit}</p>;
+  if (info.emailStatus === "SENT") return <p className={`${box} bg-emerald-50 text-emerald-800`} role="status">{p.emailSent(info.email)}</p>;
+  if (info.emailStatus === "FAILED") return <p className={`${box} bg-red-50 text-red-700`} role="status">{p.emailFailed}</p>;
+  return (
+    <p className={`${box} bg-navy/[0.04] text-navy/70`} role="status">
+      <Mail className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>{slow ? p.emailQueuedLong : p.emailSending(info.email)}</span>
+    </p>
   );
 }

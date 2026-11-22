@@ -33,6 +33,7 @@ describe("customers + visits", () => {
 
   it("saves a visit without a sale, prefilling instructions from howToUse", async () => {
     const c = await createCustomer({ name: "Сараа", phone: "99001122" }, manager.id);
+    await db.collection.create({ data: { slug: "pigmentation", name: "Пигментаци", kind: "CONCERN" } });
     const v = await makeVariant({ price: 100_000, stock: 1 });
     await db.product.update({ where: { id: v.productId }, data: { howToUse: ["Өглөө", "Орой"] } });
     const visit = await saveVisit(
@@ -40,6 +41,9 @@ describe("customers + visits", () => {
       manager.id,
     );
     expect(visit.saleId).toBeNull();
+    expect(visit.concerns).toEqual(["pigmentation"]);
+    // Жагсаалтад байхгүй "асуудал" хадгалагдахгүй
+    await expect(saveVisit({ customerId: c.id, concerns: ["free text"] }, manager.id)).rejects.toThrow(/жагсаалтад/);
     expect(visit.recommendations[0]!.instructions).toBe("1. Өглөө\n2. Орой");
     expect((await db.customer.findUniqueOrThrow({ where: { id: c.id } })).skinType).toBe("DRY");
 

@@ -49,3 +49,8 @@ next-env.d.ts
 
 # dev имэйлүүд (RESEND_API_KEY байхгүй үед)
 /.emails/
+
+# Playwright
+/test-results/
+/playwright-report/
+/tests/e2e/.worker.pid

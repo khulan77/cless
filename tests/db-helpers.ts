@@ -11,7 +11,8 @@ export async function resetDb() {
     "CashMovement", "PaymentTransaction", "Payment", "Refund", "CashShift", "VisitRecommendation", "Visit",
     "SaleItem", "Sale", "SaleCounter", "OutboxJob", "StockMovement", "AuditLog", "LoginAttempt",
     "ServiceConsumable", "Service", "ProductCollection", "ProductImage", "BundleItem", "ProductRelation",
-    "PriceHistory", "Variant", "Product", "Customer", "Appointment", "SiteSetting", "User"
+    "PriceHistory", "Variant", "Product", "Customer", "Appointment", "SiteSetting", "User",
+    "Collection", "WorkerHeartbeat"
     RESTART IDENTITY CASCADE`);
 }
 

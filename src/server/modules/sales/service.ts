@@ -3,7 +3,7 @@
  * Next.js-ээс хамааралгүй — server action нь эрх шалгаад энд дуудна.
  */
 import bcrypt from "bcryptjs";
-import type { Prisma, Role } from "@/generated/prisma/client";
+import { Prisma, type Role } from "@/generated/prisma/client";
 import { audit } from "@/server/audit";
 import { can } from "@/server/auth/permissions";
 import { isLoginBlocked, recordLoginAttempt } from "@/server/auth/rate-limit";
@@ -297,6 +297,8 @@ export async function checkout(raw: CartInput, actor: Actor, approval?: Approval
         vatTotal: priced.vatTotal,
         note: cart.note ?? null,
         lockedAt: new Date(),
+        // Ноорог (UI төлөв) — lock хийсний дараа мөрүүд эх сурвалж болно
+        draftData: Prisma.DbNull,
         version: { increment: 1 },
       },
     });

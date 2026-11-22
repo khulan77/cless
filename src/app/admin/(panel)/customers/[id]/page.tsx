@@ -10,6 +10,8 @@ import { ubDateKey } from "@/lib/ub-time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { customerProfile } from "@/server/modules/customers/service";
+import { concernNames } from "@/server/modules/visits/service";
+import { VisitSummary } from "@/components/admin/visits/VisitSummary";
 
 export const metadata = { title: "Үйлчлүүлэгч" };
 export const instant = false;
@@ -20,6 +22,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   const profile = await customerProfile(id);
   if (!profile) notFound();
   const { customer: c, visits, sales, totalSpent, paidSalesCount } = profile;
+  const slugs = [...new Set(visits.flatMap((v) => v.concerns))];
+  const concernName = new Map((await concernNames(slugs)).map((name, i) => [slugs[i]!, name]));
 
   return (
     <>
@@ -73,29 +77,26 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           ) : (
             <ul className="-my-2 divide-y divide-line">
               {visits.map((v) => (
-                <li key={v.id} className="space-y-1.5 py-3 text-[13.5px]">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium">
-                      {ubDateKey(v.createdAt)} · {v.conductedBy.name}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Badge tone={v.emailStatus === "SENT" ? "green" : v.emailStatus === "FAILED" ? "red" : "neutral"}>{t.admin.emailStatus[v.emailStatus]}</Badge>
-                      {c.email && can(user.role, "visit:write") && <ResendEmailButton visitId={v.id} />}
-                    </span>
+                <li key={v.id} className="space-y-2 py-3 text-[13.5px]">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Badge tone={v.emailStatus === "SENT" ? "green" : v.emailStatus === "FAILED" ? "red" : "neutral"}>{t.admin.emailStatus[v.emailStatus]}</Badge>
+                    {c.email && can(user.role, "visit:write") && <ResendEmailButton visitId={v.id} />}
                   </div>
-                  {(v.skinType || v.concerns.length > 0) && (
-                    <p className="text-navy/65">{[v.skinType && t.admin.skinTypes[v.skinType], ...v.concerns].filter(Boolean).join(" · ")}</p>
-                  )}
-                  {v.diagnosisNotes && <p className="whitespace-pre-line text-navy/80">{v.diagnosisNotes}</p>}
-                  {v.recommendations.length > 0 && (
-                    <ul className="list-disc pl-5 text-navy/75">
-                      {v.recommendations.map((r) => (
-                        <li key={r.id}>
-                          {r.variant.product.name} · {r.variant.size} {r.purchased && <Badge tone="green">авсан</Badge>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <VisitSummary
+                    visit={{
+                      conductedBy: v.conductedBy.name,
+                      date: ubDateKey(v.createdAt),
+                      skinType: v.skinType,
+                      concerns: v.concerns.map((slug) => concernName.get(slug) ?? slug),
+                      notes: v.diagnosisNotes,
+                      recommendations: v.recommendations.map((r) => ({
+                        id: r.id,
+                        name: `${r.variant.product.name} · ${r.variant.size}`,
+                        instructions: r.instructions,
+                        purchased: r.purchased,
+                      })),
+                    }}
+                  />
                   {v.sale && (
                     <Link href={`/admin/sales/${v.sale.id}`} className="text-[12px] underline underline-offset-4">
                       {v.sale.number}
