@@ -6,6 +6,7 @@ import { Package, Plus } from "lucide-react";
 import { Badge, ButtonLink, EmptyState, PageHeader, SegmentedTabs, Table, inputClass, tdClass, thClass } from "@/components/admin/ui";
 import type { Prisma } from "@/generated/prisma/client";
 import { formatMNT } from "@/lib/money";
+import { infra } from "@/i18n/mn.infra";
 import { BADGE_LABELS } from "@/lib/validation/product";
 import { db } from "@/server/db";
 import { requirePagePermission } from "@/server/auth/session";
@@ -72,9 +73,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
         title="Бүтээгдэхүүн"
         description={`Дэлгүүрт харагдах бүтээгдэхүүн, хэмжээ, үнэ · нийт ${total}`}
         actions={
-          <ButtonLink href="/admin/products/new">
-            <Plus className="size-[18px]" strokeWidth={2} /> Бүтээгдэхүүн нэмэх
-          </ButtonLink>
+          <>
+            <ButtonLink href="/admin/products/import" variant="secondary">
+              {infra.import.button}
+            </ButtonLink>
+            <ButtonLink href="/admin/products/new">
+              <Plus className="size-[18px]" strokeWidth={2} /> Бүтээгдэхүүн нэмэх
+            </ButtonLink>
+          </>
         }
       />
       <SegmentedTabs
