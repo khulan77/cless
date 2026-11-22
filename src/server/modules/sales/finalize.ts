@@ -4,6 +4,7 @@
  */
 import type { Prisma } from "@/generated/prisma/client";
 import { audit } from "@/server/audit";
+import { completeForSale } from "@/server/modules/appointments/complete";
 import { enqueue } from "@/server/modules/outbox/service";
 import { SETTLED_STATUSES, nextStatus } from "./state";
 
@@ -58,6 +59,7 @@ export async function applyPayment(tx: Tx, saleId: string, actorId: string | nul
     where: { id: saleId },
     select: {
       branchId: true,
+      appointmentId: true,
       customer: { select: { email: true } },
       visit: { select: { id: true } },
       items: { where: { kind: "PRODUCT" }, select: { variantId: true, qty: true, unitCostSnapshot: true } },
@@ -87,6 +89,9 @@ export async function applyPayment(tx: Tx, saleId: string, actorId: string | nul
     where: { id: saleId },
     data: { status: "PAID", paidAmount, paidAt: new Date(), closedById: actorId, version: { increment: 1 } },
   });
+
+  // Холбогдсон цаг → DONE (яг энэ transaction дотор; idempotent — аль хэдийн DONE/цуцлагдсан бол юу ч хийхгүй)
+  if (full.appointmentId) await completeForSale(tx, full.appointmentId, actorId);
 
   // Айлчлалын имэйл — commit-ийн дараа worker илгээнэ; dedupeKey давхардлаас хамгаална
   if (full.visit) {

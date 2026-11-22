@@ -6,6 +6,7 @@
  */
 import type { OutboxJob } from "@/generated/prisma/client";
 import { db } from "@/server/db";
+import { deliverAppointmentEmail, type ApptJobPayload } from "@/server/modules/notifications/appointment-delivery";
 import { deliverVisitEmail, markVisitEmailFailed } from "@/server/modules/notifications/service";
 import { getQPayProvider } from "@/server/modules/payments/providers/qpay";
 import { MAX_ATTEMPTS, backoffMs } from "./service";
@@ -20,6 +21,16 @@ export const handlers: Partial<Record<OutboxJob["type"], Handler>> = {
       await deliverVisitEmail(job.id, payload(job).visitId!);
     },
     onFinalFailure: (job, error) => markVisitEmailFailed(payload(job).visitId!, error),
+  },
+  APPT_EMAIL: {
+    run: async (job) => {
+      await deliverAppointmentEmail(job.id, job.payload as unknown as ApptJobPayload);
+    },
+  },
+  APPT_REMINDER: {
+    run: async (job) => {
+      await deliverAppointmentEmail(job.id, job.payload as unknown as ApptJobPayload);
+    },
   },
   QPAY_CANCEL_INVOICE: {
     run: async (job) => {

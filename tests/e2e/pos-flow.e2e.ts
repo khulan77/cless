@@ -133,9 +133,13 @@ test("POS: shift → draft survives reload → split payment → e-mail SENT →
   // ── 5. E-mail: worker sends it, success screen shows SENT, file exists ──
   await expect(dlg).toContainText("e2e-nomin@example.mn руу илгээгдлээ ✓", { timeout: 45_000 });
   await shot(page, "2-paid-email-sent");
-  const files = readdirSync(E2E_EMAIL_DIR).filter((f) => f.endsWith(".html"));
+  // Other specs (booking) also write e-mails here — find this visit's e-mail by recipient
+  const files = readdirSync(E2E_EMAIL_DIR)
+    .filter((f) => f.endsWith(".html"))
+    .map((f) => readFileSync(join(E2E_EMAIL_DIR, f), "utf8"))
+    .filter((h) => h.includes("to: e2e-nomin@example.mn"));
   expect(files).toHaveLength(1);
-  const html = readFileSync(join(E2E_EMAIL_DIR, files[0]!), "utf8");
+  const html = files[0]!;
   expect(html).toContain("e2e-nomin@example.mn");
   expect(html).toContain("Пигментаци ба толбо");
   expect(html).toContain("Өглөө, орой хөвөн самбайгаар.");

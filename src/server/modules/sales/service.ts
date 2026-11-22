@@ -12,7 +12,7 @@ import { UserError } from "@/server/errors";
 import { getCurrentBranch } from "@/server/modules/branches/service";
 import { enqueue } from "@/server/modules/outbox/service";
 import { getPosSettings, getTaxSettings } from "@/server/modules/settings/pos-settings";
-import { ubDateKey } from "@/lib/ub-time";
+import { ubDateKey } from "@/lib/time";
 import { applyPayment } from "./finalize";
 import { exceedsDiscountLimit, priceSale, type PricingResult } from "./pricing";
 import { approvalSchema, cartSchema, toDiscountInput, type ApprovalInput, type Cart, type CartInput } from "./schema";
@@ -287,7 +287,8 @@ export async function checkout(raw: CartInput, actor: Actor, approval?: Approval
         number,
         status,
         customerId: cart.customerId ?? null,
-        appointmentId: cart.appointmentId ?? null,
+        // Цагаас нээгдсэн ноорогт appointmentId аль хэдийн бий — cart-д ирээгүй бол хадгална
+        appointmentId: cart.appointmentId ?? undefined,
         subtotal: priced.subtotal,
         lineDiscountTotal: priced.lineDiscountTotal,
         saleDiscount: priced.saleDiscount,

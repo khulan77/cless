@@ -13,7 +13,7 @@ export default async function NewServicePage() {
       <PageHeader title="Шинэ үйлчилгээ" />
       <ServiceForm
         variantLabels={{}}
-        initial={{ name: "", slug: "", description: "", durationMin: 60, price: 0, costNote: "", image: null, isActive: true, sortOrder: 0, consumables: [] }}
+        initial={{ name: "", slug: "", description: "", durationMin: 60, bufferMin: 0, requiresRoom: false, bookable: true, price: 0, costNote: "", image: null, isActive: true, sortOrder: 0, consumables: [] }}
       />
     </>
   );

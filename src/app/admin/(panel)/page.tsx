@@ -7,30 +7,24 @@ import { requireUser } from "@/server/auth/session";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { todaySummary } from "@/server/modules/sales/queries";
+import { todayAppointmentStats } from "@/server/modules/appointments/queries";
+import { formatTime } from "@/lib/time";
 import { workerStatus } from "@/server/modules/outbox/heartbeat";
 
 export const metadata = { title: "Хянах самбар" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
 export const instant = false;
 
-function startOfTodayUB() {
-  // Монгол цаг (UTC+8)-ээр өнөөдрийн эхлэл
-  const now = new Date();
-  const ub = new Date(now.getTime() + 8 * 3600_000);
-  ub.setUTCHours(0, 0, 0, 0);
-  return new Date(ub.getTime() - 8 * 3600_000);
-}
 
 export default async function DashboardPage() {
   const user = await requireUser();
   if (!can(user.role, "schedule:all")) redirect("/admin/schedule");
 
-  const today = startOfTodayUB();
-  const tomorrow = new Date(today.getTime() + 24 * 3600_000);
   const lowStockWhere = { isActive: true, stock: { lte: db.variant.fields.lowStockAt } };
 
   const today$ = can(user.role, "sale:read") ? todaySummary() : Promise.resolve(null);
-  const [published, drafts, lowCount, lowList, services, appointments, users] = await Promise.all([
+  const appts$ = can(user.role, "appointment:read") ? todayAppointmentStats() : Promise.resolve(null);
+  const [published, drafts, lowCount, lowList, services, users] = await Promise.all([
     db.product.count({ where: { isPublished: true } }),
     db.product.count({ where: { isPublished: false } }),
     db.variant.count({ where: lowStockWhere }),
@@ -41,16 +35,17 @@ export default async function DashboardPage() {
       select: { id: true, sku: true, size: true, stock: true, lowStockAt: true, product: { select: { name: true } } },
     }),
     db.service.count({ where: { isActive: true } }),
-    db.appointment.count({ where: { startsAt: { gte: today, lt: tomorrow }, status: { notIn: ["CANCELLED", "NO_SHOW"] } } }),
     can(user.role, "user:write") ? db.user.count({ where: { isActive: true } }) : Promise.resolve(null),
   ]);
-  const [sales, worker] = await Promise.all([today$, workerStatus()]);
+  const [sales, worker, appts] = await Promise.all([today$, workerStatus(), appts$]);
 
   const stats = [
     { label: "Нийтлэгдсэн бүтээгдэхүүн", value: published, hint: `${drafts} ноорог`, href: can(user.role, "product:write") ? "/admin/products" : undefined },
     { label: "Бага үлдэгдэлтэй хувилбар", value: lowCount, hint: "босгоос доош", href: "/admin/inventory?low=1", alert: lowCount > 0 },
     { label: "Идэвхтэй үйлчилгээ", value: services, href: can(user.role, "service:write") ? "/admin/services" : undefined },
-    { label: "Өнөөдрийн цаг", value: appointments, hint: "Календарь удахгүй" },
+    ...(appts
+      ? [{ label: "Өнөөдрийн цаг", value: appts.total, hint: appts.noShow ? `${appts.noShow} ирээгүй` : "Календарь", href: "/admin/calendar", alert: appts.noShow > 0 }]
+      : []),
     ...(users !== null ? [{ label: "Идэвхтэй хэрэглэгч", value: users, href: "/admin/users" }] : []),
   ];
 
@@ -89,6 +84,36 @@ export default async function DashboardPage() {
             ? "Worker сүүлд ажилласан: дөнгөж сая"
             : `Worker сүүлд ажилласан: ${worker.minutesAgo} минутын өмнө${worker.stale ? " — имэйл, QPay шалгалт зогссон байж болзошгүй" : ""}`}
       </p>
+
+      {appts && (
+        <Card title="Өнөөдрийн цаг" className="mt-6" actions={<Link href="/admin/calendar" className="text-[13px] underline underline-offset-4">Календарь</Link>}>
+          <div className="flex flex-wrap gap-6">
+            <div>
+              <p className="text-[32px] font-light tabular-nums">{appts.total}</p>
+              <p className="text-[13px] text-navy/60">идэвхтэй цаг{appts.noShow ? ` · ${appts.noShow} ирээгүй` : ""}</p>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1.5 text-[12px] font-medium uppercase tracking-[0.4px] text-navy/55">Дараагийн 3</p>
+              {appts.next.length === 0 ? (
+                <p className="text-[14px] text-navy/55">Өнөөдөр цаашид цаг алга.</p>
+              ) : (
+                <ol className="divide-y divide-line text-[13.5px]">
+                  {appts.next.map((a) => (
+                    <li key={a.id} className="flex flex-wrap justify-between gap-2 py-1.5">
+                      <span>
+                        <span className="tabular-nums font-medium">{formatTime(a.startsAt)}</span> · {a.customer.name}
+                      </span>
+                      <span className="text-navy/60">
+                        {a.service.name} · {a.staff.name}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {sales && (
         <Card title="Өнөөдрийн борлуулалт" className="mt-6" actions={<Link href="/admin/sales" className="text-[13px] underline underline-offset-4">Бүгдийг харах</Link>}>

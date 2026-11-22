@@ -10,7 +10,7 @@ import { requirePagePermission } from "@/server/auth/session";
 import { getSaleDetail } from "@/server/modules/sales/queries";
 import { concernNames } from "@/server/modules/visits/service";
 import { VisitSummary } from "@/components/admin/visits/VisitSummary";
-import { ubDateKey } from "@/lib/ub-time";
+import { ubDateKey } from "@/lib/time";
 
 export const metadata = { title: "Борлуулалт" };
 export const instant = false;

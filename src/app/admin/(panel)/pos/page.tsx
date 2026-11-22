@@ -14,6 +14,8 @@ import { draftDataSchema, latestDraftId, listDrafts, type DraftData } from "@/se
 import { getPosSale, listServiceStaff, openPosSales } from "@/server/modules/sales/queries";
 import { getPosSettings, getQPaySettings, getTaxSettings } from "@/server/modules/settings/pos-settings";
 import { listConcerns } from "@/server/modules/visits/service";
+import { todayForPos } from "@/server/modules/appointments/queries";
+import { formatTime } from "@/lib/time";
 
 export const metadata = { title: "Касс / POS" };
 export const instant = false;
@@ -47,6 +49,7 @@ async function dataFromSale(sale: PosSale): Promise<DraftData> {
     saleDiscount: sale.saleDiscount > 0 ? { type: "AMOUNT", value: sale.saleDiscount } : null,
     saleDiscountReason: sale.saleDiscountReason ?? "",
     visitId: visit?.id ?? null,
+    appointmentId: sale.appointmentId,
     visit: visit
       ? {
           skinType: visit.skinType ?? "",
@@ -73,7 +76,7 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
 
   const branch = await getCurrentBranch();
   const targetId = saleParam;
-  const [staff, shift, qpay, pos, tax, open, drafts, concerns, sale] = await Promise.all([
+  const [staff, shift, qpay, pos, tax, open, drafts, concerns, sale, todayAppts] = await Promise.all([
     listServiceStaff(),
     getOpenShift(db, branch.id),
     getQPaySettings(),
@@ -83,6 +86,7 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
     listDrafts(user.id),
     listConcerns(),
     targetId ? getPosSale(targetId) : null,
+    can(user.role, "appointment:status") ? todayForPos() : Promise.resolve([]),
   ]);
 
   let initial: PosInitial = { saleId: null, data: draftDataSchema.parse({}), payment: null };
@@ -153,6 +157,14 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
         initial={initial}
         drafts={drafts.map((d) => ({ ...d, updatedAt: d.updatedAt.toISOString() }))}
         concernOptions={concerns}
+        todayAppointments={todayAppts.map((a) => ({
+          id: a.id,
+          time: formatTime(a.startsAt),
+          customer: a.customer.name,
+          service: a.service.name,
+          staff: a.staff.name,
+          status: t.admin.apptStatus[a.status],
+        }))}
       />
     </>
   );

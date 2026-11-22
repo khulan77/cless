@@ -38,6 +38,8 @@ export const draftDataSchema = z.object({
   saleDiscount: discount.default(null),
   saleDiscountReason: text(200),
   visitId: z.string().min(1).nullable().default(null),
+  /** Цагаас ("Ирсэн — POS нээх") үүссэн ноорог */
+  appointmentId: z.string().min(1).nullable().default(null),
   visit: z
     .object({
       skinType: z.enum(["", "DRY", "OILY", "COMBINATION", "NORMAL", "SENSITIVE"]).default(""),

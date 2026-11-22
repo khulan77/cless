@@ -3,7 +3,7 @@
  */
 import type { Prisma, SaleStatus } from "@/generated/prisma/client";
 import { db } from "@/server/db";
-import { ubDayRange } from "@/lib/ub-time";
+import { ubDayRange } from "@/lib/time";
 
 /** POS хайлт: бүтээгдэхүүн (нэр/SKU) ба үйлчилгээ. Яг SKU таарвал эхэнд (barcode scanner). */
 export async function searchPosCatalog(q: string) {

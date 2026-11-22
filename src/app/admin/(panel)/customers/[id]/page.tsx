@@ -6,7 +6,7 @@ import { Badge, Card, PageHeader, btnClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { saleStatusTone } from "@/lib/sale-status";
-import { ubDateKey } from "@/lib/ub-time";
+import { ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { customerProfile } from "@/server/modules/customers/service";
