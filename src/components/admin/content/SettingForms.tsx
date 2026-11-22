@@ -255,3 +255,68 @@ export function ProductBenefitsForm({ initial }: { initial: SiteSettings["produc
     </Shell>
   );
 }
+
+/* ─────────────── Contact & footer ─────────────── */
+type Network = "instagram" | "facebook";
+const NETWORKS: Network[] = ["instagram", "facebook"];
+
+/** Edits contact details, social URLs and the bottom line; columns/newsletter pass through untouched */
+export function ContactFooterForm({ initial }: { initial: SiteSettings["footer"] }) {
+  // Make sure both networks have a row so each gets its own field
+  const withNetworks: SiteSettings["footer"] = {
+    ...initial,
+    socials: NETWORKS.map(
+      (network) =>
+        initial.socials.find((s) => s.network === network) ?? {
+          network,
+          href: "",
+          label: network === "instagram" ? "Instagram" : "Facebook",
+        },
+    ),
+  };
+  const { value, setValue, submit, pending, err } = useSettingForm("footer", withNetworks);
+  const C = t.admin.content;
+  const setContact = (patch: Partial<SiteSettings["footer"]["contact"]>) => setValue({ ...value, contact: { ...value.contact, ...patch } });
+  const setSocial = (network: Network, href: string) =>
+    setValue({ ...value, socials: value.socials.map((s) => (s.network === network ? { ...s, href } : s)) });
+  const socialIndex = (network: Network) => value.socials.findIndex((s) => s.network === network);
+
+  return (
+    <Shell title={C.contactFooter} description={C.contactFooterHint} onSubmit={submit} pending={pending}>
+      <Field label={C.address} htmlFor="cf-address" error={err("contact.address")}>
+        <Textarea id="cf-address" rows={2} value={value.contact.address} onChange={(e) => setContact({ address: e.target.value })} />
+      </Field>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label={C.phone} htmlFor="cf-phone" error={err("contact.phone")} hint={C.phoneHint}>
+          <Input id="cf-phone" type="tel" inputMode="tel" value={value.contact.phone} onChange={(e) => setContact({ phone: e.target.value })} />
+        </Field>
+        <Field label={C.email} htmlFor="cf-email" error={err("contact.email")}>
+          <Input id="cf-email" type="email" value={value.contact.email} onChange={(e) => setContact({ email: e.target.value })} />
+        </Field>
+      </div>
+      <Field label={C.hours} htmlFor="cf-hours" error={err("contact.hours")} hint={C.hoursHint}>
+        <Textarea id="cf-hours" rows={3} value={value.contact.hours.join("\n")} onChange={(e) => setContact({ hours: e.target.value.split("\n") })} />
+      </Field>
+      <div className="grid gap-3 md:grid-cols-2">
+        {NETWORKS.map((network) => {
+          const i = socialIndex(network);
+          return (
+            <Field key={network} label={C[network]} htmlFor={`cf-${network}`} error={err(`socials.${i}.href`)} hint={C.socialHint}>
+              <Input
+                id={`cf-${network}`}
+                type="url"
+                inputMode="url"
+                placeholder={`https://${network}.com/…`}
+                value={value.socials[i]?.href ?? ""}
+                onChange={(e) => setSocial(network, e.target.value)}
+              />
+            </Field>
+          );
+        })}
+      </div>
+      <Field label={C.copyright} htmlFor="cf-copyright" error={err("copyright")} hint={C.copyrightHint}>
+        <Input id="cf-copyright" value={value.copyright} onChange={(e) => setValue({ ...value, copyright: e.target.value })} />
+      </Field>
+    </Shell>
+  );
+}

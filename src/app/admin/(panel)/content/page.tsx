@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  AnnouncementForm, BenefitsForm, FeaturedProductForm, HeroForm, ProductBenefitsForm, PromoTrioForm, SplitPromoForm,
+  AnnouncementForm, BenefitsForm, ContactFooterForm, FeaturedProductForm, HeroForm, ProductBenefitsForm, PromoTrioForm, SplitPromoForm,
 } from "@/components/admin/content/SettingForms";
 import { EmptyState, PageHeader, btnClass } from "@/components/admin/ui";
 import type { SiteSettings } from "@/lib/site-settings";
@@ -20,6 +20,7 @@ const TABS: { key: EditableSettingKey; label: string }[] = [
   { key: "featuredProduct", label: "Онцлох бүтээгдэхүүн" },
   { key: "benefits", label: "Давуу талууд" },
   { key: "productBenefits", label: "Бүтээгдэхүүний давуу тал" },
+  { key: "footer", label: "Холбоо барих ба footer" },
 ];
 
 // Тохиргоо байхгүй үед эхлэх утга
@@ -33,6 +34,13 @@ const DEFAULTS: { [K in EditableSettingKey]: SiteSettings[K] } = {
   featuredProduct: { title: "", productSlug: "", image: EMPTY_IMAGE },
   benefits: { items: [0, 1, 2, 3].map(() => ({ icon: "gift" as const, lines: ["", ""] as [string, string] })) },
   productBenefits: { items: [{ icon: "gift", label: "" }] },
+  footer: {
+    columns: [],
+    contact: { title: "Холбоо барих", address: "", phone: "", email: "", hours: [""] },
+    socials: [],
+    newsletter: { title: "Мэдээлэл авах", text: "Шинэ бүтээгдэхүүн, урамшууллын мэдээг имэйлээр аваарай.", placeholder: "Имэйл хаяг", button: "Бүртгүүлэх" },
+    copyright: "",
+  },
 };
 
 export default async function ContentPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
@@ -70,6 +78,7 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
         {tab === "featuredProduct" && <FeaturedProduct initial={value} />}
         {tab === "benefits" && <BenefitsForm initial={value} />}
         {tab === "productBenefits" && <ProductBenefitsForm initial={value} />}
+        {tab === "footer" && <ContactFooterForm initial={value} />}
         {!TABS.some((t) => t.key === tab) && <EmptyState title="Хэсэг олдсонгүй" />}
       </div>
     </>

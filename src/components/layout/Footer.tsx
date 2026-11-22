@@ -83,7 +83,7 @@ export function Footer({
                 ))}
               </address>
               <ul className="mt-6 flex gap-3">
-                {socials.map((s) => (
+                {socials.filter((s) => s.href).map((s) => (
                   <li key={s.network}>
                     <a
                       href={s.href}
