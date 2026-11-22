@@ -38,7 +38,8 @@ ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL} \
 RUN bun run db:generate
 RUN --mount=type=secret,id=database_url,required=true \
     DATABASE_URL="$(cat /run/secrets/database_url)" bun run build \
-  && bun scripts/build-worker.ts
+  && bun scripts/build-worker.ts \
+  && bun scripts/build-worker.ts scripts/email-smoke.ts dist/worker
 
 # ─── tools: migrate deploy, create-admin (зөвхөн `docker compose run --rm tools …`) ───
 FROM build AS tools
