@@ -38,7 +38,7 @@ export function ProductGallery({ images, name }: { images: Image[]; name: string
       aria-roledescription={t.common.slider}
       aria-label={t.product.gallery}
       role="region"
-      // Sticky үед зураг + thumbnail дэлгэцэнд багтана (header 96px + thumbnail ~104px)
+      // When sticky, image + thumbnails fit the viewport (header 96px + thumbnails ~104px)
       className="lg:mx-auto lg:max-w-[max(420px,calc(100dvh-200px))]"
     >
       <div className="relative bg-card">

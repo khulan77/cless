@@ -3,6 +3,27 @@ import type { SiteSettings } from "@/lib/site-settings";
 import { hrefSchema, imageUrlSchema, requiredText, slugSchema } from "./common";
 
 const image = z.object({ src: imageUrlSchema, alt: z.string().trim().max(200) });
+
+/** Монгол болон олон улсын дугаар: "+976 7011 2233", "7011-2233", "99112233" */
+export const phoneSchema = z
+  .string({ error: "Утасны дугаар оруулна уу." })
+  .trim()
+  .regex(/^\+?\d[\d\s-]{5,18}\d$/, "Утасны дугаар буруу. Жишээ: +976 7011 2233")
+  .refine((v) => v.replace(/\D/g, "").length >= 8, "Утасны дугаар хэт богино байна.");
+
+export const SOCIAL_HOSTS = { instagram: "instagram.com", facebook: "facebook.com" } as const;
+
+/** Хоосон (footer-т харагдахгүй) эсвэл тухайн сүлжээний https хаяг */
+export function isSocialUrl(network: keyof typeof SOCIAL_HOSTS, value: string): boolean {
+  if (value === "") return true;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^(www\.|m\.)/, "");
+    return url.protocol === "https:" && host === SOCIAL_HOSTS[network];
+  } catch {
+    return false;
+  }
+}
 const link = z.object({ label: requiredText(60), href: hrefSchema });
 
 export const BENEFIT_ICONS = {
@@ -53,6 +74,61 @@ export const settingSchemas = {
       .array(z.object({ icon: z.enum(["gift", "package", "scan-face", "shield-check", "sparkles", "truck"]), label: requiredText(60) }))
       .min(1, "Дор хаяж нэг мөр.")
       .max(4, "4-өөс ихгүй."),
+  }),
+  footer: z.object({
+    // Формд засагдахгүй хэсгүүд — хадгалахад хэвээр дамжина, гэхдээ бүтцийг шалгана
+    columns: z
+      .array(
+        z.object({
+          title: requiredText(60),
+          links: z.array(link).max(20),
+          collections: z
+            .object({
+              kind: z.enum(["CATEGORY", "CONCERN"]),
+              parentSlug: z.string().optional(),
+              slugs: z.array(z.string()).optional(),
+            })
+            .optional(),
+        }),
+      )
+      .max(6),
+    contact: z.object({
+      title: requiredText(60),
+      address: requiredText(300),
+      phone: phoneSchema,
+      email: z.string().trim().pipe(z.email("Имэйл хаяг буруу байна.")),
+      hours: z
+        .array(z.string().trim())
+        .transform((rows) => rows.filter(Boolean))
+        .pipe(z.array(requiredText(80)).min(1, "Дор хаяж нэг мөр ажлын цаг оруулна уу.").max(7, "7-оос ихгүй мөр.")),
+    }),
+    socials: z
+      .array(
+        z.object({
+          network: z.enum(["instagram", "facebook"]),
+          href: z.string().trim(),
+          label: requiredText(40),
+        }),
+      )
+      .max(2)
+      .superRefine((rows, ctx) => {
+        rows.forEach((r, i) => {
+          if (!isSocialUrl(r.network, r.href)) {
+            ctx.addIssue({
+              code: "custom",
+              path: [i, "href"],
+              message: `https://${SOCIAL_HOSTS[r.network]}/… хэлбэрийн хаяг оруулна уу.`,
+            });
+          }
+        });
+      }),
+    newsletter: z.object({
+      title: requiredText(60),
+      text: requiredText(200),
+      placeholder: requiredText(60),
+      button: requiredText(30),
+    }),
+    copyright: requiredText(200),
   }),
 } satisfies { [K in keyof SiteSettings]?: z.ZodType<SiteSettings[K]> };
 

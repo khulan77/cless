@@ -88,7 +88,7 @@ export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
         role="dialog"
         aria-modal="true"
         aria-label={t.layout.mainMenu}
-        // Хаалттай drawer: Tab-аар дотор нь орохгүй, screen reader-т харагдахгүй
+        // Closed drawer: not reachable by Tab and hidden from screen readers
         inert={!open}
         aria-hidden={!open}
         className={`fixed inset-y-0 left-0 z-50 flex max-w-full transition-transform duration-300 ease-out ${
