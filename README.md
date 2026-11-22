@@ -27,10 +27,12 @@ bun run db:deploy             # production / Supabase дээр
 bun run db:seed
 
 # 6. Ажиллуулах
-bun run dev                   # http://localhost:3000
+bun run dev                   # http://127.0.0.1:20267
 ```
 
-Шалгах: `bun run typecheck`, `bun run lint`, `bun run build`.
+Шалгах: `bun run typecheck`, `bun run lint`, `bun run test`, `bun run build`.
+
+Админ: http://127.0.0.1:20267/admin (seed хэрэглэгчээр нэвтэрнэ).
 
 > `bun run build` нь нүүр хуудсыг build үед prerender хийдэг тул DB-д холбогдох боломжтой байх ёстой.
 
@@ -67,6 +69,16 @@ public/placeholders/        түр SVG зургууд
 - **Контент:** нүүр хуудасны бүх текст `SiteSetting`-ээс уншигдана (`src/lib/site-settings.ts`-ийн төрлүүд). Setting байхгүй бол тухайн section харагдахгүй.
 - **Кэш:** Cache Components горимд `export const revalidate`-ийг ашиглах боломжгүй. Оронд нь query бүр `"use cache"` + `cacheLife({ revalidate: 60 })`-тэй, `cacheTag("catalog" | "settings")`-аар админаас шууд шинэчилж болно.
 - **Font:** Inter Tight (`--font-brand`). Лицензтэй font ирэхэд `src/app/layout.tsx`-д `next/font/local`-аар солино.
+
+## Админ хэсэг
+
+- **Нэвтрэлт:** Auth.js v5 (Credentials, JWT). `src/proxy.ts` (Next 16-д `middleware.ts` → `proxy.ts`) нь `/admin/*`-д session шаарддаг. Эрх ба `isActive` нь хүсэлт бүрт DB-ээс шалгагдана — идэвхгүй болгох / эрх бууруулах нь даруй хүчинтэй.
+- **Rate limit:** IP болон имэйлээр 15 минутад 5 амжилтгүй оролдлого (`LoginAttempt` хүснэгт). Админ нууц үг шинэчлэхэд тухайн имэйлийн түгжээ арилна.
+- **Эрх:** `src/server/auth/permissions.ts` — цорын ганц матриц. Server Action бүр `requirePermission()`-аар эхэлнэ (эрхгүй бол 403 үр дүн), хуудас бүр `requirePagePermission()` (эрхгүй бол `forbidden()`). Тест: `bun run test`.
+- **Үлдэгдэл:** `Variant.stock` зөвхөн `src/server/actions/stock.ts`-д, мөрийг `FOR UPDATE`-ээр түгжиж `StockMovement`-тэй нэг transaction-д өөрчлөгдөнө. MANAGER уншина, ADMIN (`stock:write`) засна.
+- **Зураг:** `src/server/storage/` — одоо `public/uploads` (gitignore). S3 руу шилжихэд `storage/index.ts`-ийн `storage`-ийг солино. ⚠️ `next start` нь build-ийн дараа `public/`-д нэмэгдсэн файлыг үйлчлэхгүй байж болзошгүй тул production-д S3/Cloudinary шаардлагатай.
+- **Audit:** бичих үйлдэл бүр `AuditLog`-д (хэн, юу, өмнө/дараа). Нууц үг хэзээ ч лог-д орохгүй.
+- **Архив:** бүтээгдэхүүн (`isPublished=false`), үйлчилгээ/хувилбар/хэрэглэгч (`isActive=false`). Ашиглагдаагүй ангиллыг л устгаж болно.
 
 ## Seed хэрэглэгчид
 
