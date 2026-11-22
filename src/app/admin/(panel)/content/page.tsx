@@ -2,7 +2,10 @@ import Link from "next/link";
 import {
   AnnouncementForm, BenefitsForm, ContactFooterForm, FeaturedProductForm, HeroForm, ProductBenefitsForm, PromoTrioForm, SplitPromoForm,
 } from "@/components/admin/content/SettingForms";
+import { AboutPageForm, ContactPageForm, PrivacyPageForm } from "@/components/admin/content/PageContentForms";
 import { EmptyState, PageHeader, btnClass } from "@/components/admin/ui";
+import { infra } from "@/i18n/mn.infra";
+import { ABOUT_PAGE_DEFAULT, CONTACT_PAGE_DEFAULT, PRIVACY_PAGE_DEFAULT } from "@/lib/validation/content-pages";
 import type { SiteSettings } from "@/lib/site-settings";
 import type { EditableSettingKey } from "@/lib/validation/site-settings";
 import { db } from "@/server/db";
@@ -21,6 +24,9 @@ const TABS: { key: EditableSettingKey; label: string }[] = [
   { key: "benefits", label: "Давуу талууд" },
   { key: "productBenefits", label: "Бүтээгдэхүүний давуу тал" },
   { key: "footer", label: "Холбоо барих ба footer" },
+  { key: "aboutPage", label: infra.content.tabs.aboutPage },
+  { key: "privacyPage", label: infra.content.tabs.privacyPage },
+  { key: "contactPage", label: infra.content.tabs.contactPage },
 ];
 
 // Тохиргоо байхгүй үед эхлэх утга
@@ -41,6 +47,9 @@ const DEFAULTS: { [K in EditableSettingKey]: SiteSettings[K] } = {
     newsletter: { title: "Мэдээлэл авах", text: "Шинэ бүтээгдэхүүн, урамшууллын мэдээг имэйлээр аваарай.", placeholder: "Имэйл хаяг", button: "Бүртгүүлэх" },
     copyright: "",
   },
+  aboutPage: ABOUT_PAGE_DEFAULT,
+  privacyPage: PRIVACY_PAGE_DEFAULT,
+  contactPage: CONTACT_PAGE_DEFAULT,
 };
 
 export default async function ContentPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
@@ -80,6 +89,9 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
         {tab === "benefits" && <BenefitsForm initial={value} />}
         {tab === "productBenefits" && <ProductBenefitsForm initial={value} />}
         {tab === "footer" && <ContactFooterForm initial={value} />}
+        {tab === "aboutPage" && <AboutPageForm initial={value} />}
+        {tab === "privacyPage" && <PrivacyPageForm initial={value} />}
+        {tab === "contactPage" && <ContactPageForm initial={value} />}
         {!TABS.some((t) => t.key === tab) && <EmptyState title="Хэсэг олдсонгүй" />}
       </div>
     </>

@@ -111,4 +111,37 @@ export const infra = {
       network: "холбогдож чадсангүй",
     },
   },
+  content: {
+    tabs: { aboutPage: "Бидний тухай", privacyPage: "Нууцлалын бодлого", contactPage: "Холбоо барих хуудас" },
+    viewPage: "Хуудсыг харах ↗",
+    about: {
+      card: "Бидний тухай хуудас",
+      cardHint: "/about — гарчиг, удиртгал, 2–3 хэсэг",
+      title: "Гарчиг",
+      intro: "Удиртгал",
+      section: (i: number) => `Хэсэг ${i}`,
+      sectionTitle: "Хэсгийн гарчиг",
+      sectionText: "Текст",
+      addSection: "Хэсэг нэмэх",
+      removeSection: "Хэсэг устгах",
+    },
+    privacy: {
+      card: "Нууцлалын бодлого",
+      cardHint: "/privacy",
+      templateNote:
+        "Энэ бол загвар текст, хуульчаар хянуулна уу. Хуулийн баримт бичиг биш — байгууллагынхаа бодит үйл ажиллагаанд тааруулж засна.",
+      title: "Гарчиг",
+      body: "Агуулга",
+      bodyHint: "## Гарчиг · - жагсаалт · **тод** · [текст](https://…). HTML код ажиллахгүй.",
+      preview: "Урьдчилан харах",
+    },
+    contact: {
+      card: "Холбоо барих хуудас",
+      cardHint:
+        "/contact — хаяг, утас, имэйл, ажлын цаг нь «Холбоо барих ба footer» табаас (footer-тэй ижил). Энд газрын зургийг нэмнэ.",
+      map: "Google Maps embed",
+      mapHint: "Google Maps → Share → Embed a map → «Copy HTML» хийж бүтнээр нь буулгана. Хоосон бол газрын зураг харагдахгүй.",
+      footerTab: "Холбоо барих мэдээлэл засах →",
+    },
+  },
 } as const;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { SiteSettings } from "@/lib/site-settings";
 import { hrefSchema, imageUrlSchema, requiredText, slugSchema } from "./common";
+import { aboutPageSchema, contactPageSchema, privacyPageSchema } from "./content-pages";
 
 const image = z.object({ src: imageUrlSchema, alt: z.string().trim().max(200) });
 
@@ -148,6 +149,10 @@ export const settingSchemas = {
     }),
     copyright: requiredText(200),
   }),
+  // Контент хуудсууд (src/lib/validation/content-pages.ts)
+  aboutPage: aboutPageSchema,
+  privacyPage: privacyPageSchema,
+  contactPage: contactPageSchema,
 } satisfies { [K in keyof SiteSettings]?: z.ZodType<SiteSettings[K]> };
 
 export type EditableSettingKey = keyof typeof settingSchemas;
