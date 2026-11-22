@@ -63,15 +63,15 @@
   background-color: #fff;
   color: var(--color-navy);
 }
-body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) {
+body:has([data-header-overlay]:not([style*="none"])) .site-header:not([data-scrolled="true"]) {
   border-color: transparent;
   background-color: transparent;
   color: #fff;
 }
-body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) :focus-visible {
+body:has([data-header-overlay]:not([style*="none"])) .site-header:not([data-scrolled="true"]) :focus-visible {
   outline-color: #fff;
 }
-body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) .header-cart-count {
+body:has([data-header-overlay]:not([style*="none"])) .site-header:not([data-scrolled="true"]) .header-cart-count {
   background-color: #fff;
   color: var(--color-navy);
 }

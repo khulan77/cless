@@ -13,6 +13,9 @@ const scrolledPast = () => window.scrollY > 40;
  * Whether a page has a banner is decided in CSS (`body:has([data-header-overlay])`, globals.css)
  * instead of usePathname(): reading URL data here would break regeneration of cached
  * storefront pages (e.g. a product page after its stock changes).
+ *
+ * `:not([style*=none])`: after client navigation Next keeps the previous page in the DOM hidden
+ * (`<Activity>` → `style="display: none !important"` on the banner) — a hidden banner must not count.
  */
 export function HeaderShell({ children }: { children: ReactNode }) {
   const scrolled = useSyncExternalStore(subscribe, scrolledPast, () => false);

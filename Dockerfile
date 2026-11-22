@@ -43,7 +43,8 @@ CMD ["bun", "run", "db:deploy"]
 FROM source AS build
 ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL} \
-    NODE_ENV=production
+    NODE_ENV=production \
+    NEXT_OUTPUT=standalone
 # Worker bundle нь DB-гүй — next build-ээс өмнө (кэш давхарга тусдаа)
 RUN bun scripts/build-worker.ts \
   && bun scripts/build-worker.ts scripts/email-smoke.ts dist/worker
