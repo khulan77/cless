@@ -54,3 +54,7 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /tests/e2e/.worker.pid
+
+# worker bundle (scripts/build-worker.ts), backup файлууд
+/dist/
+/backups/

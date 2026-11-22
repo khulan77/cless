@@ -1,0 +1,43 @@
+# CLÉSS — Caddy reverse proxy.
+# SITE_DOMAIN=cless.mn → https://cless.mn автомат Let's Encrypt гэрчилгээтэй.
+# Локал туршилт: SITE_DOMAIN=localhost → Caddy-ийн дотоод CA (браузер анхааруулга өгнө).
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "frame-ancestors 'self'"
+		X-Frame-Options "SAMEORIGIN"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+		-X-Powered-By
+	}
+}
+
+www.{$SITE_DOMAIN} {
+	import security_headers
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
+{$SITE_DOMAIN} {
+	import security_headers
+	encode zstd gzip
+
+	# Админаас оруулсан зураг: uploads volume-ээс шууд (build-ийн дараа нэмэгдсэн файл тул
+	# Next.js-ийн public/ үйлчилгээнд найдахгүй). Нэр нь давтагдашгүй тул удаан кэшлэнэ.
+	handle_path /uploads/* {
+		root * /srv/uploads
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		reverse_proxy app:3000
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
