@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/*
+ * Дизайн token-ууд. Font-ийг --font-brand нэг хувьсагчаар тохируулсан —
+ * лицензтэй font (Söhne г.м.) ирэхэд зөвхөн layout.tsx-ийн font-ийг солино.
+ */
+@theme {
+  --color-navy: #0e2243;
+  --color-card: #efeeec;
+  --color-promo: #eeebe6;
+  --color-line: rgb(14 34 67 / 0.2);
+  --color-muted: rgb(14 34 67 / 0.55);
+
+  --font-sans: var(--font-brand), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Didot", "Bodoni 72", Georgia, "Times New Roman", serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-white font-sans text-navy antialiased;
+    font-size: 15px;
+    line-height: 1.55;
+    letter-spacing: 0.2px;
+    font-weight: 400;
+  }
+  :focus-visible {
+    outline: 1px solid var(--color-navy);
+    outline-offset: 3px;
+  }
+  .on-dark :focus-visible,
+  .on-dark:focus-visible {
+    outline-color: #fff;
+  }
+}
+
+/* ─── Typography ─── */
+@utility text-section {
+  font-size: 27px;
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  text-transform: uppercase;
+}
+@utility text-product {
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+@utility text-micro {
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+/* Доогуураа зураастай текст линк */
+@utility link-underline {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: text-decoration-color 150ms;
+  &:hover {
+    text-decoration-color: transparent;
+  }
+}
+
+/* Хэвтээ scroll — scrollbar нуух */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
