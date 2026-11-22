@@ -2,6 +2,7 @@
 
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { t } from "@/i18n";
 import type { ResolvedNavItem } from "@/server/queries/catalog";
 
 type Props = {
@@ -10,17 +11,17 @@ type Props = {
   onNavigate: () => void;
 };
 
-/** Цэсний дэд хэсэг: Collection-уудаас бүрдсэн бүлгүүд */
+/** Sub-menu: groups built from collections */
 export function MegaMenu({ item, onBack, onNavigate }: Props) {
   return (
     <section
       aria-label={item.label}
-      className="h-full w-screen overflow-y-auto border-l border-line bg-white px-6 pb-10 pt-4 sm:w-[380px] md:w-[420px] md:bg-promo"
+      className="h-full w-screen overflow-y-auto border-l border-line bg-white px-6 pb-10 pt-4 text-navy sm:w-[380px] md:w-[420px] md:bg-promo"
     >
       <div className="mb-6 flex h-10 items-center md:hidden">
         <button type="button" onClick={onBack} className="-ml-2 flex items-center gap-1 py-2 text-[14px]">
           <ChevronLeft className="size-4" strokeWidth={1.25} aria-hidden />
-          Буцах
+          {t.layout.back}
         </button>
       </div>
       <div className="mb-8 hidden h-10 md:block" aria-hidden />
@@ -43,7 +44,7 @@ export function MegaMenu({ item, onBack, onNavigate }: Props) {
           </div>
         ))}
         <Link href={item.href} onClick={onNavigate} className="link-underline inline-block text-[14px]">
-          Бүгдийг харах
+          {t.common.viewAll}
         </Link>
       </div>
     </section>

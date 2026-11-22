@@ -2,10 +2,11 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Children, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { t } from "@/i18n";
 
 /**
- * Хэвтээ carousel. Desktop: 4 багана + сумнууд. Mobile: 1.3 карт, swipe (scroll-snap).
- * Картууд өөрсдөө server-ээс render хийгдэж children-ээр ирнэ.
+ * Horizontal carousel. Desktop: 4 columns + arrows. Mobile: 1.3 cards, swipe (scroll-snap).
+ * Cards are rendered on the server and passed in as children.
  */
 export function ProductCarousel({ children, label }: { children: ReactNode; label: string }) {
   const trackRef = useRef<HTMLUListElement>(null);
@@ -38,7 +39,7 @@ export function ProductCarousel({ children, label }: { children: ReactNode; labe
     "absolute top-[38%] z-10 hidden size-11 -translate-y-1/2 place-items-center rounded-full border border-line bg-white transition-opacity disabled:pointer-events-none disabled:opacity-0 md:grid";
 
   return (
-    <div className="relative" role="region" aria-roledescription="carousel" aria-label={label}>
+    <div className="relative" role="region" aria-roledescription={t.common.slider} aria-label={label}>
       <ul
         ref={trackRef}
         onScroll={update}
@@ -50,10 +51,10 @@ export function ProductCarousel({ children, label }: { children: ReactNode; labe
           </li>
         ))}
       </ul>
-      <button type="button" onClick={() => scrollByPage(-1)} disabled={!canPrev} aria-label="Өмнөх" className={`${arrow} -left-5`}>
+      <button type="button" onClick={() => scrollByPage(-1)} disabled={!canPrev} aria-label={t.common.previous} className={`${arrow} -left-5`}>
         <ChevronLeft className="size-5" strokeWidth={1.25} aria-hidden />
       </button>
-      <button type="button" onClick={() => scrollByPage(1)} disabled={!canNext} aria-label="Дараах" className={`${arrow} -right-5`}>
+      <button type="button" onClick={() => scrollByPage(1)} disabled={!canNext} aria-label={t.common.next} className={`${arrow} -right-5`}>
         <ChevronRight className="size-5" strokeWidth={1.25} aria-hidden />
       </button>
     </div>

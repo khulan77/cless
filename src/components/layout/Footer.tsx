@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cacheLife } from "next/cache";
 import type { FooterSetting } from "@/lib/site-settings";
 import { Container } from "@/components/ui/Container";
+import { t } from "@/i18n";
 import { NewsletterForm } from "./NewsletterForm";
 import { SocialIcon } from "./SocialIcon";
 
@@ -20,7 +21,7 @@ export function Footer({
   siteName,
 }: {
   footer: FooterSetting;
-  /** Collection-оор баяжуулсан баганууд (resolveFooterColumns) */
+  /** Columns enriched with collections (resolveFooterColumns) */
   columns: Column[];
   wordmark: string[];
   siteName: string;
@@ -31,7 +32,7 @@ export function Footer({
       <Container className="pb-8 pt-16 md:pt-20">
         <div className="grid gap-12 lg:grid-cols-[1.1fr_2fr]">
           <div className="max-w-sm">
-            <Link href="/" aria-label={`${siteName} — нүүр хуудас`} className="inline-flex flex-col font-serif leading-none">
+            <Link href="/" aria-label={t.layout.homeLink(siteName)} className="inline-flex flex-col font-serif leading-none">
               {wordmark.map((line, i) => (
                 <span
                   key={line}

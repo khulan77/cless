@@ -1,10 +1,25 @@
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
+import { cacheLife, cacheTag } from "next/cache";
 import { resolveFooterColumns, resolveNavigation } from "@/server/queries/catalog";
 import { getSetting } from "@/server/queries/settings";
+import { t } from "@/i18n";
 
-export default async function ShopLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Header/Footer-ийн бүх өгөгдөл нэг кэш entry-д. Тусдаа кэштэй дуудлагуудын waterfall
+ * (settings → collections) navigation-ий validation-д "uncached data" гэж бүртгэгддэг байсан.
+ * Админ хадгалахад updateTag("settings" | "catalog") шинэчилнэ.
+ */
+async function getShellData() {
+  "use cache";
+  // Цэс, footer зөвхөн админаас өөрчлөгддөг бөгөөд хадгалах бүрт updateTag шууд
+  // шинэчилнэ. Тиймээс хугацаагаар (60 сек) дахин тооцоолох шаардлагагүй — хугацаа нь
+  // дууссан entry-г dev-ийн instant validation "uncached data" гэж тэмдэглэдэг байсан.
+  // Тодорхой outer cacheLife нь дотоод getSetting/getCollections-ийн хугацааг давж ажиллана.
+  cacheLife({ stale: 300, revalidate: 86400, expire: 604800 });
+  cacheTag("settings", "catalog", "collections");
+
   const [announcement, brand, navigation, footer] = await Promise.all([
     getSetting("announcement"),
     getSetting("brand"),
@@ -15,6 +30,11 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
     resolveNavigation(navigation?.items ?? []),
     resolveFooterColumns(footer?.columns ?? []),
   ]);
+  return { announcement, brand, footer, nav, footerColumns };
+}
+
+export default async function ShopLayout({ children }: { children: React.ReactNode }) {
+  const { announcement, brand, footer, nav, footerColumns } = await getShellData();
   const wordmark = brand?.wordmark ?? [];
   const siteName = brand?.siteName ?? "";
 
@@ -24,7 +44,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:bg-white focus:px-4 focus:py-2"
       >
-        Үндсэн агуулга руу шилжих
+        {t.common.skipToContent}
       </a>
       {announcement && <AnnouncementBar messages={announcement.messages} intervalMs={announcement.intervalMs} />}
       <Header wordmark={wordmark} siteName={siteName} nav={nav} />

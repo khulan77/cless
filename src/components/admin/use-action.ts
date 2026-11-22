@@ -3,9 +3,10 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import type { ActionResult } from "@/lib/action-result";
+import { t } from "@/i18n";
 
 /**
- * Server Action дуудаж, үр дүнг toast-оор харуулна. Талбарын алдааг буцаана.
+ * Calls a Server Action, shows the result as a toast and exposes field errors.
  */
 export function useServerAction<I, T>(action: (input: I) => Promise<ActionResult<T>>) {
   const [pending, startTransition] = useTransition();
@@ -27,8 +28,8 @@ export function useServerAction<I, T>(action: (input: I) => Promise<ActionResult
           }
           resolve(res);
         } catch {
-          // Сүлжээ тасрах г.м.
-          toast.error("Сервертэй холбогдож чадсангүй. Дахин оролдоно уу.");
+          // e.g. network failure
+          toast.error(t.admin.networkError);
           resolve({ ok: false, error: "network" });
         }
       });

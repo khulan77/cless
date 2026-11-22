@@ -2,62 +2,125 @@
 
 import { ShoppingBag } from "lucide-react";
 import { useId, useState } from "react";
+import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
-import type { ProductCardVariant } from "@/server/queries/catalog";
+import type { CardVariant } from "@/server/queries/catalog";
 
-type Props = { productName: string; variants: ProductCardVariant[]; large?: boolean };
+type Props = {
+  variants: CardVariant[];
+  /** Bundles have no size radios */
+  hideSizes?: boolean;
+  large?: boolean;
+  /** Controlled selection (product page) */
+  value?: string;
+  onChange?: (id: string) => void;
+};
 
-export function VariantPicker({ productName, variants, large }: Props) {
+export function defaultVariantId(variants: CardVariant[]) {
+  return (variants.find((v) => v.available) ?? variants[0])?.id;
+}
+
+/** Size radios — sold-out sizes are struck through diagonally and not selectable */
+export function SizeOptions({
+  variants,
+  selectedId,
+  onSelect,
+  pill,
+}: {
+  variants: CardVariant[];
+  selectedId: string | undefined;
+  onSelect: (id: string) => void;
+  pill?: boolean;
+}) {
   const name = useId();
-  const [selectedId, setSelectedId] = useState(() => (variants.find((v) => v.inStock) ?? variants[0])?.id);
+  return (
+    <div role="radiogroup" aria-label={t.product.size} className={`flex flex-wrap ${pill ? "gap-2" : "gap-x-4 gap-y-2"}`}>
+      {variants.map((v) => {
+        const checked = v.id === selectedId;
+        const soldOut = !v.available;
+        return (
+          <label
+            key={v.id}
+            title={soldOut ? t.product.variantSoldOut : undefined}
+            className={`text-micro relative inline-flex items-center gap-1.5 ${soldOut ? "cursor-not-allowed text-muted" : "cursor-pointer"} ${
+              pill
+                ? `h-9 rounded-full border px-4 ${checked ? "border-navy" : "border-line"} ${soldOut ? "size-soldout" : ""}`
+                : ""
+            }`}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={v.id}
+              checked={checked}
+              disabled={soldOut}
+              onChange={() => onSelect(v.id)}
+              className="peer sr-only"
+              aria-describedby={soldOut ? `${name}-${v.id}-so` : undefined}
+            />
+            {!pill && (
+              <span
+                aria-hidden
+                className="grid size-3.5 place-items-center rounded-full border border-current peer-checked:[&>span]:bg-navy peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-offset-2"
+              >
+                <span className="size-2 rounded-full" />
+              </span>
+            )}
+            <span className={soldOut && !pill ? "size-soldout px-0.5" : ""}>{v.size}</span>
+            {soldOut && (
+              <span id={`${name}-${v.id}-so`} className="sr-only">
+                {t.product.variantSoldOut}
+              </span>
+            )}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+export function CartButton({ label = t.product.addToCart }: { label?: string }) {
+  return (
+    <button
+      type="button"
+      // TODO (cart round): add to cart
+      aria-label={label}
+      className="grid size-11 shrink-0 place-items-center rounded-full bg-navy text-white transition-opacity hover:opacity-85"
+    >
+      <ShoppingBag className="size-[18px]" strokeWidth={1.25} aria-hidden />
+    </button>
+  );
+}
+
+/** Card and quick view: size → price → cart */
+export function VariantPicker({ variants, hideSizes, large, value, onChange }: Props) {
+  const [internal, setInternal] = useState(() => defaultVariantId(variants));
+  const selectedId = value ?? internal;
+  const select = (id: string) => (onChange ? onChange(id) : setInternal(id));
   const selected = variants.find((v) => v.id === selectedId) ?? variants[0];
   if (!selected) return null;
+  const allSoldOut = variants.every((v) => !v.available);
 
   return (
     <div className="mt-auto pt-4">
-      {variants.length > 1 && (
-        <fieldset className="mb-4">
-          <legend className="sr-only">Хэмжээ сонгох</legend>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {variants.map((v) => (
-              <label key={v.id} className="text-micro flex cursor-pointer items-center gap-1.5">
-                <input
-                  type="radio"
-                  name={name}
-                  value={v.id}
-                  checked={v.id === selected.id}
-                  onChange={() => setSelectedId(v.id)}
-                  className="peer sr-only"
-                />
-                <span
-                  aria-hidden
-                  className="grid size-3.5 place-items-center rounded-full border border-navy peer-checked:[&>span]:bg-navy peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-navy"
-                >
-                  <span className="size-2 rounded-full" />
-                </span>
-                <span className={v.inStock ? "" : "text-muted line-through decoration-1"}>{v.size}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+      {!hideSizes && variants.length > 1 && (
+        <div className="mb-4">
+          <SizeOptions variants={variants} selectedId={selected.id} onSelect={select} />
+        </div>
       )}
-      {variants.length === 1 && <p className="text-micro mb-4">{selected.size}</p>}
+      {!hideSizes && variants.length === 1 && <p className="text-micro mb-4">{selected.size}</p>}
 
-      <div className="flex h-11 items-center justify-between">
-        <p className={large ? "text-[17px]" : "text-[15px]"} aria-live="polite">
-          {formatMNT(selected.price)}
-        </p>
-        {selected.inStock ? (
-          <button
-            type="button"
-            // TODO (Ээлж 5): сагсанд нэмэх
-            aria-label={`${productName} ${selected.size} сагсанд нэмэх`}
-            className="grid size-11 place-items-center rounded-full bg-navy text-white transition-opacity hover:opacity-85"
-          >
-            <ShoppingBag className="size-[18px]" strokeWidth={1.25} aria-hidden />
-          </button>
+      <div className="flex min-h-11 items-center justify-between gap-3">
+        <div>
+          <p className={large ? "text-[17px]" : "text-[15px]"} aria-live="polite">
+            {formatMNT(selected.price)}
+          </p>
+          {selected.lowStock && <p className="text-[12px] text-muted">{t.product.lowStock}</p>}
+        </div>
+        {allSoldOut || !selected.available ? (
+          <span className="text-[13px] text-muted">{t.product.soldOut}</span>
         ) : (
-          <span className="text-[13px] text-muted">Дууссан</span>
+          <CartButton />
         )}
       </div>
     </div>

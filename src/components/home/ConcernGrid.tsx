@@ -24,8 +24,12 @@ export function ConcernGrid({ setting, concerns }: { setting: GridSectionSetting
               )}
               <span aria-hidden className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/65 to-transparent" />
               <span className="absolute bottom-4 left-4 right-4 text-[12px] uppercase leading-snug tracking-[0.6px] text-white md:bottom-5 md:left-5 md:text-[14px]">
-                {setting.labelPrefix && <span className="block">{setting.labelPrefix}</span>}
-                {c.name}
+                {c.heading ?? (
+                  <>
+                    {setting.labelPrefix && <span className="block">{setting.labelPrefix}</span>}
+                    {c.name}
+                  </>
+                )}
               </span>
             </Link>
           </li>

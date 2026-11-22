@@ -7,7 +7,8 @@
  */
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient, type BadgeType, type Role } from "../src/generated/prisma/client";
+import { PrismaClient, type Role } from "../src/generated/prisma/client";
+import { CLINICAL_NOTE, ENVIRONMENTAL, PERFECT_MATCH, bundleItems, collections, products } from "./seed-data/catalog";
 import type { SiteSettings } from "../src/lib/site-settings";
 
 const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
@@ -40,236 +41,102 @@ async function seedUsers() {
   }
 }
 
-// ───────────────────────── Collection-ууд ─────────────────────────
-
-const categories = [
-  { slug: "cleansers-milks", name: "Цэвэрлэгч ба сүү", navGroup: "face", showOnHome: false },
-  { slug: "lotion-p50", name: "Лосьон P50", navGroup: "face", showOnHome: true },
-  { slug: "serums", name: "Серум", navGroup: "face", showOnHome: true },
-  { slug: "creams", name: "Тос (крем)", navGroup: "face", showOnHome: true },
-  { slug: "masks", name: "Маск", navGroup: "face", showOnHome: true },
-  { slug: "eyes-lips", name: "Нүд ба уруул", navGroup: "face", showOnHome: false },
-  { slug: "body", name: "Бие", navGroup: "body-hair", showOnHome: false },
-  { slug: "hair", name: "Үс", navGroup: "body-hair", showOnHome: false },
-  // Цэсний "Бэлэг" холбоос /collections/gifts руу заана (цэсний бүлэггүй)
-  { slug: "gifts", name: "Бэлэг", navGroup: null, showOnHome: false },
-];
-
-const concerns = [
-  { slug: "pigmentation", name: "Пигментаци" },
-  { slug: "anti-ageing", name: "Хөгшрөлтийн эсрэг" },
-  { slug: "blemishes", name: "Батга ба арьсны согог" },
-  { slug: "hydration", name: "Чийгшүүлэлт" },
-  { slug: "skin-texture", name: "Арьсны чанар" },
-  { slug: "sensitive-skin", name: "Мэдрэг арьс" },
-  { slug: "plumping", name: "Дүүргэлт" },
-  { slug: "firming", name: "Чангалах" },
-];
-
-async function seedCollections() {
-  for (const [i, c] of categories.entries()) {
-    const data = {
-      name: c.name,
-      kind: "CATEGORY" as const,
-      navGroup: c.navGroup,
-      showOnHome: c.showOnHome,
-      sortOrder: i,
-      image: i < 8 ? `/placeholders/category-${i + 1}.svg` : null,
-      description: `${c.name} — тайлбар удахгүй нэмэгдэнэ.`,
-    };
-    await db.collection.upsert({ where: { slug: c.slug }, create: { slug: c.slug, ...data }, update: data });
-  }
-  for (const [i, c] of concerns.entries()) {
-    const data = {
-      name: c.name,
-      kind: "CONCERN" as const,
-      navGroup: "face",
-      showOnHome: true,
-      sortOrder: i,
-      image: `/placeholders/concern-${i + 1}.svg`,
-      description: `${c.name} — протоколын тайлбар удахгүй нэмэгдэнэ.`,
-    };
-    await db.collection.upsert({ where: { slug: c.slug }, create: { slug: c.slug, ...data }, update: data });
-  }
-}
-
-// ───────────────────────── Бүтээгдэхүүн ─────────────────────────
-
-type SeedVariant = { size: string; price: number; cost: number; stock: number };
-type SeedProduct = {
-  slug: string;
-  name: string;
-  subtitle: string;
-  badge: BadgeType | null;
-  collections: string[];
-  variants: SeedVariant[];
-};
-
-const products: SeedProduct[] = [
-  {
-    slug: "lotion-p50",
-    name: "Lotion P50",
-    subtitle: "Гуужуулах / Тэнцвэржүүлэх / Арьсны чанар",
-    badge: "ICONIC",
-    collections: ["lotion-p50", "skin-texture", "blemishes"],
-    variants: [
-      { size: "250 мл", price: 280_000, cost: 150_000, stock: 14 },
-      { size: "150 мл", price: 190_000, cost: 100_000, stock: 9 },
-      { size: "50 мл", price: 80_000, cost: 40_000, stock: 0 },
-    ],
-  },
-  {
-    slug: "lotion-p50-pigm-400",
-    name: "Lotion P50 PIGM 400",
-    subtitle: "Пигментаци / Гэрэлтүүлэх",
-    badge: "ICONIC",
-    collections: ["lotion-p50", "pigmentation"],
-    variants: [
-      { size: "250 мл", price: 320_000, cost: 170_000, stock: 6 },
-      { size: "150 мл", price: 220_000, cost: 115_000, stock: 0 },
-    ],
-  },
-  {
-    slug: "serum-vivant",
-    name: "Sérum Vivant",
-    subtitle: "Цэвэршүүлэх / Батга",
-    badge: "ICONIC",
-    collections: ["serums", "blemishes"],
-    variants: [
-      { size: "30 мл", price: 240_000, cost: 120_000, stock: 11 },
-      { size: "8 мл", price: 85_000, cost: 40_000, stock: 4 },
-    ],
-  },
-  {
-    slug: "masque-vivant",
-    name: "Masque Vivant",
-    subtitle: "Цэвэршүүлэх / Нүх сүв",
-    badge: "ICONIC",
-    collections: ["masks", "blemishes", "skin-texture"],
-    variants: [{ size: "100 мл", price: 260_000, cost: 130_000, stock: 7 }],
-  },
-  {
-    slug: "creme-mec",
-    name: "Crème M.E.C.",
-    subtitle: "Хөгшрөлтийн эсрэг / Чангалах",
-    badge: "ICONIC",
-    collections: ["creams", "anti-ageing", "firming"],
-    variants: [{ size: "50 мл", price: 450_000, cost: 230_000, stock: 5 }],
-  },
-  {
-    slug: "progeskin",
-    name: "Progeskin",
-    subtitle: "Дүүргэлт / Хөгшрөлтийн эсрэг",
-    badge: "NEW",
-    collections: ["serums", "plumping", "anti-ageing"],
-    variants: [
-      { size: "30 мл", price: 420_000, cost: 210_000, stock: 8 },
-      { size: "8 мл", price: 140_000, cost: 70_000, stock: 0 },
-    ],
-  },
-  {
-    slug: "serum-colostrum",
-    name: "Sérum Colostrum",
-    subtitle: "Мэдрэг арьс / Тайвшруулах",
-    badge: "NEW",
-    collections: ["serums", "sensitive-skin"],
-    variants: [
-      { size: "30 мл", price: 260_000, cost: 130_000, stock: 12 },
-      { size: "8 мл", price: 90_000, cost: 45_000, stock: 3 },
-    ],
-  },
-  {
-    slug: "lait-vip-o2",
-    name: "Lait VIP O2",
-    subtitle: "Цэвэрлэх / Хүчилтөрөгчөөр баяжуулах",
-    badge: null,
-    collections: ["cleansers-milks", "skin-texture"],
-    variants: [
-      { size: "250 мл", price: 180_000, cost: 90_000, stock: 10 },
-      { size: "100 мл", price: 95_000, cost: 48_000, stock: 2 },
-    ],
-  },
-  {
-    slug: "creme-dermopurifiante",
-    name: "Crème Dermopurifiante",
-    subtitle: "Батга / Тэнцвэржүүлэх",
-    badge: null,
-    collections: ["creams", "blemishes"],
-    variants: [{ size: "50 мл", price: 210_000, cost: 105_000, stock: 0 }],
-  },
-  {
-    slug: "creme-masque-vernix",
-    name: "Crème Masque Vernix",
-    subtitle: "Чийгшүүлэлт / Нөхөн сэргээх",
-    badge: "NEW",
-    collections: ["masks", "hydration", "sensitive-skin"],
-    variants: [{ size: "100 мл", price: 300_000, cost: 150_000, stock: 6 }],
-  },
-  {
-    slug: "serum-contour-des-yeux",
-    name: "Sérum Contour des Yeux",
-    subtitle: "Нүдний орчим / Хавангийн эсрэг",
-    badge: null,
-    collections: ["eyes-lips", "anti-ageing"],
-    variants: [{ size: "15 мл", price: 230_000, cost: 115_000, stock: 9 }],
-  },
-  {
-    slug: "creme-corps",
-    name: "Crème Corps",
-    subtitle: "Бие / Чийгшүүлэлт / Чангалах",
-    badge: null,
-    collections: ["body", "hydration", "firming"],
-    variants: [{ size: "200 мл", price: 190_000, cost: 95_000, stock: 20 }],
-  },
-];
+// ───────────────────────── Каталог ─────────────────────────
 
 function skuFor(slug: string, size: string) {
-  // SKU латин үсэгтэй байна: "30 мл" → "30ML"
-  const latin = size.replace(/мл/gi, "ml").replace(/\s+/g, "");
+  // SKU латин үсэгтэй: "30 мл" → "30ML", "1 багц" → "SET"
+  const latin = size.replace(/мл/gi, "ml").replace(/1\s*багц/i, "set").replace(/\s+/g, "");
   return `BR-${slug}-${latin}`.toUpperCase();
+}
+
+const TX = { maxWait: 15_000, timeout: 60_000 } as const;
+
+async function seedCollections() {
+  // Эцэг ангиллыг эхэлж (жагсаалтын дарааллаар)
+  for (const [i, c] of collections.entries()) {
+    const parentId = c.parent ? (await db.collection.findUniqueOrThrow({ where: { slug: c.parent } })).id : null;
+    const data = {
+      name: c.name,
+      kind: c.kind,
+      parentId,
+      heading: c.heading ?? null,
+      intro: c.intro,
+      seoText: c.seoText,
+      bannerImage: c.banner ? `/placeholders/banner-${c.banner}.svg` : null,
+      tileImage: c.tile ?? null,
+      showInMenu: c.showInMenu ?? true,
+      showOnHome: c.showOnHome ?? false,
+      sortOrder: i,
+    };
+    await db.collection.upsert({ where: { slug: c.slug }, create: { slug: c.slug, ...data }, update: data });
+  }
+
+  // Серумын редакцийн нүд (grid-ийн 8 дахь нүд)
+  const serum = await db.collection.findUniqueOrThrow({ where: { slug: "serum" } });
+  const tile = {
+    collectionId: serum.id,
+    position: 8,
+    image: "/placeholders/tile-serum-vivant.svg",
+    eyebrow: "ШИНЭ",
+    title: "SÉRUM VIVANT",
+    text: "Батга гарах хандлагатай арьсанд зориулсан шинэ серум",
+    ctaLabel: "Дэлгэрэнгүй",
+    ctaHref: "/products/serum-vivant",
+  };
+  await db.collectionTile.upsert({ where: { id: "seed-tile-serum" }, create: { id: "seed-tile-serum", ...tile }, update: tile });
 }
 
 async function seedProducts(adminId: string) {
   const collectionIds = new Map(
     (await db.collection.findMany({ select: { id: true, slug: true } })).map((c) => [c.slug, c.id]),
   );
+  const idOf = (slug: string) => {
+    const id = collectionIds.get(slug);
+    if (!id) throw new Error(`Collection олдсонгүй: ${slug}`);
+    return id;
+  };
 
   for (const [i, p] of products.entries()) {
+    const n = i + 1;
     const data = {
       name: p.name,
-      subtitle: p.subtitle,
-      badge: p.badge,
+      kind: p.kind ?? ("SINGLE" as const),
+      badge: p.badge ?? null,
+      tagline: p.tagline,
+      recommendedFor: p.recommendedFor,
+      benefits: p.benefits,
+      description: p.description,
+      skinScience: p.skinScience,
+      howToUse: p.howToUse,
+      ingredients: p.ingredients,
+      environmental: ENVIRONMENTAL,
+      clinicalNotes: p.clinical ? [CLINICAL_NOTE] : [],
       isPublished: true,
       sortOrder: i,
-      description:
-        "Биологик Решерш лабораторийн бүтээгдэхүүн. Дэлгэрэнгүй тайлбарыг удахгүй албан ёсны материалаас нэмнэ.",
-      howToUse: "Өглөө, орой цэвэрлэсэн арьсанд түрхэнэ. Гоо сайханчаасаа зөвлөгөө аваарай.",
-      ingredients: null,
     };
-    const product = await db.product.upsert({
-      where: { slug: p.slug },
-      create: { slug: p.slug, ...data },
-      update: data,
-    });
+    const product = await db.product.upsert({ where: { slug: p.slug }, create: { slug: p.slug, ...data }, update: data });
 
-    await db.productImage.upsert({
-      where: { id: `seed-img-${p.slug}` },
-      create: {
-        id: `seed-img-${p.slug}`,
-        productId: product.id,
-        url: `/placeholders/product-${i + 1}.svg`,
-        alt: `${p.name} — бүтээгдэхүүний зураг`,
-      },
-      update: { url: `/placeholders/product-${i + 1}.svg`, alt: `${p.name} — бүтээгдэхүүний зураг` },
-    });
+    // Зураг: үндсэн + 2 өнцөг
+    const images = [`/placeholders/product-${n}.svg`, `/placeholders/product-${n}-2.svg`, `/placeholders/product-${n}-3.svg`];
+    for (const [k, url] of images.entries()) {
+      const id = k === 0 ? `seed-img-${p.slug}` : `seed-img-${p.slug}-${k + 1}`;
+      const img = { url, alt: `${p.name} — ${k === 0 ? "бүтээгдэхүүний зураг" : `зураг ${k + 1}`}`, sortOrder: k };
+      await db.productImage.upsert({ where: { id }, create: { id, productId: product.id, ...img }, update: img });
+    }
 
-    for (const [ci, slug] of p.collections.entries()) {
-      const collectionId = collectionIds.get(slug);
-      if (!collectionId) throw new Error(`Collection олдсонгүй: ${slug}`);
+    // Ангилал (position = ангилал доторх дараалал; CONCERN-д арчилгааны алхам)
+    const memberships = [
+      ...p.categories.map((slug) => ({ collectionId: idOf(slug), position: i })),
+      ...p.concerns.map((slug) => ({ collectionId: idOf(slug), position: p.step * 100 + i })),
+    ];
+    await db.productCollection.deleteMany({
+      where: { productId: product.id, collectionId: { notIn: memberships.map((m) => m.collectionId) } },
+    });
+    for (const m of memberships) {
       await db.productCollection.upsert({
-        where: { productId_collectionId: { productId: product.id, collectionId } },
-        create: { productId: product.id, collectionId, sortOrder: ci },
-        update: { sortOrder: ci },
+        where: { productId_collectionId: { productId: product.id, collectionId: m.collectionId } },
+        create: { productId: product.id, ...m },
+        update: { position: m.position },
       });
     }
 
@@ -277,37 +144,102 @@ async function seedProducts(adminId: string) {
       const sku = skuFor(p.slug, v.size);
       const existing = await db.variant.findUnique({ where: { sku } });
       if (existing) {
-        // Үлдэгдлийг seed дахин ажиллахад өөрчлөхгүй — movement түүх бүрэн байна.
-        await db.variant.update({ where: { sku }, data: { size: v.size, sortOrder: vi } });
+        // Үнэ, үлдэгдлийг дахин seed-д өөрчлөхгүй (PriceHistory / StockMovement-ээр л)
+        await db.variant.update({ where: { sku }, data: { size: v.size, sortOrder: vi, isActive: true } });
         continue;
       }
-      // Шинэ хувилбар: анхны үлдэгдлийг PURCHASE movement-тэй хамт нэг transaction-д.
       await db.$transaction(async (tx) => {
         const variant = await tx.variant.create({
-          data: {
-            productId: product.id,
-            sku,
-            size: v.size,
-            price: v.price,
-            costPrice: v.cost,
-            stock: v.stock,
-            sortOrder: vi,
-          },
+          data: { productId: product.id, sku, size: v.size, price: v.price, costPrice: v.cost, stock: v.stock, sortOrder: vi },
+        });
+        await tx.priceHistory.create({
+          data: { variantId: variant.id, oldPrice: 0, newPrice: v.price, oldCost: 0, newCost: v.cost, changedById: adminId },
         });
         if (v.stock > 0) {
           await tx.stockMovement.create({
-            data: {
-              variantId: variant.id,
-              type: "PURCHASE",
-              qty: v.stock,
-              unitCost: v.cost,
-              note: "Seed: анхны үлдэгдэл",
-              createdById: adminId,
-            },
+            data: { variantId: variant.id, type: "PURCHASE", qty: v.stock, unitCost: v.cost, note: "Seed: анхны үлдэгдэл", createdById: adminId },
           });
         }
+      }, TX);
+    }
+  }
+}
+
+async function seedBundles() {
+  for (const [bundleSlug, items] of Object.entries(bundleItems)) {
+    const bundle = await db.product.findUniqueOrThrow({ where: { slug: bundleSlug } });
+    const wanted: { variantId: string; qty: number; position: number }[] = [];
+    for (const [pos, [slug, size, qty]] of items.entries()) {
+      const variant = await db.variant.findUniqueOrThrow({ where: { sku: skuFor(slug, size) } });
+      wanted.push({ variantId: variant.id, qty, position: pos });
+    }
+    await db.bundleItem.deleteMany({ where: { bundleProductId: bundle.id, variantId: { notIn: wanted.map((w) => w.variantId) } } });
+    for (const w of wanted) {
+      await db.bundleItem.upsert({
+        where: { bundleProductId_variantId: { bundleProductId: bundle.id, variantId: w.variantId } },
+        create: { bundleProductId: bundle.id, ...w },
+        update: { qty: w.qty, position: w.position },
       });
     }
+  }
+}
+
+/**
+ * PROTOCOL: эхний арьсны хэрэгцээний алхмын дараалал (≤5).
+ * SIMILAR: ижил үндсэн (хамгийн гүн) CATEGORY-ийн бусад бараа — PROTOCOL-д орсныг хасна.
+ *   Хүрэлцэхгүй бол эцэг ангиллын модны бусад бараагаар нөхнө.
+ * BUNDLE_SUGGESTION ("Төгс хослол"): PERFECT_MATCH-ийн тодорхой хослол, эсвэл батганы багц.
+ */
+async function seedRelations() {
+  const ids = new Map((await db.product.findMany({ select: { id: true, slug: true } })).map((p) => [p.slug, p.id]));
+  const parentOf = new Map(collections.map((c) => [c.slug, c.parent]));
+  /** Ангилал + түүний бүх үр удам */
+  const subtree = (root: string) => {
+    const out = new Set([root]);
+    // Массивын дарааллаас үл хамааран шинэ үр удам нэмэгдэхээ болтол давтана
+    let size = 0;
+    while (size !== out.size) {
+      size = out.size;
+      for (const c of collections) if (c.parent && out.has(c.parent)) out.add(c.slug);
+    }
+    return out;
+  };
+
+  for (const p of products) {
+    const id = ids.get(p.slug)!;
+    const concern = p.concerns[0];
+    const protocol = concern
+      ? products
+          .filter((o) => o.slug !== p.slug && o.kind !== "BUNDLE" && o.concerns.includes(concern))
+          .sort((a, b) => a.step - b.step)
+          .slice(0, 5)
+      : [];
+
+    const taken = new Set([p.slug, ...protocol.map((o) => o.slug)]);
+    const pool = products.filter((o) => !taken.has(o.slug) && o.kind !== "BUNDLE");
+    const similar: typeof products = [];
+    // Хамгийн гүн ангиллаас эхлээд эцэг рүү өгсөж нөхнө (Хөгшрөлтийн эсрэг → Серум → Нүүрний арчилгаа)
+    for (let cat: string | undefined = p.categories[p.categories.length - 1]; cat && similar.length < 8; cat = parentOf.get(cat)) {
+      const tree = subtree(cat);
+      for (const o of pool) {
+        if (similar.length >= 8) break;
+        if (!similar.includes(o) && o.categories.some((c) => tree.has(c))) similar.push(o);
+      }
+    }
+
+    const match = PERFECT_MATCH[p.slug] ?? (p.kind !== "BUNDLE" && p.concerns.includes("blemishes") ? "routine-imperfections" : undefined);
+    // PROTOCOL-д аль хэдийн байгаа барааг "Төгс хослол"-д давтахгүй
+    const suggestion = match && !taken.has(match) && ids.has(match) ? [match] : [];
+
+    const rows = [
+      ...protocol.map((o, k) => ({ relatedId: ids.get(o.slug)!, type: "PROTOCOL" as const, position: k })),
+      ...similar.map((o, k) => ({ relatedId: ids.get(o.slug)!, type: "SIMILAR" as const, position: k })),
+      ...suggestion.map((s, k) => ({ relatedId: ids.get(s)!, type: "BUNDLE_SUGGESTION" as const, position: k })),
+    ];
+    await db.$transaction([
+      db.productRelation.deleteMany({ where: { productId: id } }),
+      db.productRelation.createMany({ data: rows.map((r) => ({ productId: id, ...r })) }),
+    ]);
   }
 }
 
@@ -436,16 +368,16 @@ const settings: SiteSettings = {
       { label: "Бэлэг", href: "/collections/gifts" },
       {
         label: "Нүүрний арчилгаа",
-        href: "/collections",
+        href: "/collections/face-care",
         groups: [
-          { title: "Ангилал", kind: "CATEGORY", navGroup: "face" },
-          { title: "Арьсны асуудлаар", kind: "CONCERN" },
+          { title: "Ангилал", kind: "CATEGORY", parentSlug: "face-care" },
+          { title: "Арьсны хэрэгцээгээр", kind: "CONCERN" },
         ],
       },
       {
         label: "Бие ба үс",
-        href: "/collections",
-        groups: [{ title: "Ангилал", kind: "CATEGORY", navGroup: "body-hair" }],
+        href: "/collections/body",
+        groups: [{ title: "Ангилал", kind: "CATEGORY", slugs: ["body", "hair"] }],
       },
       { label: "Үйлчилгээ", href: "/services" },
       { label: "Бидний тухай", href: "/about" },
@@ -469,7 +401,7 @@ const settings: SiteSettings = {
         image: { src: "/placeholders/promo-2.svg", alt: "Серумын цуглуулга" },
         title: "Серумын цуглуулга",
         text: "Арьсны асуудал бүрт зориулсан өндөр идэвхт серумууд.",
-        cta: { label: "Серум үзэх", href: "/collections/serums" },
+        cta: { label: "Серум үзэх", href: "/collections/serum" },
       },
       {
         image: { src: "/placeholders/promo-3.svg", alt: "Бэлгийн багц" },
@@ -509,6 +441,14 @@ const settings: SiteSettings = {
     text: "Арьсны оношлогооноос эхлэн бүрэн протокол хүртэл.",
     cta: { label: "Бүгдийг харах", href: "/services" },
     image: { src: "/placeholders/services.svg", alt: "Салоны үйлчилгээ" },
+  },
+  productBenefits: {
+    // "Үнэгүй хүргэлт" нөхцөл тодорхой болмогц админаас нэмнэ (#13)
+    items: [
+      { icon: "gift", label: "Захиалга бүрт 3 дээж бэлэг" },
+      { icon: "shield-check", label: "Аюулгүй төлбөр" },
+      { icon: "scan-face", label: "Салон дээр арьсны оношлогоо" },
+    ],
   },
   benefits: {
     items: [
@@ -576,6 +516,8 @@ async function main() {
   const admin = await db.user.findUniqueOrThrow({ where: { email: "admin@example.mn" } });
   await seedCollections();
   await seedProducts(admin.id);
+  await seedBundles();
+  await seedRelations();
   await seedServices();
   await seedCommissionRules();
   await seedSettings();

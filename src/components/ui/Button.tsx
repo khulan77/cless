@@ -14,7 +14,7 @@ export function pillClass(tone: Tone = "navy", className = "") {
   return `${base} ${tones[tone]} ${className}`;
 }
 
-/** Pill outline товч (линк хэлбэрээр) */
+/** Pill outline button rendered as a link */
 export function PillLink({
   tone = "navy",
   className,
@@ -23,7 +23,7 @@ export function PillLink({
   return <Link className={pillClass(tone, className)} {...props} />;
 }
 
-/** Pill outline товч (button хэлбэрээр) */
+/** Pill outline button */
 export function PillButton({
   tone = "navy",
   className,
@@ -33,7 +33,7 @@ export function PillButton({
   return <button type={type} className={pillClass(tone, className)} {...props} />;
 }
 
-/** Доогуураа зураастай текст линк */
+/** Underlined text link */
 export function TextLink({ className = "", ...props }: ComponentPropsWithoutRef<typeof Link>) {
   return <Link className={`link-underline text-[14px] ${className}`} {...props} />;
 }

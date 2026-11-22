@@ -47,7 +47,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
       select: {
         id: true,
         name: true,
-        subtitle: true,
+        tagline: true,
+        benefits: true,
+        kind: true,
         badge: true,
         isPublished: true,
         images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true, alt: true } },
@@ -122,7 +124,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
                   </td>
                   <td className={tdClass}>
                     <Link href={`/admin/products/${p.id}`} className="font-medium hover:underline">{p.name}</Link>
-                    <p className="text-[12px] text-navy/50">{p.subtitle}</p>
+                    {p.kind === "BUNDLE" && <span className="ml-2"><Badge tone="navy">BUNDLE</Badge></span>}
+                    <p className="text-[12px] text-navy/50">{p.tagline ?? p.benefits.join(" / ")}</p>
                   </td>
                   <td className={`${tdClass} text-right tabular-nums`}>
                     {active.length}

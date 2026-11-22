@@ -37,25 +37,37 @@
 }
 
 /* ─── Typography ─── */
+/*
+ * Кирилл UPPERCASE латинаас илүү бөөгнөрдөг тул letter-spacing-ийг +0.02em
+ * нэмж, урт Монгол үгсийг balance + hyphens-ээр мөр хооронд жигд хуваана.
+ * Текстийг хэзээ ч "..."-аар тайрахгүй.
+ */
 @utility text-section {
   font-size: 27px;
   line-height: 1.2;
   font-weight: 400;
-  letter-spacing: -0.5px;
+  letter-spacing: calc(-0.5px + 0.02em);
   text-transform: uppercase;
+  text-wrap: balance;
+  hyphens: auto;
 }
 @utility text-product {
   font-size: 17px;
   line-height: 1.3;
   font-weight: 400;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  text-wrap: balance;
+  hyphens: auto;
 }
 @utility text-micro {
   font-size: 11px;
-  line-height: 1.4;
+  line-height: 1.45;
   font-weight: 400;
-  letter-spacing: 0.6px;
+  letter-spacing: calc(0.6px + 0.02em);
   text-transform: uppercase;
+  text-wrap: balance;
+  hyphens: auto;
 }
 
 /* Доогуураа зураастай текст линк */
@@ -85,4 +97,15 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Дууссан хэмжээ: диагональ зураас */
+@utility size-soldout {
+  background-image: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.5px),
+    currentColor calc(50% - 0.5px),
+    currentColor calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
 }

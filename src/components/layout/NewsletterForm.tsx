@@ -4,7 +4,7 @@ import { useId } from "react";
 
 type Props = { placeholder: string; button: string };
 
-/** TODO: newsletter бүртгэлийн backend — одоохондоо зөвхөн UI */
+/** TODO: newsletter backend — UI only for now */
 export function NewsletterForm({ placeholder, button }: Props) {
   const id = useId();
   return (

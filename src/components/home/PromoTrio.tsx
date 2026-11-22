@@ -2,10 +2,11 @@ import type { PromoTrioSetting } from "@/lib/site-settings";
 import { PillLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { Img } from "@/components/ui/Img";
+import { t } from "@/i18n";
 
 export function PromoTrio({ promo }: { promo: PromoTrioSetting }) {
   return (
-    <Container as="section" aria-label="Онцлох" className="mt-16 md:mt-24">
+    <Container as="section" aria-label={t.layout.featured} className="mt-16 md:mt-24">
       <div className="grid gap-y-12 md:grid-cols-3 md:gap-x-1.5">
         {promo.items.map((item) => (
           <article key={item.title} className="flex flex-col">

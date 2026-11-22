@@ -7,14 +7,19 @@ import { can } from "@/server/auth/permissions";
 import { requirePermission } from "@/server/auth/session";
 import { ForbiddenError, UserError } from "@/server/errors";
 import { storage } from "@/server/storage";
+import { z } from "zod";
 import { productInputSchema, type ProductInput } from "@/lib/validation/product";
 import { parseInput, runAction } from "./result";
 
 const TX_OPTS = { maxWait: 10_000, timeout: 30_000 } as const;
 
-function refreshStorefront() {
+function refreshStorefront(slugs: string[] = []) {
   updateTag("catalog");
   revalidatePath("/");
+  // Бүтээгдэхүүн / ангиллын хуудсууд (generateStaticParams-аар prerender хийгдсэн)
+  revalidatePath("/products/[slug]", "page");
+  revalidatePath("/collections/[slug]", "page");
+  for (const slug of slugs) revalidatePath(`/products/${slug}`);
 }
 
 export async function saveProduct(input: ProductInput) {
@@ -28,7 +33,7 @@ export async function saveProduct(input: ProductInput) {
       const before = data.id
         ? await tx.product.findUnique({
             where: { id: data.id },
-            include: { variants: true, images: true, collections: true },
+            include: { variants: true, images: true, collections: true, relations: true, bundleItems: true },
           })
         : null;
       if (data.id && !before) throw new UserError("Бүтээгдэхүүн олдсонгүй.");
@@ -52,10 +57,18 @@ export async function saveProduct(input: ProductInput) {
       const fields = {
         name: data.name,
         slug: data.slug,
-        subtitle: data.subtitle,
+        kind: data.kind,
+        tagline: data.tagline,
+        recommendedFor: data.recommendedFor,
+        benefits: data.benefits,
         description: data.description,
+        skinScience: data.skinScience,
         howToUse: data.howToUse,
         ingredients: data.ingredients,
+        environmental: Object.fromEntries(data.environmental.map((r) => [r.key, r.value])),
+        clinicalNotes: data.clinicalNotes,
+        seoTitle: data.seoTitle,
+        seoDescription: data.seoDescription,
         badge: data.badge,
         isPublished: data.isPublished,
         sortOrder: data.sortOrder,
@@ -74,9 +87,35 @@ export async function saveProduct(input: ProductInput) {
         where: { productId: product.id, collectionId: { notIn: collectionIds } },
       });
       if (collectionIds.length) {
+        // Шинээр нэмэгдсэн нь ангиллын төгсгөлд; дарааллыг ангиллын формоос өөрчилнө
         await tx.productCollection.createMany({
-          data: collectionIds.map((collectionId) => ({ productId: product.id, collectionId })),
+          data: collectionIds.map((collectionId) => ({ productId: product.id, collectionId, position: 9999 })),
           skipDuplicates: true,
+        });
+      }
+
+      // ── Холбоосууд (Хамт хэрэглэх / Төстэй / Төгс хослол) — дараалал = массивын индекс
+      const relatedIds = [...new Set(data.relations.map((r) => r.relatedId))];
+      const validRelated = new Set(
+        (await tx.product.findMany({ where: { id: { in: relatedIds } }, select: { id: true } })).map((p) => p.id),
+      );
+      await tx.productRelation.deleteMany({ where: { productId: product.id } });
+      const positions: Record<string, number> = {};
+      const relationRows = data.relations
+        .filter((r) => validRelated.has(r.relatedId) && r.relatedId !== product.id)
+        .map((r) => ({ productId: product.id, relatedId: r.relatedId, type: r.type, position: (positions[r.type] = (positions[r.type] ?? -1) + 1) }));
+      if (relationRows.length) await tx.productRelation.createMany({ data: relationRows });
+
+      // ── Багцын бүрэлдэхүүн
+      await tx.bundleItem.deleteMany({ where: { bundleProductId: product.id } });
+      if (data.kind === "BUNDLE" && data.bundleItems.length) {
+        const found = await tx.variant.findMany({
+          where: { id: { in: data.bundleItems.map((b) => b.variantId) }, productId: { not: product.id } },
+          select: { id: true },
+        });
+        if (found.length !== data.bundleItems.length) throw new UserError("Багцын зарим бүрэлдэхүүн олдсонгүй.", { bundleItems: ["Бүрэлдэхүүнээ шалгана уу."] });
+        await tx.bundleItem.createMany({
+          data: data.bundleItems.map((b, position) => ({ bundleProductId: product.id, variantId: b.variantId, qty: b.qty, position })),
         });
       }
 
@@ -156,13 +195,20 @@ export async function saveProduct(input: ProductInput) {
         entity: "Product",
         entityId: product.id,
         before: before && snapshot(before),
-        after: { ...fields, collectionIds, images: data.images.map((i) => i.url), variants: data.variants },
+        after: {
+          ...fields,
+          collectionIds,
+          images: data.images.map((i) => i.url),
+          variants: data.variants,
+          relations: relationRows.map(({ relatedId, type }) => ({ relatedId, type })),
+          bundleItems: data.bundleItems,
+        },
       });
       return product.id;
     }, TX_OPTS);
 
     await Promise.all(removedImageUrls.map((u) => storage.remove(u)));
-    refreshStorefront();
+    refreshStorefront([data.slug]);
     return { id };
   }, "Бүтээгдэхүүн хадгалагдлаа.");
 }
@@ -190,7 +236,9 @@ export async function setProductPublished(input: { id: string; isPublished: bool
 function snapshot(p: {
   name: string;
   slug: string;
-  subtitle: string;
+  kind: string;
+  tagline: string | null;
+  benefits: string[];
   badge: string | null;
   isPublished: boolean;
   sortOrder: number;
@@ -201,7 +249,9 @@ function snapshot(p: {
   return {
     name: p.name,
     slug: p.slug,
-    subtitle: p.subtitle,
+    kind: p.kind,
+    tagline: p.tagline,
+    benefits: p.benefits,
     badge: p.badge,
     isPublished: p.isPublished,
     sortOrder: p.sortOrder,
@@ -211,4 +261,19 @@ function snapshot(p: {
       id, sku, size, price, costPrice, lowStockAt, isActive,
     })),
   };
+}
+
+/** Холбоос нэмэхэд: нэрээр хайна */
+export async function searchProducts(query: string) {
+  return runAction(async () => {
+    await requirePermission("product:write");
+    const q = z.string().trim().max(100).parse(query);
+    const rows = await db.product.findMany({
+      where: q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { slug: { contains: q, mode: "insensitive" } }] } : {},
+      orderBy: [{ isPublished: "desc" }, { name: "asc" }],
+      take: 15,
+      select: { id: true, name: true, kind: true },
+    });
+    return rows.map((p) => ({ id: p.id, label: p.name, hint: p.kind === "BUNDLE" ? "BUNDLE" : undefined }));
+  });
 }

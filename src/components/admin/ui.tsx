@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
-/* ─── Товч ─── */
+/* ─── Buttons ─── */
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger";
 type BtnSize = "sm" | "md";
 const btnBase =
@@ -27,7 +27,7 @@ export function Button({
   return <button type={type} className={btnClass(variant, size, className)} {...props} />;
 }
 
-/* ─── Маягтын талбарууд ─── */
+/* ─── Form fields ─── */
 export const inputClass =
   "h-9 rounded-md border border-line bg-white px-3 text-[14px] text-navy placeholder:text-navy/40 focus:border-navy focus:outline-none focus-visible:outline-none aria-[invalid=true]:border-red-500 disabled:bg-navy/5";
 
@@ -85,7 +85,7 @@ export function Field({
   );
 }
 
-/* ─── Layout хэсгүүд ─── */
+/* ─── Layout ─── */
 export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -146,7 +146,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
   );
 }
 
-/* ─── Хүснэгт ─── */
+/* ─── Table ─── */
 export function Table({ children }: { children: ReactNode }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-line bg-white">

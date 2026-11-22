@@ -5,8 +5,8 @@ import { inputClass } from "./ui";
 const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 /**
- * Мөнгөний input: "1,250,000" гэж мянгатын таслалтай харуулна, утга нь Int (төгрөг).
- * Хоосон бол NaN — zod "Тоо оруулна уу" алдаа өгнө.
+ * Money input: shows thousands separators ("1,250,000"); the value stays an Int (MNT).
+ * Empty → NaN so zod reports a "number required" error.
  */
 export function MoneyInput({
   value,

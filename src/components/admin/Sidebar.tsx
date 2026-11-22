@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { AdminNavItem, NavIcon } from "./nav";
+import { t } from "@/i18n";
 
 const ICONS: Record<NavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -38,7 +39,7 @@ function isActive(pathname: string, href: string) {
 export function Sidebar({ items, user, logout }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  // Хуудас солигдоход mobile цэсийг хаана (render үеийн state шинэчлэл)
+  // Close the mobile menu on navigation (state update during render)
   const [lastPath, setLastPath] = useState(pathname);
   if (pathname !== lastPath) {
     setLastPath(pathname);
@@ -53,9 +54,9 @@ export function Sidebar({ items, user, logout }: Props) {
       <Link href="/admin" className="flex flex-col px-5 pb-6 pt-6 font-serif leading-none">
         <span className="text-[13px] tracking-[0.3em]">BIOLOGIQUE</span>
         <span className="text-[13px] tracking-[0.3em]">RECHERCHE</span>
-        <span className="mt-2 font-sans text-[11px] tracking-[0.4px] text-navy/50">Удирдлагын хэсэг</span>
+        <span className="mt-2 font-sans text-[11px] tracking-[0.4px] text-navy/50">{t.admin.panelName}</span>
       </Link>
-      <nav aria-label="Админ цэс" className="flex-1 overflow-y-auto px-3">
+      <nav aria-label={t.admin.menu} className="flex-1 overflow-y-auto px-3">
         <ul className="space-y-0.5">
           {main.map((item) => {
             const Icon = ICONS[item.icon];
@@ -78,7 +79,7 @@ export function Sidebar({ items, user, logout }: Props) {
         </ul>
         {soon.length > 0 && (
           <>
-            <p className="mt-6 px-2.5 pb-1.5 text-[11px] uppercase tracking-[0.5px] text-navy/40">Удахгүй</p>
+            <p className="mt-6 px-2.5 pb-1.5 text-[11px] uppercase tracking-[0.5px] text-navy/40">{t.admin.soon}</p>
             <ul className="space-y-0.5">
               {soon.map((item) => {
                 const Icon = ICONS[item.icon];
@@ -87,7 +88,7 @@ export function Sidebar({ items, user, logout }: Props) {
                     <span aria-disabled className="flex h-9 cursor-not-allowed items-center gap-2.5 rounded-md px-2.5 text-[14px] text-navy/35">
                       <Icon className="size-4" strokeWidth={1.5} aria-hidden />
                       {item.label}
-                      <span className="ml-auto rounded bg-navy/5 px-1.5 text-[10px] text-navy/50">Удахгүй</span>
+                      <span className="ml-auto rounded bg-navy/5 px-1.5 text-[10px] text-navy/50">{t.admin.soon}</span>
                     </span>
                   </li>
                 );
@@ -106,7 +107,7 @@ export function Sidebar({ items, user, logout }: Props) {
         <form action={logout}>
           <button type="submit" className="flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-[14px] text-navy/80 hover:bg-navy/5">
             <LogOut className="size-4" strokeWidth={1.5} aria-hidden />
-            Гарах
+            {t.admin.logout}
           </button>
         </form>
       </div>
@@ -117,7 +118,7 @@ export function Sidebar({ items, user, logout }: Props) {
     <>
       {/* Mobile top bar */}
       <div className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-white px-3 lg:hidden">
-        <button type="button" onClick={() => setOpen(true)} aria-label="Цэс нээх" className="grid size-9 place-items-center rounded hover:bg-navy/5">
+        <button type="button" onClick={() => setOpen(true)} aria-label={t.admin.openMenu} className="grid size-9 place-items-center rounded hover:bg-navy/5">
           <Menu className="size-5" strokeWidth={1.5} />
         </button>
         <span className="font-serif text-[12px] tracking-[0.3em]">BIOLOGIQUE RECHERCHE</span>
@@ -126,10 +127,10 @@ export function Sidebar({ items, user, logout }: Props) {
       <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 border-r border-line bg-white lg:block">{nav}</aside>
 
       {open && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Админ цэс">
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label={t.admin.menu}>
           <div className="absolute inset-0 bg-navy/30" onClick={() => setOpen(false)} aria-hidden />
           <div className="absolute inset-y-0 left-0 w-[280px] bg-white shadow-xl">
-            <button type="button" onClick={() => setOpen(false)} aria-label="Цэс хаах" className="absolute right-2 top-2 grid size-9 place-items-center rounded hover:bg-navy/5">
+            <button type="button" onClick={() => setOpen(false)} aria-label={t.admin.closeMenu} className="absolute right-2 top-2 grid size-9 place-items-center rounded hover:bg-navy/5">
               <X className="size-5" strokeWidth={1.5} />
             </button>
             {nav}

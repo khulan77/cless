@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { t } from "@/i18n";
 
 type Props = { messages: string[]; intervalMs: number };
 
@@ -25,8 +26,8 @@ export function AnnouncementBar({ messages, intervalMs }: Props) {
     <div
       className="on-dark bg-navy text-white"
       role="region"
-      aria-roledescription="carousel"
-      aria-label="Мэдэгдэл"
+      aria-roledescription={t.common.slider}
+      aria-label={t.layout.announcement}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -37,7 +38,7 @@ export function AnnouncementBar({ messages, intervalMs }: Props) {
           <button
             type="button"
             onClick={() => go(-1)}
-            aria-label="Өмнөх мэдэгдэл"
+            aria-label={t.layout.prevAnnouncement}
             className="grid size-8 shrink-0 place-items-center"
           >
             <ChevronLeft className="size-4" strokeWidth={1.25} aria-hidden />
@@ -60,7 +61,7 @@ export function AnnouncementBar({ messages, intervalMs }: Props) {
           <button
             type="button"
             onClick={() => go(1)}
-            aria-label="Дараагийн мэдэгдэл"
+            aria-label={t.layout.nextAnnouncement}
             className="grid size-8 shrink-0 place-items-center"
           >
             <ChevronRight className="size-4" strokeWidth={1.25} aria-hidden />
