@@ -29,7 +29,8 @@ export function Hero({ hero }: { hero: HeroSetting }) {
     const { style: fillStyle, ...img } = desktop;
     picture = (
       <picture>
-        {mobile && <source media="(max-width: 767px)" srcSet={mobile.srcSet} sizes="100vw" />}
+        {/* Unoptimized images (NEXT_IMAGE_UNOPTIMIZED) have no srcSet — fall back to the file itself */}
+        {mobile && <source media="(max-width: 767px)" srcSet={mobile.srcSet ?? mobile.src} sizes="100vw" />}
         <img
           {...img}
           alt={hero.image.alt}
