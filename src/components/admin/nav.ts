@@ -2,7 +2,7 @@ import { t } from "@/i18n";
 import type { Permission } from "@/server/auth/permissions";
 
 export type NavIcon =
-  | "dashboard" | "calendar" | "schedule" | "account"
+  | "dashboard" | "report" | "calendar" | "schedule" | "account"
   | "cash" | "pos" | "orders" | "shift"
   | "people" | "customers" | "inquiries"
   | "shop" | "product" | "stock" | "collection" | "content"
@@ -27,7 +27,7 @@ const n = t.admin.nav;
 
 // Filtered by permission in layout.tsx (a group with no visible child disappears); every page re-checks its own permission.
 export const ADMIN_NAV: NavEntry[] = [
-  { href: "/admin", label: n.dashboard, icon: "dashboard", permission: "schedule:all" },
+  { href: "/admin", label: n.dashboard, icon: "report", permission: "schedule:all" },
   { href: "/admin/calendar", label: n.calendar, icon: "calendar", permission: "appointment:read" },
   // STAFF: their own schedule + account (no groups)
   { href: "/admin/schedule", label: n.schedule, icon: "schedule", permission: "schedule:own", hiddenWith: "schedule:all" },

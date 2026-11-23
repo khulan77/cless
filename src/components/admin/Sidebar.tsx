@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Activity, BadgePercent, Banknote, Boxes, CalendarDays, CalendarRange, ChevronDown, ChevronsLeft, ChevronsRight, Contact, CreditCard,
+  Activity, BadgePercent, BarChart3, Banknote, Boxes, CalendarDays, CalendarRange, ChevronDown, ChevronsLeft, ChevronsRight, Contact, CreditCard,
   DoorOpen, FileText, Flower2, FolderTree, Inbox, LayoutDashboard, LogOut, Mail, Menu, Package, Receipt, Settings, ShoppingBag,
   Sparkles, Store, UserCog, UserRound, Users, Wallet, X, type LucideIcon,
 } from "lucide-react";
@@ -14,6 +14,7 @@ import { isGroup, type NavEntry, type NavGroup, type NavIcon, type NavLeaf } fro
 
 const ICONS: Record<NavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
+  report: BarChart3,
   calendar: CalendarDays,
   schedule: CalendarRange,
   account: UserRound,

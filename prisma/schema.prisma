@@ -789,6 +789,8 @@ model Sale {
   ebarimt            EbarimtReceipt?
 
   @@index([branchId, status, createdAt])
+  /// Тайлан: төлөгдсөн огноогоор (reports)
+  @@index([branchId, status, paidAt])
   @@index([customerId])
   @@index([status, lockedAt])
   @@index([createdById, status, updatedAt])
