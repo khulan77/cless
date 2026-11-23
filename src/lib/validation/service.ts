@@ -11,6 +11,13 @@ export const serviceInputSchema = z
     bufferMin: intSchema(0, 120),
     requiresRoom: z.boolean(),
     bookable: z.boolean(),
+    /** Сайтын /services хуудсанд харагдах эсэх */
+    isPublic: z.boolean().default(true),
+    category: optionalText(80),
+    shortDescription: optionalText(240),
+    suitableFor: optionalText(1000),
+    results: optionalText(1000),
+    priceFrom: z.boolean().default(false),
     price: moneySchema,
     costNote: optionalText(1000),
     image: imageUrlSchema.nullable(),

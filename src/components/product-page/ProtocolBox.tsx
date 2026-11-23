@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { SizeOptions, defaultVariantId } from "@/components/product/VariantPicker";
+import { useCatalogMode } from "@/components/salon/StorefrontContext";
 import { Img } from "@/components/ui/Img";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
@@ -11,6 +12,7 @@ import type { ProductCardData } from "@/server/queries/catalog";
 
 function ProtocolItem({ product }: { product: ProductCardData }) {
   const [selectedId, setSelectedId] = useState(() => defaultVariantId(product.variants));
+  const catalog = useCatalogMode();
   const selected = product.variants.find((v) => v.id === selectedId) ?? product.variants[0];
   const img = product.images[0];
   return (
@@ -28,8 +30,10 @@ function ProtocolItem({ product }: { product: ProductCardData }) {
             <SizeOptions variants={product.variants} selectedId={selected?.id} onSelect={setSelectedId} />
           </div>
         )}
-        {selected?.available ? (
-          // TODO (cart round): add to cart
+        {catalog ? (
+          selected && <p className="mt-2 text-[13px] text-muted">{!selected.available ? t.stock.soldOut : selected.lowStock ? t.stock.low : t.stock.inSalon}</p>
+        ) : selected?.available ? (
+          // TODO (checkout phase): add to cart
           <button type="button" className="link-underline mt-2 text-[13px]">
             {t.product.addToCart}
           </button>
@@ -64,10 +68,10 @@ export function ProtocolBox({ items }: { items: ProductCardData[] }) {
           <h2 className="text-micro">{t.product.protocol}</h2>
           {items.length > 1 && (
             <div className="flex gap-1">
-              <button type="button" onClick={() => setIndex((index - 1 + items.length) % items.length)} aria-label={t.product.protocolPrev} className="grid size-8 place-items-center rounded-full hover:bg-white">
+              <button type="button" onClick={() => setIndex((index - 1 + items.length) % items.length)} aria-label={t.product.protocolPrev} className="grid size-11 place-items-center rounded-full hover:bg-white">
                 <ChevronLeft className="size-4" strokeWidth={1.25} aria-hidden />
               </button>
-              <button type="button" onClick={() => setIndex((index + 1) % items.length)} aria-label={t.product.protocolNext} className="grid size-8 place-items-center rounded-full hover:bg-white">
+              <button type="button" onClick={() => setIndex((index + 1) % items.length)} aria-label={t.product.protocolNext} className="grid size-11 place-items-center rounded-full hover:bg-white">
                 <ChevronRight className="size-4" strokeWidth={1.25} aria-hidden />
               </button>
             </div>

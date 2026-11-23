@@ -3,12 +3,15 @@
 import { ShoppingBag } from "lucide-react";
 import { createContext, useContext, useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { SizeOptions, defaultVariantId } from "@/components/product/VariantPicker";
+import { InquirySheet } from "@/components/salon/InquirySheet";
+import { useCatalogMode } from "@/components/salon/StorefrontContext";
 import { Img } from "@/components/ui/Img";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import type { CardVariant } from "@/server/queries/catalog";
 
 type Ctx = {
+  productName: string;
   variants: CardVariant[];
   selected: CardVariant;
   select: (id: string) => void;
@@ -32,7 +35,17 @@ const subscribeUrl = (cb: () => void) => {
 };
 const readUrlVariant = () => new URLSearchParams(window.location.search).get("variant");
 
-export function PurchaseProvider({ variants, isBundle, children }: { variants: CardVariant[]; isBundle: boolean; children: ReactNode }) {
+export function PurchaseProvider({
+  productName,
+  variants,
+  isBundle,
+  children,
+}: {
+  productName: string;
+  variants: CardVariant[];
+  isBundle: boolean;
+  children: ReactNode;
+}) {
   const urlVariant = useSyncExternalStore(subscribeUrl, readUrlVariant, () => null);
   const [chosen, setChosen] = useState<string | null>(null);
   const [mainButton, setMainButton] = useState<HTMLElement | null>(null);
@@ -50,22 +63,40 @@ export function PurchaseProvider({ variants, isBundle, children }: { variants: C
 
   return (
     <PurchaseContext.Provider
-      value={{ variants, selected, select, allSoldOut: variants.every((v) => !v.available), isBundle, mainButton, setMainButton }}
+      value={{ productName, variants, selected, select, allSoldOut: variants.every((v) => !v.available), isBundle, mainButton, setMainButton }}
     >
       {children}
     </PurchaseContext.Provider>
   );
 }
 
+/** CATALOG stock wording: in the salon / few left / sold out — we'll let you know */
+export function stockLabel(v: CardVariant): string {
+  if (!v.available) return t.stock.soldOut;
+  return v.lowStock ? t.stock.low : t.stock.inSalon;
+}
+
 export function PriceLine() {
   const { selected, isBundle } = usePurchase();
+  const catalog = useCatalogMode();
   return (
-    <div className="mt-5 flex items-baseline gap-2" aria-live="polite">
+    <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1" aria-live="polite">
       <span className="text-[19px]">{formatMNT(selected.price)}</span>
       {!isBundle && <span className="text-[14px] text-muted">{selected.size}</span>}
-      {selected.lowStock && <span className="ml-auto text-[12px] text-muted">{t.product.lowStock}</span>}
+      {catalog ? (
+        <span className={`ml-auto text-[13px] ${selected.available ? "text-navy" : "text-muted"}`} data-testid="stock-label">
+          {stockLabel(selected)}
+        </span>
+      ) : (
+        selected.lowStock && <span className="ml-auto text-[12px] text-muted">{t.product.lowStock}</span>
+      )}
     </div>
   );
+}
+
+function useInquiryProduct() {
+  const { productName, selected, isBundle } = usePurchase();
+  return { variantId: selected.id, name: productName, size: isBundle ? null : selected.size, price: selected.price };
 }
 
 export function SizeSelector() {
@@ -81,7 +112,29 @@ export function SizeSelector() {
 
 export function AddToCartMain() {
   const { selected, allSoldOut, setMainButton } = usePurchase();
+  const catalog = useCatalogMode();
+  const product = useInquiryProduct();
   const soldOut = allSoldOut || !selected.available;
+  if (catalog) {
+    // Sold out too: the hold request doubles as "let me know when it arrives"
+    return (
+      <div className="mt-6" ref={setMainButton}>
+        <InquirySheet
+          product={product}
+          trigger={(open) => (
+            <button
+              type="button"
+              onClick={open}
+              aria-haspopup="dialog"
+              className="flex min-h-12 w-full items-center justify-center rounded-full bg-navy text-[15px] tracking-[0.02em] text-white transition-opacity hover:opacity-90"
+            >
+              {t.inquiry.cta}
+            </button>
+          )}
+        />
+      </div>
+    );
+  }
   return (
     <div className="mt-6" ref={setMainButton}>
       {soldOut ? (
@@ -132,6 +185,8 @@ function NotifyMe() {
 /** Slides up once the main add-to-cart button has scrolled out of view */
 export function StickyPurchaseBar({ name, image }: { name: string; image: { src: string; alt: string } | null }) {
   const { selected, mainButton, allSoldOut, isBundle } = usePurchase();
+  const catalog = useCatalogMode();
+  const product = useInquiryProduct();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -163,13 +218,30 @@ export function StickyPurchaseBar({ name, image }: { name: string; image: { src:
             {formatMNT(selected.price)}
           </p>
         </div>
-        <button
-          type="button"
-          disabled={soldOut}
-          className="h-11 w-full rounded-full bg-navy px-8 text-[14px] text-white transition-opacity hover:opacity-90 disabled:bg-navy/30 sm:w-auto"
-        >
-          {soldOut ? t.product.soldOut : `${t.product.addToCart} · ${formatMNT(selected.price)}`}
-        </button>
+        {catalog ? (
+          <InquirySheet
+            product={product}
+            trigger={(open) => (
+              <button
+                type="button"
+                onClick={open}
+                aria-haspopup="dialog"
+                className="min-h-12 w-full rounded-full bg-navy px-8 text-[15px] text-white transition-opacity hover:opacity-90 sm:w-auto"
+              >
+                {t.inquiry.cta}
+                <span className="sm:hidden"> · {formatMNT(selected.price)}</span>
+              </button>
+            )}
+          />
+        ) : (
+          <button
+            type="button"
+            disabled={soldOut}
+            className="h-11 w-full rounded-full bg-navy px-8 text-[14px] text-white transition-opacity hover:opacity-90 disabled:bg-navy/30 sm:w-auto"
+          >
+            {soldOut ? t.product.soldOut : `${t.product.addToCart} · ${formatMNT(selected.price)}`}
+          </button>
+        )}
       </div>
     </div>
   );

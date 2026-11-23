@@ -109,15 +109,14 @@ export const settingSchemas = {
         }),
       )
       .max(6),
+    // Холбоо барих / сошиал / ажлын цаг — Тохиргоо → Салоны мэдээлэл ба Ажлын хуваарьт
+    // (өөрийн шалгалттай) засагдана. Энд зөвхөн бүтцийг дамжуулна.
     contact: z.object({
       title: requiredText(60),
-      address: requiredText(300),
-      phone: phoneSchema,
-      email: z.string().trim().pipe(z.email("Имэйл хаяг буруу байна.")),
-      hours: z
-        .array(z.string().trim())
-        .transform((rows) => rows.filter(Boolean))
-        .pipe(z.array(requiredText(80)).min(1, "Дор хаяж нэг мөр ажлын цаг оруулна уу.").max(7, "7-оос ихгүй мөр.")),
+      address: z.string().trim().max(300),
+      phone: z.string().trim().max(40),
+      email: z.string().trim().max(200),
+      hours: z.array(z.string().trim().max(80)).max(7).default([]),
       /** Google Maps-ийн холбоос (заавал биш) */
       mapsUrl: mapsUrlSchema,
     }),

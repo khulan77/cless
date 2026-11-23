@@ -14,6 +14,7 @@ import {
   savePosSettings,
   saveQPayMode,
   saveSalonSettings,
+  saveShopMode,
   type SalonInput,
 } from "@/server/modules/settings/admin-settings";
 
@@ -52,6 +53,16 @@ export async function saveSalonAction(input: SalonInput) {
     updateTag("settings");
     revalidatePath("/admin/settings");
   }, "Салоны мэдээлэл хадгалагдлаа.");
+}
+
+export async function saveShopModeAction(mode: "CATALOG" | "CHECKOUT") {
+  return runAction(async () => {
+    const user = await requirePermission("settings:write");
+    await saveShopMode(mode, user.id);
+    // Header, бүтээгдэхүүний хуудас, footer — бүгд горимоос хамаарна
+    updateTag("settings");
+    revalidatePath("/admin/settings");
+  }, "Дэлгүүрийн горим хадгалагдлаа.");
 }
 
 export async function savePosSettingsAction(input: Parameters<typeof savePosSettings>[0]) {

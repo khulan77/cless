@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Img } from "@/components/ui/Img";
+import { BrandFallback, Img } from "@/components/ui/Img";
 import { t } from "@/i18n";
 
 type Image = { src: string; alt: string };
@@ -29,7 +29,12 @@ export function ProductGallery({ images, name }: { images: Image[]; name: string
     if (!zoom && el.open) el.close();
   }, [zoom]);
 
-  if (count === 0) return <div className="aspect-square bg-card" />;
+  if (count === 0)
+    return (
+      <div className="relative aspect-square">
+        <BrandFallback fill />
+      </div>
+    );
   const alt = (img: Image, i: number) => img.alt || t.product.imageN(name, i + 1);
   const current = images[index];
 

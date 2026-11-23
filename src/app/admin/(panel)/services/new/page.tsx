@@ -1,5 +1,6 @@
 import { ServiceForm } from "@/components/admin/services/ServiceForm";
 import { PageHeader } from "@/components/admin/ui";
+import { serviceCategories } from "@/server/modules/services/categories";
 import { requirePagePermission } from "@/server/auth/session";
 
 export const metadata = { title: "Шинэ үйлчилгээ" };
@@ -12,8 +13,9 @@ export default async function NewServicePage() {
     <>
       <PageHeader title="Шинэ үйлчилгээ" />
       <ServiceForm
+        categories={await serviceCategories()}
         variantLabels={{}}
-        initial={{ name: "", slug: "", description: "", durationMin: 60, bufferMin: 0, requiresRoom: false, bookable: true, price: 0, costNote: "", image: null, isActive: true, sortOrder: 0, consumables: [] }}
+        initial={{ name: "", slug: "", description: "", durationMin: 60, bufferMin: 0, requiresRoom: false, bookable: true, isPublic: true, category: "", shortDescription: "", suitableFor: "", results: "", priceFrom: false, price: 0, costNote: "", image: null, isActive: true, sortOrder: 0, consumables: [] }}
       />
     </>
   );

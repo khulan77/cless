@@ -31,20 +31,11 @@ describe("footer / contact setting", () => {
     expect(settingSchemas.footer.safeParse(validFooter()).success).toBe(true);
   });
 
-  it("drops empty hour lines but requires at least one", () => {
+  it("passes contact details through (they are validated in Тохиргоо → Салоны мэдээлэл)", () => {
     const f = validFooter();
-    f.contact.hours = ["Даваа–Баасан 10:00–20:00", "", "  "];
-    const r = settingSchemas.footer.safeParse(f);
-    expect(r.success && r.data.contact.hours).toEqual(["Даваа–Баасан 10:00–20:00"]);
-
-    f.contact.hours = ["", " "];
-    expect(errorPaths(f)).toContain("contact.hours");
-  });
-
-  it("rejects an invalid email", () => {
-    const f = validFooter();
-    f.contact.email = "info@";
-    expect(errorPaths(f)).toContain("contact.email");
+    f.contact.phone = "";
+    f.contact.email = "";
+    expect(settingSchemas.footer.safeParse(f).success).toBe(true);
   });
 
   it("rejects a social URL on the wrong host or without https", () => {

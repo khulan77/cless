@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Activity, Banknote, BarChart3, Boxes, CalendarClock, CalendarDays, CalendarRange, Contact, CreditCard, DoorOpen, FileText, FolderTree,
+  Activity, Banknote, BarChart3, Boxes, CalendarClock, CalendarDays, CalendarRange, Contact, CreditCard, DoorOpen, FileText, FolderTree, Inbox,
   LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, Sparkles, UserCog, Users, Wallet, X, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +29,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   account: UserCog,
   settings: Settings,
   system: Activity,
+  inquiries: Inbox,
   report: BarChart3,
   payroll: Wallet,
 };

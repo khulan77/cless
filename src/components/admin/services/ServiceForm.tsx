@@ -17,9 +17,9 @@ import { t } from "@/i18n";
 const num = (v: string) => (v === "" ? Number.NaN : Number(v));
 const numValue = (v: number) => (Number.isNaN(v) ? "" : v);
 
-type Props = { initial: ServiceInput; variantLabels: Record<string, string> };
+type Props = { initial: ServiceInput; variantLabels: Record<string, string>; categories: string[] };
 
-export function ServiceForm({ initial, variantLabels: initialLabels }: Props) {
+export function ServiceForm({ initial, variantLabels: initialLabels, categories }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<ServiceInput>(initial);
   const [labels, setLabels] = useState(initialLabels);
@@ -75,6 +75,32 @@ export function ServiceForm({ initial, variantLabels: initialLabels }: Props) {
             </Field>
             <Field label={t.admin.serviceForm.costNote} htmlFor="costNote" hint={t.admin.serviceForm.costNoteHint} className="md:col-span-2">
               <Textarea id="costNote" rows={2} value={form.costNote ?? ""} onChange={(e) => set("costNote", e.target.value)} />
+            </Field>
+          </div>
+        </Card>
+
+        <Card title={t.admin.serviceForm.site} description={t.admin.serviceForm.siteHint}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label={t.admin.serviceForm.category} htmlFor="category" hint={t.admin.serviceForm.categoryHint} error={err("category")}>
+              <Input id="category" list="service-categories" value={form.category ?? ""} onChange={(e) => set("category", e.target.value)} />
+              <datalist id="service-categories">
+                {categories.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </Field>
+            <div className="flex flex-col justify-end gap-2">
+              <Checkbox label={t.admin.serviceForm.isPublic} checked={form.isPublic ?? true} onChange={(e) => set("isPublic", e.target.checked)} />
+              <Checkbox label={t.admin.serviceForm.priceFrom} checked={form.priceFrom ?? false} onChange={(e) => set("priceFrom", e.target.checked)} />
+            </div>
+            <Field label={t.admin.serviceForm.shortDescription} htmlFor="shortDescription" hint={t.admin.serviceForm.shortDescriptionHint} error={err("shortDescription")} className="md:col-span-2">
+              <Input id="shortDescription" value={form.shortDescription ?? ""} onChange={(e) => set("shortDescription", e.target.value)} />
+            </Field>
+            <Field label={t.admin.serviceForm.suitableFor} htmlFor="suitableFor" error={err("suitableFor")}>
+              <Textarea id="suitableFor" rows={3} value={form.suitableFor ?? ""} onChange={(e) => set("suitableFor", e.target.value)} />
+            </Field>
+            <Field label={t.admin.serviceForm.results} htmlFor="results" error={err("results")}>
+              <Textarea id="results" rows={3} value={form.results ?? ""} onChange={(e) => set("results", e.target.value)} />
             </Field>
           </div>
         </Card>

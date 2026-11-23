@@ -68,3 +68,13 @@ export type BookingSettings = z.infer<typeof bookingSettingsSchema>;
 export type PosSettings = z.infer<typeof posSettingsSchema>;
 export type TaxSettings = z.infer<typeof taxSettingsSchema>;
 export type QPaySettings = z.infer<typeof qpaySettingsSchema>;
+
+/**
+ * Дэлгүүрийн горим. CATALOG — сагс/checkout нуугдаж "Салонд захиалах" (2-р үе шат хүртэл).
+ * CHECKOUT-ийг онлайн төлбөр бэлэн болсны дараа л асаана (одоо сонгох боломжгүй).
+ */
+export const SHOP_MODES = ["CATALOG", "CHECKOUT"] as const;
+export type ShopMode = (typeof SHOP_MODES)[number];
+export const shopSettingsSchema = z.object({ mode: z.enum(SHOP_MODES).catch("CATALOG") });
+/** Онлайн төлбөр (2-р үе шат) бэлэн болтол false */
+export const CHECKOUT_AVAILABLE = false;

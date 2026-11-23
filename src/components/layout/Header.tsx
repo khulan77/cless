@@ -1,6 +1,8 @@
-import { Search, ShoppingBag, User } from "lucide-react";
+import { Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { t } from "@/i18n";
+import { BookingSheetButton } from "@/components/salon/BookingSheet";
+import type { SalonContact } from "@/components/salon/ContactActions";
 import type { ResolvedNavItem } from "@/server/queries/catalog";
 import { HeaderShell } from "./HeaderShell";
 import { MobileMenu } from "./MobileMenu";
@@ -9,19 +11,22 @@ type Props = {
   wordmark: string[];
   siteName: string;
   nav: ResolvedNavItem[];
-  /** TODO (cart round): real cart count */
+  salon: SalonContact;
+  /** CATALOG: no cart — the booking sheet takes its place */
+  shopMode: "CATALOG" | "CHECKOUT";
+  /** TODO (checkout phase): real cart count */
   cartCount?: number;
 };
 
 const iconCls = "size-[22px]";
 
-export function Header({ wordmark, siteName, nav, cartCount = 0 }: Props) {
+export function Header({ wordmark, siteName, nav, salon, shopMode, cartCount = 0 }: Props) {
   return (
     <HeaderShell>
       <div className="mx-auto grid h-16 max-w-[1376px] grid-cols-[1fr_auto_1fr] items-center px-2 md:h-[76px] md:px-10">
         <div className="flex items-center gap-1">
-          <MobileMenu items={nav} />
-          <Link href="/search" aria-label={t.layout.search} className="grid size-10 place-items-center">
+          <MobileMenu items={nav} salon={salon} />
+          <Link href="/search" aria-label={t.layout.search} className="grid size-11 place-items-center">
             <Search className={iconCls} strokeWidth={1.25} aria-hidden />
           </Link>
         </div>
@@ -43,24 +48,25 @@ export function Header({ wordmark, siteName, nav, cartCount = 0 }: Props) {
         </Link>
 
         <div className="flex items-center justify-end gap-1">
-          <Link href="/account" aria-label={t.layout.account} className="grid size-10 place-items-center">
-            <User className={iconCls} strokeWidth={1.25} aria-hidden />
-          </Link>
-          <Link
-            href="/cart"
-            aria-label={cartCount > 0 ? t.layout.cartWithCount(cartCount) : t.layout.cart}
-            className="relative grid size-10 place-items-center"
-          >
-            <ShoppingBag className={iconCls} strokeWidth={1.25} aria-hidden />
-            {cartCount > 0 && (
-              <span
-                aria-hidden
-                className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-navy px-1 text-[10px] leading-4 text-white header-cart-count"
-              >
-                {cartCount}
-              </span>
-            )}
-          </Link>
+          {shopMode === "CATALOG" ? (
+            <BookingSheetButton salon={salon} variant="icon" />
+          ) : (
+            <Link
+              href="/cart"
+              aria-label={cartCount > 0 ? t.layout.cartWithCount(cartCount) : t.layout.cart}
+              className="relative grid size-11 place-items-center"
+            >
+              <ShoppingBag className={iconCls} strokeWidth={1.25} aria-hidden />
+              {cartCount > 0 && (
+                <span
+                  aria-hidden
+                  className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-navy px-1 text-[10px] leading-4 text-white header-cart-count"
+                >
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+          )}
         </div>
       </div>
     </HeaderShell>

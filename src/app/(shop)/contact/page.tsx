@@ -1,23 +1,26 @@
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { SocialIcon } from "@/components/layout/SocialIcon";
-import { ComingSoon } from "@/components/ui/ComingSoon";
 import { Container } from "@/components/ui/Container";
 import { t } from "@/i18n";
-import { getSetting } from "@/server/queries/settings";
+import { BookingSheetButton } from "@/components/salon/BookingSheet";
+import { getSalonInfo } from "@/server/queries/storefront";
 
 export const metadata = { title: t.pages.contact.title };
 
 const C = t.pages.contact;
 
-/** Reads the same "footer" setting the footer uses, so both always match */
+/** Same single source as the footer, header sheet and salon page (Settings + branch hours) */
 export default async function ContactPage() {
-  const footer = await getSetting("footer");
-  if (!footer) return <ComingSoon title={C.title} text={C.text} />;
-  const { contact } = footer;
-  const socials = footer.socials.filter((s) => s.href);
+  const salon = await getSalonInfo();
+  const contact = { ...salon, hours: salon.hoursLines };
+  const tel = salon.phone.replace(/[^\d+]/g, "");
+  const socials = [
+    salon.instagram ? { network: "instagram" as const, href: salon.instagram, label: "Instagram" } : null,
+    salon.facebook ? { network: "facebook" as const, href: salon.facebook, label: "Facebook" } : null,
+  ].filter((x) => x !== null);
 
   const rows = [
-    {
+    contact.address && {
       icon: MapPin,
       label: C.address,
       content: (
@@ -34,16 +37,16 @@ export default async function ContactPage() {
         </span>
       ),
     },
-    {
+    tel && {
       icon: Phone,
       label: C.phone,
       content: (
-        <a href={`tel:${contact.phone.replace(/[\s-]+/g, "")}`} className="link-underline">
+        <a href={`tel:${tel}`} className="link-underline">
           {contact.phone}
         </a>
       ),
     },
-    {
+    contact.email && {
       icon: Mail,
       label: C.email,
       content: (
@@ -52,7 +55,7 @@ export default async function ContactPage() {
         </a>
       ),
     },
-    {
+    contact.hours.length > 0 && {
       icon: Clock,
       label: C.hours,
       content: (
@@ -63,7 +66,7 @@ export default async function ContactPage() {
         </ul>
       ),
     },
-  ];
+  ].filter((r) => !!r);
 
   return (
     <Container as="section" className="py-16 md:py-24">
@@ -83,6 +86,10 @@ export default async function ContactPage() {
           </div>
         ))}
       </dl>
+
+      <div className="mt-10 text-center">
+        <BookingSheetButton salon={salon} />
+      </div>
 
       {socials.length > 0 && (
         <div className="mt-12 text-center">

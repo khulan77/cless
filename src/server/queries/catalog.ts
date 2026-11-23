@@ -1,4 +1,5 @@
 import "server-only";
+import { realImageSrc } from "@/lib/placeholder";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/server/db";
 import type { BadgeType, CollectionKind, Prisma, ProductKind, RelationType } from "@/generated/prisma/client";
@@ -95,7 +96,7 @@ function toCard(p: CardRow): ProductCardData {
     kind: p.kind,
     badge: p.badge,
     benefits: p.benefits,
-    images: p.images.map((i) => ({ src: i.url, alt: i.alt })),
+    images: publicImages(p.images),
     variants: p.variants.map((v) => {
       const a = variantAvailability(v);
       return {
@@ -109,6 +110,11 @@ function toCard(p: CardRow): ProductCardData {
     }),
     bundleSummary: isBundle ? p.bundleItems.map((i) => `${i.variant.product.name} ${i.variant.size}`).join(" / ") : null,
   };
+}
+
+/** Production: dev placeholder (/placeholders/…) зургийг клиент рүү огт дамжуулахгүй */
+function publicImages(list: { url: string; alt: string }[]) {
+  return list.filter((i) => realImageSrc(i.url)).map((i) => ({ src: i.url, alt: i.alt }));
 }
 
 // ─────────────── Нүүр хуудас ───────────────
@@ -166,7 +172,7 @@ export async function getCollections(
     take: opts.limit,
     select: { slug: true, name: true, heading: true, tileImage: true },
   });
-  return rows.map((c) => ({ slug: c.slug, name: c.name, heading: c.heading, image: c.tileImage, href: collectionHref(c.slug) }));
+  return rows.map((c) => ({ slug: c.slug, name: c.name, heading: c.heading, image: realImageSrc(c.tileImage), href: collectionHref(c.slug) }));
 }
 
 function collectionsFor(source: Pick<NavCollectionSource, "kind" | "parentSlug" | "slugs">) {
@@ -338,7 +344,7 @@ export async function getCollectionPage(slug: string): Promise<CollectionPageDat
     kind: c.kind,
     intro: c.intro,
     seoText: c.seoText,
-    bannerImage: c.bannerImage,
+    bannerImage: realImageSrc(c.bannerImage),
     breadcrumb,
     parent: c.parent ? linkOf(c.parent) : null,
     siblings: siblings.map(linkOf),
@@ -346,7 +352,7 @@ export async function getCollectionPage(slug: string): Promise<CollectionPageDat
     tiles: c.tiles.map((t) => ({
       id: t.id,
       position: t.position,
-      image: t.image,
+      image: realImageSrc(t.image) ?? "",
       eyebrow: t.eyebrow,
       title: t.title,
       text: t.text,
@@ -508,7 +514,7 @@ export async function getProductPage(slug: string): Promise<ProductPageData | nu
     clinicalNotes: p.clinicalNotes,
     seoTitle: p.seoTitle,
     seoDescription: p.seoDescription,
-    gallery: p.images.map((i) => ({ src: i.url, alt: i.alt })),
+    gallery: publicImages(p.images),
     skus: Object.fromEntries(p.variants.map((v) => [v.id, v.sku])),
     breadcrumb: category.map((c) => ({ name: c.name, href: collectionHref(c.slug) })),
     bundleItems: p.bundleItems.map((b) => {
@@ -518,7 +524,7 @@ export async function getProductPage(slug: string): Promise<ProductPageData | nu
         name: b.variant.product.name,
         size: b.variant.size,
         qty: b.qty,
-        image: img ? { src: img.url, alt: img.alt } : null,
+        image: img && realImageSrc(img.url) ? { src: img.url, alt: img.alt } : null,
         available: b.variant.isActive && b.variant.stock - b.variant.reserved >= b.qty,
       };
     }),
@@ -565,6 +571,65 @@ export type ServiceListItem = {
   image: string | null;
 };
 
+export type PublicService = {
+  slug: string;
+  name: string;
+  category: string | null;
+  shortDescription: string | null;
+  description: string;
+  suitableFor: string | null;
+  results: string | null;
+  durationMin: number;
+  price: number;
+  priceFrom: boolean;
+  image: string | null;
+};
+
+const PUBLIC_SERVICE = { isActive: true, bookable: true, isPublic: true } as const;
+const publicServiceSelect = {
+  slug: true, name: true, category: true, shortDescription: true, description: true, suitableFor: true, results: true,
+  durationMin: true, price: true, priceFrom: true, image: true,
+} as const;
+
+/** /services: идэвхтэй, цаг захиалж болох, сайтад нийтэлсэн үйлчилгээ ангиллаар (эхэнд гарсан дарааллаар) */
+export async function getPublicServiceGroups(): Promise<{ category: string | null; services: PublicService[] }[]> {
+  "use cache";
+  cacheLife(HOME_CACHE);
+  cacheTag("catalog", "services");
+  const rows = await db.service.findMany({ where: PUBLIC_SERVICE, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: publicServiceSelect });
+  const groups: { category: string | null; services: PublicService[] }[] = [];
+  for (const r of rows) {
+    const key = r.category?.trim() || null;
+    const g = groups.find((x) => x.category === key);
+    if (g) g.services.push(r);
+    else groups.push({ category: key, services: [r] });
+  }
+  // Ангилалгүй нь хамгийн сүүлд
+  return [...groups.filter((g) => g.category), ...groups.filter((g) => !g.category)];
+}
+
+export async function getPublicService(slug: string): Promise<(PublicService & { related: PublicService[] }) | null> {
+  "use cache";
+  cacheLife(HOME_CACHE);
+  cacheTag("catalog", "services");
+  const s = await db.service.findFirst({ where: { slug, ...PUBLIC_SERVICE }, select: publicServiceSelect });
+  if (!s) return null;
+  const related = await db.service.findMany({
+    where: { ...PUBLIC_SERVICE, slug: { not: slug }, ...(s.category ? { category: s.category } : {}) },
+    orderBy: [{ sortOrder: "asc" }],
+    take: 3,
+    select: publicServiceSelect,
+  });
+  return { ...s, related };
+}
+
+export async function getPublicServiceSlugs(): Promise<string[]> {
+  "use cache";
+  cacheLife(HOME_CACHE);
+  cacheTag("catalog", "services");
+  return (await db.service.findMany({ where: PUBLIC_SERVICE, select: { slug: true } })).map((s) => s.slug);
+}
+
 export async function getActiveServices(): Promise<ServiceListItem[]> {
   "use cache";
   cacheLife(HOME_CACHE);
@@ -574,4 +639,28 @@ export async function getActiveServices(): Promise<ServiceListItem[]> {
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     select: { slug: true, name: true, description: true, durationMin: true, price: true, image: true },
   });
+}
+
+/** /search — нийтлэгдсэн бүтээгдэхүүн (нэр, tagline, SKU) ба сайтын үйлчилгээ (нэр). Энгийн ILIKE. */
+export async function searchStorefront(raw: string): Promise<{ products: ProductCardData[]; services: PublicService[] }> {
+  "use cache";
+  cacheLife(HOME_CACHE);
+  cacheTag("catalog", "services");
+  const q = raw.trim().slice(0, 80);
+  if (q.length < 2) return { products: [], services: [] };
+  const like = { contains: q, mode: "insensitive" as const };
+  const [products, services] = await Promise.all([
+    db.product.findMany({
+      where: {
+        isPublished: true,
+        variants: { some: { isActive: true } },
+        OR: [{ name: like }, { tagline: like }, { variants: { some: { sku: like, isActive: true } } }],
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      take: 24,
+      select: cardSelect,
+    }),
+    db.service.findMany({ where: { ...PUBLIC_SERVICE, name: like }, orderBy: [{ sortOrder: "asc" }], take: 6, select: publicServiceSelect }),
+  ]);
+  return { products: products.map(toCard), services };
 }

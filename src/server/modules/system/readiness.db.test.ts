@@ -21,17 +21,22 @@ const failing = async () => (await readiness()).items.filter((i) => !i.ok).map((
 
 describe("launch readiness", () => {
   it("lists what is missing, then passes when everything is set; launching locks seed/reset", async () => {
-    expect(await failing()).toEqual(["salon", "services", "staff", "products", "qpay", "worker"]);
+    expect(await failing()).toEqual(["salon", "services", "staff", "products", "hero", "productImages", "qpay", "worker"]);
     await expect(markLaunched(admin.id)).rejects.toThrow(/биелээгүй/);
 
     await saveSalonSettings(
-      { name: "CLÉSS", address: "Улаанбаатар, СБД", phone: "77112233", email: "info@cless.mn", hours: ["Да–Бя 10–20"], instagram: "", facebook: "", mapsUrl: "" },
+      { name: "CLÉSS", address: "Улаанбаатар, СБД", phone: "77112233", email: "info@cless.mn", instagram: "", facebook: "", mapsUrl: "" },
       admin.id,
     );
     await makeService({ price: 100_000 });
     await makeBookableStaff();
     const v = await makeVariant({ price: 1000, stock: 1 });
+    // A dev placeholder does not count as an image
+    await db.productImage.create({ data: { productId: v.productId, url: "/placeholders/product-1.svg", alt: "x" } });
+    await db.siteSetting.create({ data: { key: "hero", value: { image: { src: "/placeholders/hero.svg", alt: "" } } } });
+    expect(await failing()).toEqual(expect.arrayContaining(["products", "hero", "productImages"]));
     await db.productImage.create({ data: { productId: v.productId, url: "/x.jpg", alt: "x" } });
+    await db.siteSetting.update({ where: { key: "hero" }, data: { value: { image: { src: "/uploads/hero.jpg", alt: "Салон" } } } });
     await db.siteSetting.create({ data: { key: "qpay", value: { mode: "manual" } } });
     await beat();
     // makeUser / makeBookableStaff use @test.mn — not seed data
@@ -49,6 +54,17 @@ describe("launch readiness", () => {
     const at = await markLaunched(admin.id);
     expect((await readiness()).launchedAt).toBe(at);
     expect(await db.auditLog.count({ where: { action: "system.launched" } })).toBe(1);
+  });
+
+  it("product images: under 90% of public products with a real photo fails", async () => {
+    for (let i = 0; i < 10; i++) {
+      const v = await makeVariant({ price: 1000, stock: 1 });
+      if (i < 8) await db.productImage.create({ data: { productId: v.productId, url: `/uploads/${i}.jpg`, alt: "x" } });
+    }
+    expect((await readiness()).items.find((i) => i.key === "productImages")).toMatchObject({ ok: false, detail: "8/10 (80%)" });
+    const missing = await db.product.findMany({ where: { images: { none: {} } } });
+    await db.productImage.create({ data: { productId: missing[0]!.id, url: "/uploads/9.jpg", alt: "x" } });
+    expect((await readiness()).items.find((i) => i.key === "productImages")).toMatchObject({ ok: true, detail: "9/10 (90%)" });
   });
 
   it("e-mail is not ready without a Resend key", async () => {

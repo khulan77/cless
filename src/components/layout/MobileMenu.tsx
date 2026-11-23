@@ -1,17 +1,25 @@
 "use client";
 
-import { Menu, X } from "lucide-react";
+import { Menu, Phone, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { t } from "@/i18n";
 import type { ResolvedNavItem } from "@/server/queries/catalog";
+import type { SalonContact } from "@/components/salon/ContactActions";
 import { MegaMenu } from "./MegaMenu";
+import { SocialIcon } from "./SocialIcon";
+
+const EXTRA_LINKS = [
+  { href: "/services", label: t.layout.services },
+  { href: "/salon", label: t.layout.salon },
+  { href: "/contact", label: t.layout.contact },
+];
 
 /**
  * Hamburger + left drawer on every breakpoint. On desktop the sub-menu (MegaMenu)
  * opens as a second column; on mobile it replaces the drawer with a back button.
  */
-export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
+export function MobileMenu({ items, salon }: { items: ResolvedNavItem[]; salon: SalonContact }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<number | null>(null);
   const panelId = useId();
@@ -59,6 +67,9 @@ export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
   }, [open]);
 
   const activeItem = active !== null ? items[active] : undefined;
+  // Services / salon / contact are always reachable, even if the admin nav leaves them out
+  const extras = EXTRA_LINKS.filter((l) => !items.some((i) => i.href === l.href));
+  const tel = salon.phone.replace(/[^\d+]/g, "");
 
   return (
     <>
@@ -69,7 +80,7 @@ export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(true)}
-        className="grid size-10 place-items-center"
+        className="grid size-11 place-items-center"
       >
         <Menu className="size-[22px]" strokeWidth={1.25} aria-hidden />
       </button>
@@ -102,7 +113,7 @@ export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
           }`}
         >
           <div className="mb-6 flex justify-end">
-            <button type="button" onClick={close} aria-label={t.layout.closeMenu} className="grid size-10 place-items-center">
+            <button type="button" onClick={close} aria-label={t.layout.closeMenu} className="grid size-11 place-items-center">
               <X className="size-[22px]" strokeWidth={1.25} aria-hidden />
             </button>
           </div>
@@ -134,7 +145,30 @@ export function MobileMenu({ items }: { items: ResolvedNavItem[] }) {
                 )}
               </li>
             ))}
+            {extras.map((l) => (
+              <li key={l.href}>
+                <Link href={l.href} onClick={close} className="block py-3 text-[15px] uppercase tracking-[0.6px]">
+                  {l.label}
+                </Link>
+              </li>
+            ))}
           </ul>
+          {(tel || salon.instagram) && (
+            <div className="mt-8 space-y-1 border-t border-line pt-6 text-[14px]">
+              {tel && (
+                <a href={`tel:${tel}`} className="flex min-h-11 items-center gap-3">
+                  <Phone className="size-[18px]" strokeWidth={1.25} aria-hidden />
+                  {salon.phone}
+                </a>
+              )}
+              {salon.instagram && (
+                <a href={salon.instagram} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-3">
+                  <SocialIcon network="instagram" className="size-[18px]" />
+                  Instagram
+                </a>
+              )}
+            </div>
+          )}
         </nav>
 
         {activeItem && <MegaMenu item={activeItem} onBack={() => setActive(null)} onNavigate={close} />}

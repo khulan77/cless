@@ -3,7 +3,8 @@ import { seedPassword } from "./env";
 
 /**
  * Stock → storefront cache: selling the last unit in POS makes the product page show
- * "Дууссан" (add-to-cart gone) right away; a refund with restock makes it available again.
+ * "Дууссан — ирэх үед мэдэгдэнэ" right away; a refund with restock makes it available again.
+ * (CATALOG mode: no cart — the stock label under the price changes.)
  */
 const PRODUCT = "/products/serum-biofixine";
 const SKU = "BR-SERUM-BIOFIXINE-30ML";
@@ -17,11 +18,10 @@ async function waitAction(page: Page, click: () => Promise<void>) {
 test("last unit sold in POS → product page sold out; refund → available again", async ({ page, browser }) => {
   // Shopper (no session)
   const shopper = await (await browser.newContext()).newPage();
-  // The main purchase button (related-product cards below have their own add buttons)
-  const soldOut = shopper.getByRole("button", { name: "Дууссан", exact: true });
+  const stock = shopper.getByTestId("stock-label");
   await shopper.goto(PRODUCT);
-  await expect(shopper.getByRole("button", { name: "Сагсанд нэмэх", exact: true }).first()).toBeEnabled();
-  await expect(soldOut).toHaveCount(0);
+  await expect(stock).toHaveText("Цөөн үлдсэн"); // the last unit
+  await expect(shopper.getByRole("button", { name: "Салонд захиалах", exact: true }).first()).toBeVisible();
 
   // ADMIN sells the last unit by card (no cash shift needed)
   await page.goto("/admin/login");
@@ -44,8 +44,7 @@ test("last unit sold in POS → product page sold out; refund → available agai
 
   // Storefront: sold out immediately (no waiting for the cache to expire)
   await shopper.reload();
-  await expect(soldOut).toBeVisible();
-  await expect(soldOut).toBeDisabled();
+  await expect(stock).toHaveText("Дууссан — ирэх үед мэдэгдэнэ");
 
   // Refund with restock → available again
   await page.goto(saleHref!);
@@ -58,6 +57,5 @@ test("last unit sold in POS → product page sold out; refund → available agai
   await expect(page.locator("dialog[open]")).toHaveCount(0);
 
   await shopper.reload();
-  await expect(soldOut).toHaveCount(0);
-  await expect(shopper.getByRole("button", { name: "Сагсанд нэмэх", exact: true }).first()).toBeEnabled();
+  await expect(stock).toHaveText("Цөөн үлдсэн");
 });

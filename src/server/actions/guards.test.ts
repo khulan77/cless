@@ -16,6 +16,7 @@ const PUBLIC_ACTIONS: Record<string, string> = {
   "auth.ts#login": "Нэвтрэх форм (rate limit + bcrypt auth.ts-д)",
   "auth.ts#logout": "Гарах",
   "catalog.ts#loadCollectionProducts": "Дэлгүүрийн нийтийн жагсаалт (зөвхөн нийтлэгдсэн бүтээгдэхүүн)",
+  "inquiries.ts#submitInquiryAction": "\"Салонд захиалах\" нийтийн форм (honeypot, IP/утсаар 10 минутад 3, нөөц түгжихгүй)",
 };
 /** Нэвтрэлтгүй route handler-ууд — өөрийн хамгаалалттай */
 const PUBLIC_ROUTES: Record<string, RegExp> = {

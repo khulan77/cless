@@ -1,19 +1,20 @@
 import Link from "next/link";
-import { EmailSettingsForm, PosSettingsForm, QPayModeForm, SalonForm } from "@/components/admin/settings/SettingsForms";
+import { EmailSettingsForm, PosSettingsForm, QPayModeForm, SalonForm, ShopModeForm } from "@/components/admin/settings/SettingsForms";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatDateTime } from "@/lib/time";
 import { requirePagePermission } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { QPAY_TOKEN_HEARTBEAT, effectiveQPayMode, qpayEnvConfigured } from "@/server/modules/payments/providers/qpay";
-import { getSalonSettings } from "@/server/modules/settings/admin-settings";
+import { getSalonSettings, getShopMode } from "@/server/modules/settings/admin-settings";
+import { CHECKOUT_AVAILABLE } from "@/server/modules/settings/schema";
 import { getEmailSettings, getPosSettings, getQPaySettings } from "@/server/modules/settings/pos-settings";
 
 export const metadata = { title: "Тохиргоо" };
 export const instant = false;
 
 const s = t.admin.settingsPage;
-const TABS = ["salon", "pos", "email", "qpay"] as const;
+const TABS = ["salon", "shop", "pos", "email", "qpay"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
@@ -24,6 +25,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   let body: React.ReactNode;
   if (tab === "salon") {
     body = <SalonForm initial={await getSalonSettings()} />;
+  } else if (tab === "shop") {
+    body = <ShopModeForm mode={await getShopMode()} checkoutAvailable={CHECKOUT_AVAILABLE} />;
   } else if (tab === "pos") {
     const pos = await getPosSettings();
     body = <PosSettingsForm initial={{ maxManagerDiscountPercent: pos.maxManagerDiscountPercent, shiftDifferenceThreshold: pos.shiftDifferenceThreshold, staleLockMinutes: pos.staleLockMinutes }} />;
@@ -44,7 +47,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="Тохиргоо" description="Салоны мэдээлэл, POS, имэйл, QPay" />
+      <PageHeader title="Тохиргоо" description="Салоны мэдээлэл, дэлгүүрийн горим, POS, имэйл, QPay" />
       <nav aria-label="Тохиргоо" className="mb-4 flex flex-wrap gap-1 border-b border-line">
         {TABS.map((k) => (
           <Link

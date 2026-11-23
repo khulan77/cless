@@ -12,6 +12,7 @@ import { formatDateTime, formatTime } from "@/lib/time";
 import { workerStatus } from "@/server/modules/outbox/heartbeat";
 import { failedEmailCount } from "@/server/modules/outbox/monitor";
 import { readiness } from "@/server/modules/system/readiness";
+import { countNewInquiries } from "@/server/modules/inquiries/service";
 import { LaunchButton } from "@/components/admin/system/LaunchButton";
 
 export const metadata = { title: "Хянах самбар" };
@@ -41,9 +42,13 @@ export default async function DashboardPage() {
     can(user.role, "user:write") ? db.user.count({ where: { isActive: true } }) : Promise.resolve(null),
   ]);
   const ready$ = can(user.role, "settings:write") ? readiness() : Promise.resolve(null);
-  const [sales, worker, appts, failedEmails, ready] = await Promise.all([today$, workerStatus(), appts$, failedEmailCount(), ready$]);
+  const inquiries$ = can(user.role, "inquiry:manage") ? countNewInquiries() : Promise.resolve(null);
+  const [sales, worker, appts, failedEmails, ready, newInquiries] = await Promise.all([today$, workerStatus(), appts$, failedEmailCount(), ready$, inquiries$]);
 
   const stats = [
+    ...(newInquiries !== null
+      ? [{ label: t.admin.inquiries.newCard(newInquiries), value: newInquiries, hint: t.admin.inquiries.newHint, href: "/admin/inquiries?status=NEW", alert: newInquiries > 0 }]
+      : []),
     { label: "Нийтлэгдсэн бүтээгдэхүүн", value: published, hint: `${drafts} ноорог`, href: can(user.role, "product:write") ? "/admin/products" : undefined },
     { label: "Бага үлдэгдэлтэй хувилбар", value: lowCount, hint: "босгоос доош", href: "/admin/inventory?low=1", alert: lowCount > 0 },
     { label: "Идэвхтэй үйлчилгээ", value: services, href: can(user.role, "service:write") ? "/admin/services" : undefined },
@@ -56,7 +61,7 @@ export default async function DashboardPage() {
   return (
     <>
       <PageHeader title={`Сайн байна уу, ${user.name}`} description="Өнөөдрийн товч мэдээлэл" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {stats.map((s) => {
           const body = (
             <>

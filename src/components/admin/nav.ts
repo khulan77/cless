@@ -3,7 +3,7 @@ import type { Permission } from "@/server/auth/permissions";
 
 export type NavIcon =
   | "dashboard" | "schedule" | "product" | "service" | "stock" | "collection" | "content" | "users"
-  | "calendar" | "pos" | "orders" | "customers" | "shift" | "report" | "payroll" | "staffSchedule" | "room" | "account" | "settings" | "system";
+  | "calendar" | "pos" | "orders" | "customers" | "shift" | "report" | "payroll" | "staffSchedule" | "room" | "account" | "settings" | "system" | "inquiries";
 
 export type AdminNavItem = {
   href: string;
@@ -19,6 +19,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin", label: t.admin.nav.dashboard, icon: "dashboard", permission: "schedule:all" },
   { href: "/admin/calendar", label: t.admin.nav.calendar, icon: "calendar", permission: "appointment:read" },
   { href: "/admin/schedule", label: t.admin.nav.schedule, icon: "schedule", permission: "schedule:own" },
+  { href: "/admin/inquiries", label: t.admin.nav.inquiries, icon: "inquiries", permission: "inquiry:manage" },
   { href: "/admin/pos", label: t.admin.nav.pos, icon: "pos", permission: "pos:use" },
   { href: "/admin/sales", label: t.admin.nav.sales, icon: "orders", permission: "sale:read" },
   { href: "/admin/customers", label: t.admin.nav.customers, icon: "customers", permission: "customer:read" },

@@ -2,6 +2,7 @@
 
 import { ShoppingBag } from "lucide-react";
 import { useId, useState } from "react";
+import { useCatalogMode } from "@/components/salon/StorefrontContext";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import type { CardVariant } from "@/server/queries/catalog";
@@ -98,6 +99,7 @@ export function VariantPicker({ variants, hideSizes, large, value, onChange }: P
   const selectedId = value ?? internal;
   const select = (id: string) => (onChange ? onChange(id) : setInternal(id));
   const selected = variants.find((v) => v.id === selectedId) ?? variants[0];
+  const catalog = useCatalogMode();
   if (!selected) return null;
   const allSoldOut = variants.every((v) => !v.available);
 
@@ -115,9 +117,14 @@ export function VariantPicker({ variants, hideSizes, large, value, onChange }: P
           <p className={large ? "text-[17px]" : "text-[15px]"} aria-live="polite">
             {formatMNT(selected.price)}
           </p>
-          {selected.lowStock && <p className="text-[12px] text-muted">{t.product.lowStock}</p>}
+          {!catalog && selected.lowStock && <p className="text-[12px] text-muted">{t.product.lowStock}</p>}
+          {catalog && (
+            <p className={`text-[12px] ${selected.available ? "" : "text-muted"}`}>
+              {!selected.available ? t.stock.soldOut : selected.lowStock ? t.stock.low : t.stock.inSalon}
+            </p>
+          )}
         </div>
-        {allSoldOut || !selected.available ? (
+        {catalog ? null : allSoldOut || !selected.available ? (
           <span className="text-[13px] text-muted">{t.product.soldOut}</span>
         ) : (
           <CartButton />

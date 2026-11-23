@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/server/db";
 import { resolveSender } from "@/server/modules/notifications/mailer";
 import { makeUser, resetDb } from "../../../../tests/db-helpers";
-import { getSalonSettings, saveEmailSettings, savePosSettings, saveQPayMode, saveSalonSettings } from "./admin-settings";
+import { getSalonSettings, getShopMode, saveEmailSettings, savePosSettings, saveQPayMode, saveSalonSettings, saveShopMode } from "./admin-settings";
 import { getEmailSettings, getPosSettings, getQPaySettings } from "./pos-settings";
 
 let admin: Awaited<ReturnType<typeof makeUser>>;
@@ -19,7 +19,6 @@ const salon = {
   address: "Сүхбаатар дүүрэг, 1-р хороо",
   phone: "+976 7011 2233",
   email: "info@cless.mn",
-  hours: ["Даваа–Бямба 10:00–20:00", "", "Ням амарна"],
   instagram: "https://instagram.com/cless",
   facebook: "",
   mapsUrl: "https://maps.app.goo.gl/abc123",
@@ -30,8 +29,7 @@ describe("ADMIN settings", () => {
     await saveSalonSettings(salon, admin.id);
     const branch = await db.branch.findFirstOrThrow({ where: { code: "CL" } });
     expect(branch).toMatchObject({ name: "CLÉSS Spa", address: salon.address, phone: salon.phone });
-    const footer = (await db.siteSetting.findUniqueOrThrow({ where: { key: "footer" } })).value as { contact: { hours: string[]; mapsUrl: string }; socials: { network: string }[] };
-    expect(footer.contact.hours).toEqual(["Даваа–Бямба 10:00–20:00", "Ням амарна"]);
+    const footer = (await db.siteSetting.findUniqueOrThrow({ where: { key: "footer" } })).value as { contact: { mapsUrl: string }; socials: { network: string }[] };
     expect(footer.contact.mapsUrl).toBe(salon.mapsUrl);
     expect(footer.socials.map((x) => x.network)).toEqual(["instagram"]);
     expect(await getSalonSettings()).toMatchObject({ name: "CLÉSS Spa", instagram: salon.instagram, facebook: "" });
@@ -42,7 +40,14 @@ describe("ADMIN settings", () => {
     await expect(saveSalonSettings({ ...salon, email: "nope" }, admin.id)).rejects.toThrow();
     await expect(saveSalonSettings({ ...salon, instagram: "https://evil.com/x" }, admin.id)).rejects.toThrow();
     await expect(saveSalonSettings({ ...salon, mapsUrl: "http://maps.google.com/x" }, admin.id)).rejects.toThrow();
-    await expect(saveSalonSettings({ ...salon, hours: ["", " "] }, admin.id)).rejects.toThrow();
+  });
+
+  it("shop mode: CATALOG is stored, CHECKOUT is not selectable yet", async () => {
+    expect(await getShopMode()).toBe("CATALOG");
+    await expect(saveShopMode("CHECKOUT", admin.id)).rejects.toThrow("удахгүй");
+    await saveShopMode("CATALOG", admin.id);
+    expect(await getShopMode()).toBe("CATALOG");
+    expect(await db.auditLog.count({ where: { action: "settings.shop" } })).toBe(1);
   });
 
   it("POS limits and e-mail sender are stored; the sender falls back to EMAIL_FROM", async () => {

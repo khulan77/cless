@@ -13,6 +13,10 @@ import { Container } from "@/components/ui/Container";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { getBadgedProducts, getCollections, getProductCard } from "@/server/queries/catalog";
 import { getSetting } from "@/server/queries/settings";
+import { getSalonInfo } from "@/server/queries/storefront";
+import { BookingSheetButton } from "@/components/salon/BookingSheet";
+import { JsonLd } from "@/components/ui/JsonLd";
+import { beautySalonJsonLd } from "@/lib/salon-jsonld";
 
 // Кэш: cacheComponents горимд `revalidate = 60`-ийн оронд query бүр
 // "use cache" + cacheLife({ revalidate: 60 })-тэй (src/server/queries/*).
@@ -32,6 +36,7 @@ export default async function HomePage() {
     badgedProducts,
     concerns,
     categories,
+    salon,
   ] = await Promise.all([
     getSetting("hero"),
     getSetting("promoTrio"),
@@ -46,11 +51,13 @@ export default async function HomePage() {
     getBadgedProducts(["ICONIC", "NEW"], 12),
     getCollections("CONCERN", { onlyHome: true, limit: 8 }),
     getCollections("CATEGORY", { onlyHome: true, limit: 4 }),
+    getSalonInfo(),
   ]);
   const featuredProduct = featured ? await getProductCard(featured.productSlug) : null;
 
   return (
     <>
+      <JsonLd data={beautySalonJsonLd(salon)} />
       {hero && <Hero hero={hero} />}
       {promoTrio && promoTrio.items.length > 0 && <PromoTrio promo={promoTrio} />}
       {splitPromo && <SplitPromo promo={splitPromo} />}
@@ -70,10 +77,14 @@ export default async function HomePage() {
         </Container>
       )}
 
-      {salonBanner && <FullBleedBanner banner={salonBanner} id="salon-title" />}
+      {salonBanner && (
+        <FullBleedBanner banner={salonBanner} id="salon-title" extra={<BookingSheetButton salon={salon} variant="outline" />} />
+      )}
       {concernGrid && concerns.length > 0 && <ConcernGrid setting={concernGrid} concerns={concerns} />}
       {categoryGrid && categories.length > 0 && <CategoryGrid setting={categoryGrid} categories={categories} />}
-      {servicesBanner && <FullBleedBanner banner={servicesBanner} id="services-title" />}
+      {servicesBanner && (
+        <FullBleedBanner banner={servicesBanner} id="services-title" extra={<BookingSheetButton salon={salon} variant="outline" />} />
+      )}
       {benefits && <BenefitsBar benefits={benefits} />}
     </>
   );
