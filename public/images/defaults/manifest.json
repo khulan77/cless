@@ -1,25 +1,37 @@
 {
-  "generatedAt": "2026-11-23T08:32:49.995Z",
-  "totalBytes": 770072,
+  "generatedAt": "2026-11-23T13:36:03.656Z",
+  "totalBytes": 584606,
   "sections": {
     "hero": [
       "/images/defaults/hero/gift-tower.webp"
     ],
     "promo": [
-      "/images/defaults/promo/1-br-shot-02-083.webp",
-      "/images/defaults/promo/2-serum-drops.webp",
-      "/images/defaults/promo/3-pompom-box.webp"
+      "/images/defaults/promo/1-gift-card.webp",
+      "/images/defaults/promo/2-progeskin.webp",
+      "/images/defaults/promo/3-gift-set.webp"
     ],
     "split": [
       "/images/defaults/split/fur-pouch-set.webp"
     ],
     "featured": [
-      "/images/defaults/featured/br-31183-rajout-matiere.webp"
+      "/images/defaults/featured/serum-drops.webp"
     ]
   },
   "colors": {
-    "/images/defaults/hero/gift-tower.webp": "#e1ded8"
+    "/images/defaults/hero/gift-tower.webp": "#e1ded9",
+    "/images/defaults/promo/1-gift-card.webp": "#e2dfdb",
+    "/images/defaults/promo/2-progeskin.webp": "#e3dfdb",
+    "/images/defaults/promo/3-gift-set.webp": "#d7d3ce",
+    "/images/defaults/split/fur-pouch-set.webp": "#e5e1dd",
+    "/images/defaults/featured/serum-drops.webp": "#ac5d0f"
   },
-  "products": {},
+  "products": {
+    "serum-vivant": [
+      {
+        "src": "/images/defaults/products/serum-vivant/serum-vivant-30ml.webp",
+        "size": "30 мл"
+      }
+    ]
+  },
   "unmatched": []
 }

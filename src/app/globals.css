@@ -6,7 +6,7 @@
  */
 @theme {
   --color-navy: #0e2243;
-  --color-card: #efeeec;
+  --color-card: #f1f0eb; /* BR product card */
   --color-promo: #eeebe6;
   --color-line: rgb(14 34 67 / 0.2);
   --color-muted: rgb(14 34 67 / 0.64); /* ≥4.5:1 цагаан/#eeebe6/#efeeec дээр (WCAG AA) */
@@ -95,6 +95,10 @@ body:has([data-header-overlay="dark"]:not([style*="none"])) .site-header:not([da
   background-color: var(--color-navy);
   color: #fff;
 }
+/* An image shown whole on its backdrop colour: fade the left/right edges into it */
+.edge-feather {
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
 /* Hero "center" layout: feather the photo's left, right and bottom edges into the backdrop */
 @media (min-width: 768px) {
   .hero-feather {
@@ -105,57 +109,81 @@ body:has([data-header-overlay="dark"]:not([style*="none"])) .site-header:not([da
 
 /* ─── Typography ─── */
 /*
- * ─── Storefront typography — the ONLY place for sizes (measured on biologique-recherche.com, 1229px) ───
- * Weight 400 everywhere; 500 only for prices and the active tab.
- * Cyrillic UPPERCASE runs long: headings use −0.1px tracking, balance and up to 2 lines.
- * Mobile (≤768px): hero/h2 22px, h3 15px, body 14px.
+ * ─── Storefront typography — the ONLY place for sizes ───
+ * Measured on biologique-recherche.com/fr-fr (scripts/br-measure.ts → docs/br-measurements.json) at
+ * 1440, 1920 and 390px; sizes do not change between 1440 and 1920. Weight 400 everywhere.
+ * Mobile (≤768px) values are BR's 390px values.
  */
 @utility text-hero {
   font-family: var(--font-heading);
   font-size: 27px;
-  line-height: 1;
+  line-height: 27px;
   letter-spacing: -0.54px;
   text-transform: uppercase;
   text-wrap: balance;
   @media (max-width: 768px) {
-    font-size: 22px;
+    font-size: 24px;
+    line-height: 24px;
+    letter-spacing: 0.48px;
   }
 }
+/* Section titles (BR .title.h1) */
 @utility text-section {
   font-family: var(--font-heading);
   font-size: 27px;
-  line-height: 1.1;
+  line-height: 29.7px;
   font-weight: 400;
-  letter-spacing: -0.1px;
+  letter-spacing: -0.2px;
   text-transform: uppercase;
   text-wrap: balance;
   @media (max-width: 768px) {
-    font-size: 22px;
+    font-size: 24px;
+    line-height: 26px;
   }
 }
+/* Smaller section titles, page h1 (BR .title.h2 — "DÉCOUVREZ NOS SOINS ICONIQUES") */
 @utility text-h1 {
   font-family: var(--font-heading);
   font-size: 21px;
-  line-height: 1.2;
+  line-height: 25px;
   font-weight: 400;
   letter-spacing: -0.2px;
   text-wrap: balance;
+  @media (max-width: 768px) {
+    font-size: 18px;
+    line-height: 20px;
+  }
 }
-@utility text-product {
+/* Card titles: promo cards, footer columns (BR .h3) */
+@utility text-h3 {
   font-family: var(--font-heading);
-  font-size: 17px;
-  line-height: 1.18;
+  font-size: 18px;
+  line-height: 20px;
   font-weight: 400;
-  letter-spacing: -0.1px;
   text-transform: uppercase;
   text-wrap: balance;
   @media (max-width: 768px) {
-    font-size: 15px;
+    font-size: 17px;
+    line-height: 21px;
+  }
+}
+/* Product name on cards */
+@utility text-product {
+  font-family: var(--font-heading);
+  font-size: 17px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: -0.2px;
+  text-transform: uppercase;
+  text-wrap: balance;
+  @media (max-width: 768px) {
+    font-size: 14px;
+    line-height: 19px;
   }
 }
 @utility text-body {
   font-size: 15px;
-  line-height: 1.5;
+  line-height: 21px;
   letter-spacing: 0.2px;
   @media (max-width: 768px) {
     font-size: 14px;
@@ -163,20 +191,84 @@ body:has([data-header-overlay="dark"]:not([style*="none"])) .site-header:not([da
 }
 @utility text-nav {
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 21px;
   letter-spacing: 0.2px;
 }
 @utility text-button {
   font-size: 13px;
-  line-height: 1.8;
+  line-height: 23.4px;
+  letter-spacing: 0.2px;
+}
+/* Outline pill ("Бүгдийг харах") */
+@utility text-button-lg {
+  font-size: 14px;
+  line-height: 19.6px;
+  letter-spacing: 0.2px;
+}
+/* Eyebrow above a banner title ("ХЯЗГААРЛАГДМАЛ") */
+@utility text-eyebrow {
+  font-size: 12px;
+  line-height: 15.6px;
+  letter-spacing: -0.2px;
+  text-transform: uppercase;
+  @media (max-width: 768px) {
+    font-size: 13px;
+    line-height: 16.9px;
+  }
+}
+/* Banner body text (BR image-with-text: 17px, 16px on phones) */
+@utility text-lead {
+  font-size: 17px;
+  line-height: 21px;
+  letter-spacing: 0.2px;
+  @media (max-width: 768px) {
+    font-size: 16px;
+  }
+}
+/* Announcement bar */
+@utility text-announcement {
+  font-size: 13px;
+  line-height: 14.3px;
   letter-spacing: 0.2px;
 }
 /* Footer column titles (white on navy) */
 @utility text-footer-title {
   font-family: var(--font-heading);
   font-size: 18px;
-  line-height: 1.3;
-  letter-spacing: -0.1px;
+  line-height: 20px;
+  text-transform: uppercase;
+  @media (max-width: 768px) {
+    font-size: 17px;
+    line-height: 21px;
+  }
+}
+@utility text-footer-link {
+  font-size: 15px;
+  line-height: 21px;
+  letter-spacing: 0.2px;
+  @media (max-width: 768px) {
+    font-size: 14px;
+    line-height: 19.6px;
+  }
+}
+/* Footer newsletter field (BR: 18px) */
+@utility text-newsletter {
+  font-size: 18px;
+  letter-spacing: 0.2px;
+}
+@utility text-copyright {
+  font-size: 14px;
+  line-height: 25.2px;
+  letter-spacing: 0.2px;
+}
+@utility text-legal {
+  font-size: 15px;
+  line-height: 27px;
+  letter-spacing: 0.2px;
+  @media (max-width: 768px) {
+    font-size: 12px;
+    line-height: 21.6px;
+  }
 }
 /* Secondary lines (meta, hints) */
 @utility text-meta {
@@ -189,29 +281,45 @@ body:has([data-header-overlay="dark"]:not([style*="none"])) .site-header:not([da
   line-height: 1.5;
   letter-spacing: 0.2px;
 }
+/* Card badge ("ШИНЭ") */
+@utility text-badge {
+  font-size: 12px;
+  line-height: 16.8px;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  @media (max-width: 768px) {
+    font-size: 11px;
+    line-height: 16.5px;
+  }
+}
+/* Benefit tags under the product name, size labels */
 @utility text-micro {
   font-size: 11px;
-  line-height: 1.2;
+  line-height: 13px;
   font-weight: 400;
   letter-spacing: 0.2px;
   text-transform: uppercase;
 }
 @utility text-price {
   font-size: 15px;
-  font-weight: 500;
+  line-height: 21px;
+  font-weight: 400;
   letter-spacing: 0.2px;
   font-variant-numeric: tabular-nums;
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
 }
 /* Form fields: 16px so iOS does not zoom */
 @utility text-input {
   font-size: 16px;
   letter-spacing: 0.2px;
 }
-/* Vertical rhythm between home/collection sections (80–100px) */
+/* Between home/collection sections: BR sections have 36px padding top and bottom (27px on phones) */
 @utility section-gap {
-  margin-top: 80px;
+  margin-top: 54px;
   @media (min-width: 768px) {
-    margin-top: 100px;
+    margin-top: 72px;
   }
 }
 

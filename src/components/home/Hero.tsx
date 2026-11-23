@@ -49,22 +49,25 @@ export function Hero({ hero }: { hero: HeroSetting }) {
     <section
       aria-labelledby="hero-title"
       data-header-overlay={dark ? "dark" : ""}
-      className="on-dark relative -mt-16 h-[calc(78svh+4rem)] min-h-[524px] w-full overflow-hidden md:-mt-[76px] md:h-[calc(90vh+76px)]"
+      data-br="hero.section"
+      // BR: 100vh under the 70px header (500px under 55px on phones)
+      className="on-dark relative -mt-[55px] h-[500px] w-full overflow-hidden md:-mt-[70px] md:h-screen"
       style={center && hero.background ? { backgroundColor: hero.background } : undefined}
     >
       {picture ?? <div aria-hidden data-hero-fallback className="absolute inset-0 bg-[linear-gradient(165deg,#0e2243_0%,#1f3557_48%,#8c8273_100%)]" />}
       {/* Top: keeps a white header legible on light photos (not needed for a navy header); bottom: the title */}
       {!dark && <div aria-hidden className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/30 to-transparent" />}
       <div aria-hidden className={`absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t to-transparent ${dark ? "from-black/30" : "from-black/45"}`} />
-      <div className="absolute inset-x-0 bottom-12 flex flex-col items-center px-5 text-center text-white md:bottom-16">
-        <h1 id="hero-title" className="text-hero max-w-[22ch] md:max-w-none">
+      {/* BR: title block 60px above the bottom (15px on phones), 150px side padding, link 16px below */}
+      <div className="absolute inset-x-0 bottom-[15px] flex flex-col items-center px-[15px] text-center text-white md:bottom-[60px] md:px-[150px]">
+        <h1 id="hero-title" data-br="hero.title" className="text-hero">
           {hero.title.map((line) => (
             <span key={line} className="block">
               {line}
             </span>
           ))}
         </h1>
-        <Link href={hero.cta.href} className="text-button link-underline relative mt-5 inline-flex min-h-11 items-center">
+        <Link href={hero.cta.href} data-br="hero.link" className="text-body link-underline relative mt-4 before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']">
           {hero.cta.label}
         </Link>
       </div>

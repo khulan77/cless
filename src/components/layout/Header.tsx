@@ -4,7 +4,9 @@ import { t } from "@/i18n";
 import { BookingSheetButton } from "@/components/salon/BookingSheet";
 import type { SalonContact } from "@/components/salon/ContactActions";
 import type { ResolvedNavItem } from "@/server/queries/catalog";
+import { BrandLogo } from "./BrandLogo";
 import { HeaderShell } from "./HeaderShell";
+import { headerIconCls } from "./header-icon";
 import { MobileMenu } from "./MobileMenu";
 
 type Props = {
@@ -18,50 +20,40 @@ type Props = {
   cartCount?: number;
 };
 
-const iconCls = "size-[22px]";
+const glyph = "size-5";
 
-// siteName: лого линкийн нэр харагдах wordmark-аар эхэлнэ (WCAG 2.5.3); prop нь нийцтэй байдлын үүднээс үлдэв
+// The logo link's name starts with the wordmark text (WCAG 2.5.3); siteName stays for compatibility
 export function Header({ wordmark, nav, salon, shopMode, cartCount = 0 }: Props) {
   return (
     <HeaderShell>
-      <div className="mx-auto grid h-16 max-w-[1376px] grid-cols-[1fr_auto_1fr] items-center px-2 md:h-[76px] md:px-10">
-        <div className="flex items-center gap-1">
+      {/* BR: 70px (55px on phones), 44px side padding (16px), icons 30px apart (24px), logo 141×42 (115×34) */}
+      <div data-br="header.header" className="grid h-[55px] grid-cols-[1fr_auto_1fr] items-center px-4 md:h-[70px] md:px-[44px]">
+        <div className="flex items-center gap-6 md:gap-[30px]">
           <MobileMenu items={nav} salon={salon} />
-          <Link href="/search" aria-label={t.layout.search} className="grid size-11 place-items-center">
-            <Search className={iconCls} strokeWidth={1.25} aria-hidden />
+          <Link href="/search" aria-label={t.layout.search} data-br="header.searchIcon" className={headerIconCls}>
+            <Search className={glyph} strokeWidth={1.5} aria-hidden />
           </Link>
         </div>
 
-        {/* TODO: replace with the official SVG logo */}
-        <Link href="/" aria-label={t.layout.homeLink(wordmark.join(" "))} className="flex min-h-11 flex-col items-center justify-center font-serif leading-none">
-          {wordmark.map((line, i) => (
-            <span
-              key={line}
-              className={
-                i === wordmark.length - 1
-                  ? "mt-1 text-[8px] tracking-[0.5em] md:text-[9px]"
-                  : "text-[14px] tracking-[0.32em] md:text-[17px]"
-              }
-            >
-              {line}{" "}
-            </span>
-          ))}
+        <Link href="/" aria-label={t.layout.homeLink(wordmark.join(" "))} className="relative block before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']">
+          <BrandLogo data-br="header.logo" className="h-[34px] w-[114.4px] md:h-[42px] md:w-[141.3px]" />
         </Link>
 
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-end gap-6 md:gap-[30px]">
           {shopMode === "CATALOG" ? (
-            <BookingSheetButton salon={salon} variant="icon" />
+            <BookingSheetButton salon={salon} variant="icon" data-br="header.cartIcon" />
           ) : (
             <Link
               href="/cart"
               aria-label={cartCount > 0 ? t.layout.cartWithCount(cartCount) : t.layout.cart}
-              className="relative grid size-11 place-items-center"
+              data-br="header.cartIcon"
+              className={headerIconCls}
             >
-              <ShoppingBag className={iconCls} strokeWidth={1.25} aria-hidden />
+              <ShoppingBag className={glyph} strokeWidth={1.5} aria-hidden />
               {cartCount > 0 && (
                 <span
                   aria-hidden
-                  className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-navy px-1 text-[10px] leading-4 text-white header-cart-count"
+                  className="absolute -right-2 -top-1.5 grid min-w-4 place-items-center rounded-full bg-navy px-1 text-[10px] leading-4 text-white header-cart-count"
                 >
                   {cartCount}
                 </span>

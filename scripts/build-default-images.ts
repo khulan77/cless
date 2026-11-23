@@ -30,7 +30,7 @@ export type DefaultsManifest = {
   generatedAt: string;
   totalBytes: number;
   sections: Partial<Record<Section, string[]>>;
-  /** Average colour of the left/right edges (#rrggbb) — the hero "center" layout backdrop */
+  /** Average colour of the left/right edges (#rrggbb) — backdrop when an image is shown whole (hero "center", split) */
   colors: Record<string, string>;
   products: Record<string, { src: string; size: string | null }[]>;
   unmatched: string[];
@@ -53,18 +53,17 @@ async function files(dir: string): Promise<string[]> {
   }
 }
 
-/** Average of the outer 2% columns on both sides */
+/** Median colour of the outer 2% columns on both sides (median: a table or shadow at the bottom doesn't skew it) */
 async function edgeColor(input: string): Promise<string> {
   const { data, info } = await sharp(input).removeAlpha().resize({ width: 200 }).raw().toBuffer({ resolveWithObject: true });
-  const s = [0, 0, 0];
-  let n = 0;
+  const ch: number[][] = [[], [], []];
   for (let y = 0; y < info.height; y++)
     for (const x of [0, 1, 2, 3, info.width - 4, info.width - 3, info.width - 2, info.width - 1]) {
       const i = (y * info.width + x) * 3;
-      for (let k = 0; k < 3; k++) s[k] += data[i + k];
-      n++;
+      for (let k = 0; k < 3; k++) ch[k].push(data[i + k]);
     }
-  return "#" + s.map((v) => Math.round(v / n).toString(16).padStart(2, "0")).join("");
+  const median = (xs: number[]) => xs.sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+  return "#" + ch.map((xs) => median(xs).toString(16).padStart(2, "0")).join("");
 }
 
 async function convert(input: string, output: string, width: number) {
@@ -87,7 +86,7 @@ for (const section of SECTIONS) {
       for (const w of [1920, 1280]) manifest.totalBytes += await convert(path.join(SRC, section, f), path.join(OUT, section, `${name}-${w}.webp`), w);
     }
     (manifest.sections[section] ??= []).push(base);
-    if (section === "hero") manifest.colors[base] = await edgeColor(path.join(SRC, section, f));
+    manifest.colors[base] = await edgeColor(path.join(SRC, section, f));
   }
 }
 

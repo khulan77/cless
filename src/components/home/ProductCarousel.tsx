@@ -5,10 +5,11 @@ import { Children, useCallback, useEffect, useRef, useState, type ReactNode } fr
 import { t } from "@/i18n";
 
 /**
- * Horizontal carousel. Desktop: 4 columns + arrows. Mobile: 1.3 cards, swipe (scroll-snap).
+ * Horizontal carousel (BR featured collection): 4 columns 2px apart + arrows when there are more.
+ * Phones: 57%-wide cards, swipe (scroll-snap).
  * Cards are rendered on the server and passed in as children.
  */
-export function ProductCarousel({ children, label }: { children: ReactNode; label: string }) {
+export function ProductCarousel({ children, label, inset = false }: { children: ReactNode; label: string; /** inside a pad="inset-wide" Container (25px on phones) */ inset?: boolean }) {
   const trackRef = useRef<HTMLUListElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
@@ -42,11 +43,15 @@ export function ProductCarousel({ children, label }: { children: ReactNode; labe
     <div className="relative" role="region" aria-roledescription={t.common.slider} aria-label={label}>
       <ul
         ref={trackRef}
+        data-br="products.grid"
         onScroll={update}
-        className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-1.5 overflow-x-auto px-4 md:mx-0 md:scroll-px-0 md:px-0"
+        // Phones: the track bleeds to the window edges by the container's padding (15px, or 25px when inset)
+        className={`no-scrollbar flex snap-x snap-mandatory gap-[2px] overflow-x-auto md:mx-0 md:scroll-px-0 md:px-0 ${
+          inset ? "-mx-[25px] scroll-px-[25px] px-[25px]" : "-mx-[15px] scroll-px-[15px] px-[15px]"
+        }`}
       >
         {Children.map(children, (child) => (
-          <li className="w-[calc((100%-6px)/1.3)] shrink-0 snap-start sm:w-[calc((100%-6px)/2.2)] md:w-[calc((100%-18px)/4)]">
+          <li className="w-[57%] shrink-0 snap-start sm:w-[calc((100%-2px)/2.2)] md:w-[calc((100%-6px)/4)]">
             {child}
           </li>
         ))}

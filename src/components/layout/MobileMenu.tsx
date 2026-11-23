@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { t } from "@/i18n";
 import type { ResolvedNavItem } from "@/server/queries/catalog";
 import type { SalonContact } from "@/components/salon/ContactActions";
+import { headerIconCls } from "./header-icon";
 import { MegaMenu } from "./MegaMenu";
 import { SocialIcon } from "./SocialIcon";
 
@@ -80,9 +81,10 @@ export function MobileMenu({ items, salon }: { items: ResolvedNavItem[]; salon: 
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(true)}
-        className="grid size-11 place-items-center"
+        data-br="header.menuIcon"
+        className={headerIconCls}
       >
-        <Menu className="size-[22px]" strokeWidth={1.25} aria-hidden />
+        <Menu className="size-5" strokeWidth={1.5} aria-hidden />
       </button>
 
       <div

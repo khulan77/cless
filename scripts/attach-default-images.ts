@@ -1,14 +1,3 @@
-/**
- * Нэг удаагийн: default брэнд зургийг (public/images/defaults/manifest.json) DB-д холбоно.
- *
- *   bun run images:attach            # DRY RUN — юу өөрчлөгдөхийг л харуулна (default)
- *   bun run images:attach --confirm  # бичнэ (нэг transaction)
- *
- * Зөвхөн ХООСОН эсвэл dev placeholder (/placeholders/…) зурагтай газрыг солино:
- *   - бүтээгдэхүүн: бодит зураггүй бол placeholder мөрийг хасаад default зургийг нэмнэ
- *   - Сайтын контент (hero, promo, split, featured, салон, үйлчилгээ): placeholder бол default
- * Админы оруулсан (/uploads/…) зурагт хэзээ ч хүрэхгүй.
- */
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 import { defaultImage, defaultProductImages } from "@/lib/default-images";

@@ -10,7 +10,6 @@ import { SplitPromo } from "@/components/home/SplitPromo";
 import { ProductCard } from "@/components/product/ProductCard";
 import { PillLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
-import { SectionTitle } from "@/components/ui/SectionTitle";
 import { getBadgedProducts, getCollections, getProductCard } from "@/server/queries/catalog";
 import { getSetting } from "@/server/queries/settings";
 import { getSalonInfo } from "@/server/queries/storefront";
@@ -64,14 +63,16 @@ export default async function HomePage() {
       {featured && featuredProduct && <FeaturedProduct setting={featured} product={featuredProduct} />}
 
       {iconic && badgedProducts.length > 0 && (
-        <Container as="section" aria-labelledby="iconic-title" className="section-gap">
-          <SectionTitle id="iconic-title">{iconic.title}</SectionTitle>
-          <ProductCarousel label={iconic.title}>
+        <Container as="section" pad="inset-wide" aria-labelledby="iconic-title" className="section-gap">
+          <h2 id="iconic-title" data-br="products.title" className="text-h1 mb-6 text-center">
+            {iconic.title}
+          </h2>
+          <ProductCarousel label={iconic.title} inset>
             {badgedProducts.map((p) => (
               <ProductCard key={p.slug} product={p} />
             ))}
           </ProductCarousel>
-          <div className="mt-10 flex justify-center">
+          <div className="mt-[50px] flex justify-center">
             <PillLink href={iconic.cta.href}>{iconic.cta.label}</PillLink>
           </div>
         </Container>

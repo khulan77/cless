@@ -1,13 +1,16 @@
 import Link from "next/link";
 import type { ComponentPropsWithoutRef } from "react";
 
-type Tone = "navy" | "white";
+type Tone = "navy" | "white" | "soft";
 
+// BR sizes (docs/br-measurements.json): outline pill 46px tall, 14px text ("Voir tout");
+// soft pill 40px, 13px text, white with a 1px #c4c8ce inset ring (promo cards)
 const base =
-  "relative inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-button leading-none tracking-[0.2px] transition-colors duration-200 before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']"; // дарах талбай ≥44px
+  "relative inline-flex items-center justify-center rounded-full transition-[color,background-color,box-shadow] duration-200 before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']";
 const tones: Record<Tone, string> = {
-  navy: "border-navy text-navy hover:bg-navy hover:text-white",
-  white: "on-dark border-white text-white hover:bg-white hover:text-navy",
+  navy: "h-[46px] border border-navy bg-white px-[30px] text-button-lg text-navy hover:bg-navy hover:text-white",
+  white: "on-dark h-[46px] border border-white px-[30px] text-button-lg text-white hover:bg-white hover:text-navy",
+  soft: "h-10 bg-white px-[15px] text-button text-navy shadow-[inset_0_0_0_1px_#c4c8ce] hover:shadow-[inset_0_0_0_1px_var(--color-navy)]",
 };
 
 export function pillClass(tone: Tone = "navy", className = "") {

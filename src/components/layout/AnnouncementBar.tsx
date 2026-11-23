@@ -24,6 +24,7 @@ export function AnnouncementBar({ messages, intervalMs }: Props) {
 
   return (
     <div
+      data-br="announcement.bar"
       className="on-dark bg-navy text-white"
       role="region"
       aria-roledescription={t.common.slider}
@@ -33,23 +34,27 @@ export function AnnouncementBar({ messages, intervalMs }: Props) {
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <div className="mx-auto flex h-9 max-w-[720px] items-center justify-between gap-2 px-2">
+      {/* BR: arrows at the window edges (44px; 15px on phones), 30×36 buttons, 14px chevrons, 13px text */}
+      <div className="flex min-h-9 items-stretch justify-between px-[15px] md:px-[44px]">
         {count > 1 && (
           <button
             type="button"
             onClick={() => go(-1)}
+            data-br="announcement.prev"
             aria-label={t.layout.prevAnnouncement}
-            className="relative grid size-8 shrink-0 place-items-center before:absolute before:-inset-1.5 before:content-['']"
+            className="relative grid w-[30px] shrink-0 place-items-center text-white/75 hover:text-white before:absolute before:-inset-x-[7px] before:inset-y-0 before:content-['']"
           >
-            <ChevronLeft className="size-4" strokeWidth={1.25} aria-hidden />
+            <ChevronLeft className="size-3.5" strokeWidth={1.5} aria-hidden />
           </button>
         )}
-        <div className="relative h-full flex-1 overflow-hidden" aria-live={paused ? "polite" : "off"}>
+        {/* All messages share one grid cell: the bar is as tall as the longest (2 lines on phones) */}
+        <div className="grid flex-1 overflow-hidden py-1" aria-live={paused ? "polite" : "off"}>
           {messages.map((m, i) => (
             <p
               key={i}
               aria-hidden={i !== index}
-              className={`absolute inset-0 flex items-center justify-center truncate px-2 text-center text-note transition-all duration-500 ${
+              data-br={i === index ? "announcement.text" : undefined}
+              className={`col-start-1 row-start-1 flex items-center justify-center px-1 text-center text-announcement transition-all duration-500 ${
                 i === index ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
               }`}
             >
@@ -61,10 +66,11 @@ export function AnnouncementBar({ messages, intervalMs }: Props) {
           <button
             type="button"
             onClick={() => go(1)}
+            data-br="announcement.next"
             aria-label={t.layout.nextAnnouncement}
-            className="relative grid size-8 shrink-0 place-items-center before:absolute before:-inset-1.5 before:content-['']"
+            className="relative grid w-[30px] shrink-0 place-items-center text-white/75 hover:text-white before:absolute before:-inset-x-[7px] before:inset-y-0 before:content-['']"
           >
-            <ChevronRight className="size-4" strokeWidth={1.25} aria-hidden />
+            <ChevronRight className="size-3.5" strokeWidth={1.5} aria-hidden />
           </button>
         )}
       </div>

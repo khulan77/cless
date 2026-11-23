@@ -23,6 +23,11 @@ export function defaultImageColor(slot: string): string | null {
   return (src && m.colors?.[src]) ?? null;
 }
 
+/** Edge colour of any default image by its src (null for uploads) */
+export function imageEdgeColor(src: string | null | undefined): string | null {
+  return (src && m.colors?.[src]) ?? null;
+}
+
 export function defaultProductImages(slug: string): { src: string; size: string | null }[] {
   return m.products[slug] ?? [];
 }

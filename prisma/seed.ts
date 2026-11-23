@@ -461,19 +461,19 @@ const settings: SiteSettings = {
   promoTrio: {
     items: [
       {
-        image: { src: defaultImage("promo.0") ?? "/placeholders/promo-1.svg", alt: "Lotion P50 цуглуулга" },
+        image: { src: defaultImage("promo.0") ?? "/placeholders/promo-1.svg", alt: "Бэлгийн карт ба хайрцаг" },
         title: "Lotion P50",
         text: "Арьсны тэнцвэрийг сэргээх лосьон.",
         cta: { label: "Дэлгэрэнгүй", href: "/collections/lotion-p50" },
       },
       {
-        image: { src: defaultImage("promo.1") ?? "/placeholders/promo-2.svg", alt: "Серумын цуглуулга" },
+        image: { src: defaultImage("promo.1") ?? "/placeholders/promo-2.svg", alt: "Progeskin серум бэлгийн хайрцаг дээр" },
         title: "Серумын цуглуулга",
         text: "Арьсны хэрэгцээ бүрт тохирсон серум.",
         cta: { label: "Үзэх", href: "/collections/serum" },
       },
       {
-        image: { src: defaultImage("promo.2") ?? "/placeholders/promo-3.svg", alt: "Бэлгийн багц" },
+        image: { src: defaultImage("promo.2") ?? "/placeholders/promo-3.svg", alt: "Арчилгааны бүтээгдэхүүний багц бэлгийн хайрцагтай" },
         title: "Бэлгийн багц",
         text: "Хайртай хүмүүстээ — арчилгааны багц.",
         cta: { label: "Сонголтыг үзэх", href: "/collections/gifts" },
@@ -489,8 +489,9 @@ const settings: SiteSettings = {
   },
   featuredProduct: {
     title: "Шинэ серум",
-    productSlug: "progeskin",
-    image: { src: defaultImage("featured") ?? "/placeholders/featured.svg", alt: "Progeskin серумын lifestyle зураг" },
+    // The default image is the Sérum Vivant campaign shot
+    productSlug: "serum-vivant",
+    image: { src: defaultImage("featured") ?? "/placeholders/featured.svg", alt: "Sérum Vivant серумын кампанит зураг" },
   },
   iconicCarousel: {
     title: "Сонгодог бүтээгдэхүүн",
@@ -536,17 +537,19 @@ const settings: SiteSettings = {
         links: [{ label: "Бүх ангилал", href: "/collections" }],
       },
       {
-        title: "Үйлчилгээ",
+        // The footer adds the salon's address, phone and hours under these links
+        title: "Салон ба үйлчилгээ",
         links: [
           { label: "Салоны үйлчилгээ", href: "/services" },
           { label: "Арьсны оношлогоо", href: "/services" },
         ],
       },
       {
-        title: "Компани",
+        // Privacy is in the footer's legal row
+        title: "CLÉSS-ийн тухай",
         links: [
           { label: "Бидний тухай", href: "/about" },
-          { label: "Нууцлалын бодлого", href: "/privacy" },
+          { label: "Холбоо барих", href: "/contact" },
         ],
       },
     ],

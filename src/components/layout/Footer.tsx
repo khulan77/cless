@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { cacheLife } from "next/cache";
 import type { FooterSetting } from "@/lib/site-settings";
-import { Container } from "@/components/ui/Container";
 import { isCheckoutOnlyHref } from "@/lib/shop-mode";
 import type { SalonInfo } from "@/server/queries/storefront";
 import { t } from "@/i18n";
+import { BrandLogo } from "./BrandLogo";
 import { NewsletterForm } from "./NewsletterForm";
 import { SocialIcon } from "./SocialIcon";
 
@@ -16,6 +16,16 @@ async function CurrentYear() {
 
 type Column = { title: string; links: { label: string; href: string }[] };
 
+// BR footer rows are 32.4px: a 21px link + 5.7px above and below
+const row = "py-[5.7px]";
+const linkCls = "text-footer-link text-silver transition-colors hover:text-white";
+
+/**
+ * BR footer (docs/br-measurements.json): 64px 50px 40px padding (40px 15px on phones); four equal columns
+ * 20px apart — the link columns, the salon column (links + address, phone, hours) and the newsletter;
+ * 18px UPPERCASE titles 16px above 15px silver links; social icons (18px in 40px circles) 64px below;
+ * then the logo, copyright (14px) and legal links (15px), 30px bottom padding.
+ */
 export function Footer({
   footer,
   columns,
@@ -29,107 +39,123 @@ export function Footer({
   /** Single source for contact details, socials and hours (Settings + branch hours) */
   salon: SalonInfo;
 }) {
-  const { contact, newsletter, copyright } = footer;
+  const { newsletter, copyright } = footer;
   const { siteName } = salon;
   const catalog = salon.shopMode === "CATALOG";
   const visibleColumns = columns
     .map((c) => ({ ...c, links: catalog ? c.links.filter((l) => !isCheckoutOnlyHref(l.href)) : c.links }))
     .filter((c) => c.links.length > 0);
+  // The salon column (the one linking to /services) also carries the address, phone and hours
+  const salonIndex = Math.max(0, visibleColumns.findIndex((c) => c.links.some((l) => l.href.startsWith("/services"))));
   const socials = [
     salon.instagram ? { network: "instagram" as const, href: salon.instagram, label: "Instagram" } : null,
     salon.facebook ? { network: "facebook" as const, href: salon.facebook, label: "Facebook" } : null,
   ].filter((x) => x !== null);
   const tel = salon.phone.replace(/[^\d+]/g, "");
+
   return (
     <footer className="on-dark mt-auto bg-navy text-white">
-      <Container className="pb-8 pt-16 md:pt-20">
-        <div className="grid gap-12 lg:grid-cols-[1.1fr_2fr]">
-          <div className="max-w-sm">
-            <Link href="/" aria-label={t.layout.homeLink(wordmark.join(" "))} className="inline-flex flex-col font-serif leading-none">
-              {wordmark.map((line, i) => (
-                <span
-                  key={line}
-                  className={i === wordmark.length - 1 ? "mt-1 text-[9px] tracking-[0.5em]" : "text-[18px] tracking-[0.32em]"}
-                >
-                  {line}{" "}
-                </span>
-              ))}
-            </Link>
-            <div className="mt-10">
-              <h2 className="text-footer-title mb-2">{newsletter.title}</h2>
-              <p className="mb-4 text-body text-silver">{newsletter.text}</p>
-              <NewsletterForm placeholder={newsletter.placeholder} button={newsletter.button} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4">
-            {visibleColumns.map((col) => (
-              <nav key={col.title} aria-label={col.title}>
-                <h2 className="text-footer-title mb-4">{col.title}</h2>
-                <ul className="text-body text-silver md:space-y-2.5">
-                  {col.links.map((l) => (
-                    <li key={`${l.label}-${l.href}`}>
-                      <Link href={l.href} className="inline-flex min-h-11 items-center hover:text-white hover:underline md:min-h-0">
-                        {l.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            ))}
-            <div className="col-span-2 md:col-span-1">
-              <h2 className="text-footer-title mb-4">{contact.title}</h2>
-              <address className="text-body not-italic text-silver md:space-y-2.5 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center md:[&_a]:min-h-0">
-                {salon.address && <p className="whitespace-pre-line">{salon.address}</p>}
-                {salon.mapsUrl && (
-                  <p>
-                    <a href={salon.mapsUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {t.salon.openMap}
-                    </a>
-                  </p>
-                )}
-                {tel && (
-                  <p>
-                    <a href={`tel:${tel}`} className="hover:underline">
-                      {salon.phone}
-                    </a>
-                  </p>
-                )}
-                {salon.email && (
-                  <p>
-                    <a href={`mailto:${salon.email}`} className="hover:underline">
-                      {salon.email}
-                    </a>
-                  </p>
-                )}
-                {salon.hoursLines.map((h) => (
-                  <p key={h}>{h}</p>
-                ))}
-              </address>
-              <ul className="mt-6 flex gap-3">
-                {socials.map((s) => (
-                  <li key={s.network}>
-                    <a
-                      href={s.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={s.label}
-                      className="grid size-11 place-items-center rounded-full border border-white/40 hover:bg-white hover:text-navy"
-                    >
-                      <SocialIcon network={s.network} className="size-[18px]" />
-                    </a>
+      <div data-br="footer.top" className="px-[15px] pb-10 pt-10 md:px-[50px] md:pt-16">
+        <div data-br="footer.blocks" className="grid gap-y-8 md:grid-cols-4 md:gap-x-5">
+          {visibleColumns.map((col, i) => (
+            <nav key={col.title} aria-label={col.title} data-br="footer.column">
+              <h2 data-br="footer.title" className="text-footer-title mb-[10px]">{col.title}</h2>
+              <ul>
+                {col.links.map((l) => (
+                  <li key={`${l.label}-${l.href}`} data-br="footer.item" className={row}>
+                    <Link href={l.href} data-br="footer.link" className={`relative ${linkCls} before:absolute before:-inset-y-[12px] before:inset-x-0 before:content-[''] md:before:hidden`}>
+                      {l.label}
+                    </Link>
                   </li>
                 ))}
+                {i === salonIndex && (
+                  <>
+                    {salon.address && <li className={`${row} text-footer-link whitespace-pre-line text-silver`}>{salon.address}</li>}
+                    {tel && (
+                      <li className={row}>
+                        <a href={`tel:${tel}`} className={linkCls}>
+                          {salon.phone}
+                        </a>
+                      </li>
+                    )}
+                    {salon.email && (
+                      <li className={row}>
+                        <a href={`mailto:${salon.email}`} className={linkCls}>
+                          {salon.email}
+                        </a>
+                      </li>
+                    )}
+                    {salon.hoursLines.map((h) => (
+                      <li key={h} className={`${row} text-footer-link text-silver`}>
+                        {h}
+                      </li>
+                    ))}
+                    {salon.mapsUrl && (
+                      <li className={row}>
+                        <a href={salon.mapsUrl} target="_blank" rel="noopener noreferrer" className={`${linkCls} link-underline`}>
+                          {t.salon.openMap}
+                        </a>
+                      </li>
+                    )}
+                  </>
+                )}
               </ul>
-            </div>
+            </nav>
+          ))}
+
+          <div>
+            <h2 data-br="footer.newsletterTitle" className="text-footer-title">{newsletter.title}</h2>
+            <p className="mt-[5px] max-w-[310px] text-footer-link text-silver">{newsletter.text}</p>
+            <NewsletterForm placeholder={newsletter.placeholder} button={newsletter.button} />
           </div>
         </div>
 
-        <div className="mt-16 border-t border-white/20 pt-6 text-note text-silver">
+        {socials.length > 0 && (
+          <ul aria-label={t.footer.social} data-br="footer.social" className="-ml-[10px] mt-10 flex gap-[5px] md:mt-16">
+            {socials.map((s) => (
+              <li key={s.network}>
+                <a
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.label}
+                  data-br="footer.socialItem"
+                  className="grid size-10 place-items-center rounded-full text-[#c4c8ce] transition-colors hover:text-white"
+                >
+                  <SocialIcon network={s.network} className="size-[18px]" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="px-[15px] pb-[30px] md:px-[50px]">
+        <Link href="/" aria-label={t.layout.homeLink(wordmark.join(" "))} className="inline-block">
+          <BrandLogo className="h-[34px] w-[114.4px]" />
+        </Link>
+        <p data-br="footer.copyright" className="mt-4 text-copyright">
           © <CurrentYear /> {siteName}
           {copyright ? `. ${copyright}` : ""}
-        </div>
-      </Container>
+        </p>
+        <nav aria-label={t.footer.legal} className="mt-[25px]">
+          <ul className="flex flex-wrap text-legal">
+            <li>
+              <Link href="/privacy" data-br="footer.legalLink" className="hover:underline">
+                {t.footer.privacy}
+              </Link>
+              <span aria-hidden className="mx-[6px]">
+                /
+              </span>
+            </li>
+            <li>
+              <Link href="/contact" className="hover:underline">
+                {t.footer.contact}
+              </Link>
+            </li>
+          </ul>
+        </nav>
+      </div>
     </footer>
   );
 }

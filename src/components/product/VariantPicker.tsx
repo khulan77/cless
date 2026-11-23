@@ -87,7 +87,9 @@ export function CartButton({ label = t.product.addToCart }: { label?: string }) 
       type="button"
       // TODO (cart round): add to cart
       aria-label={label}
-      className="grid size-11 shrink-0 place-items-center rounded-full bg-navy text-white transition-opacity hover:opacity-85"
+      data-br="card.addToCart"
+      // BR: 34px round button; ::before keeps a 44px hit area
+      className="relative grid size-[34px] shrink-0 place-items-center rounded-full bg-navy text-white transition-opacity before:absolute before:-inset-[5px] before:content-[''] hover:opacity-85"
     >
       <ShoppingBag className="size-[18px]" strokeWidth={1.25} aria-hidden />
     </button>
@@ -107,15 +109,15 @@ export function VariantPicker({ variants, hideSizes, value, onChange }: Props) {
   return (
     <div className="mt-auto pt-4">
       {!hideSizes && variants.length > 1 && (
-        <div className="mb-4">
+        <div className="mb-3">
           <SizeOptions variants={variants} selectedId={selected.id} onSelect={select} />
         </div>
       )}
-      {!hideSizes && variants.length === 1 && <p className="text-micro mb-4">{selected.size}</p>}
+      {!hideSizes && variants.length === 1 && <p className="text-micro mb-3">{selected.size}</p>}
 
-      <div className="flex min-h-11 items-center justify-between gap-3">
+      <div className="flex min-h-[34px] items-center justify-between gap-3">
         <div>
-          <p className="text-price" aria-live="polite">
+          <p data-br="card.priceText" className="text-price" aria-live="polite">
             {formatMNT(selected.price)}
           </p>
           {!catalog && selected.lowStock && <p className="text-note text-muted">{t.product.lowStock}</p>}
