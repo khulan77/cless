@@ -39,8 +39,13 @@ const nextConfig: NextConfig = {
       { source: "/shipping", destination: "/salon", permanent: false },
     ];
   },
-  // Hero is served at quality 90 (sharp edges on large screens); everything else at the default 75
-  images: { qualities: [75, 85, 90] },
+  images: {
+    // Hero is served at quality 90 (sharp edges on large screens); everything else at the default 75
+    qualities: [75, 85, 90],
+    // NEXT_IMAGE_UNOPTIMIZED=1: serve files as they are, skipping /_next/image (Vercel Hobby's
+    // optimization quota returns 402 once used up). Defaults and uploads are already webp from sharp.
+    unoptimized: process.env.NEXT_IMAGE_UNOPTIMIZED === "1",
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

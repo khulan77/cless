@@ -83,6 +83,7 @@ Vercel дээр зөвхөн вэб апп ажиллана. Worker (имэйл,
 | `INTERNAL_REVALIDATE_SECRET` | ✓ | 32+ тэмдэгт; worker-тэй ИЖИЛ утга |
 | `RESEND_API_KEY`, `EMAIL_FROM` | ✓ | Имэйл (production-д заавал) |
 | `DB_POOL_MAX` | | Нэг instance-ийн pg холболт. Default 3 (Vercel) |
+| `NEXT_IMAGE_UNOPTIMIZED` | | `1` — `/_next/image`-ийг алгасаж зургийг шууд өгнө (Hobby-ийн Image Optimization хязгаар дуусаж 402 өгвөл). Default зургууд, upload-ууд sharp-аар webp болсон тул чанар алдагдахгүй; зөвхөн дэлгэцийн өргөнөөр жижигрүүлсэн хувилбар (srcset) байхгүй болно. Build үед уншигдана — өөрчилбөл redeploy |
 | `QPAY_*` | | Зөвхөн CHECKOUT горимд |
 
 **Build ба DB.** Build нь нүүр хуудас, layout-ийн кэштэй өгөгдлийг prerender хийхдээ DB уншина (Supabase-д хүрэх
