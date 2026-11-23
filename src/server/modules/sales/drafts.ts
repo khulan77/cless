@@ -88,7 +88,7 @@ export async function saveDraft(input: { saleId?: string | null; data: DraftData
     data: { customerId, subtotal: total, draftData: data as Prisma.InputJsonValue },
     select: { id: true, updatedAt: true },
   });
-  if (!updated[0]) throw new UserError("Энэ борлуулалт ноорог биш болсон байна.", undefined, DRAFT_LOCKED);
+  if (!updated[0]) throw new UserError("Энэ борлуулалт аль хэдийн төлбөрт шилжсэн байна.", undefined, DRAFT_LOCKED);
   return { saleId: updated[0].id, savedAt: updated[0].updatedAt.toISOString() };
 }
 
@@ -132,7 +132,7 @@ export async function discardDraft(saleId: string) {
     const rows = await tx.$queryRaw<{ status: string; number: string | null }[]>`
       SELECT "status"::text AS "status", "number" FROM "Sale" WHERE "id" = ${saleId} FOR UPDATE`;
     const row = rows[0];
-    if (!row || row.status !== "DRAFT") throw new UserError("Ноорог олдсонгүй.");
+    if (!row || row.status !== "DRAFT") throw new UserError("Хадгалсан сагс олдсонгүй.");
     if ((await tx.payment.count({ where: { saleId } })) > 0 || row.number) {
       await tx.visit.updateMany({ where: { saleId }, data: { saleId: null } });
       await tx.sale.update({ where: { id: saleId }, data: { status: "CANCELLED", cancelledAt: new Date(), draftData: Prisma.DbNull } });

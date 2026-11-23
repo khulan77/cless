@@ -31,7 +31,7 @@ export default async function ShiftsPage() {
 
   return (
     <>
-      <PageHeader title="Кассын ээлж" description={branch.name} />
+      <PageHeader eyebrow="Касс" title="Кассын ээлж" description={branch.name} />
       {!open || !report ? (
         <Card title="Касс хаалттай" description="Ээлж нээж бэлэн төлбөр хүлээн авна." className="mb-6">
           <OpenShiftForm />
@@ -51,24 +51,24 @@ export default async function ShiftsPage() {
                 ["Буцаалт", `${report.refundsCount} · ${formatMNT(report.refundsTotal)}`],
               ].map(([k, v]) => (
                 <div key={k}>
-                  <dt className="text-[12px] text-navy/55">{k}</dt>
+                  <dt className="text-[13px] text-ink-soft">{k}</dt>
                   <dd className="mt-1 text-[18px] font-light tabular-nums">{v}</dd>
                 </div>
               ))}
             </dl>
             {report.byMethod.length > 0 && (
-              <p className="mt-3 text-[13px] text-navy/65">
+              <p className="mt-3 text-[13px] text-ink-soft">
                 {report.byMethod.map((m) => `${t.admin.payMethod[m.method]}: ${formatMNT(m.amount)}`).join(" · ")}
               </p>
             )}
           </Card>
-          {mine ? <ShiftOpenControls shiftId={open.id} expected={report.expectedCash} threshold={pos.shiftDifferenceThreshold} /> : <p className="text-[14px] text-navy/60">Энэ ээлжийг өөр ажилтан нээсэн.</p>}
+          {mine ? <ShiftOpenControls shiftId={open.id} expected={report.expectedCash} threshold={pos.shiftDifferenceThreshold} /> : <p className="text-[14px] text-ink-soft">Энэ ээлжийг өөр ажилтан нээсэн.</p>}
         </div>
       )}
 
       <h2 className="mb-3 text-[15px] font-medium">Түүх</h2>
       {history.length === 0 ? (
-        <p className="text-[14px] text-navy/55">Хаагдсан ээлж алга.</p>
+        <p className="text-[14px] text-ink-soft">Хаагдсан ээлж алга.</p>
       ) : (
         <Table>
           <thead>
@@ -82,7 +82,7 @@ export default async function ShiftsPage() {
           </thead>
           <tbody>
             {history.map((h) => (
-              <tr key={h.id} className="hover:bg-navy/[0.02]">
+              <tr key={h.id} className="hover:bg-canvas">
                 <td className={tdClass}>
                   <Link href={`/admin/shifts/${h.id}`} className="hover:underline">
                     {dt(h.openedAt)} · {h.openedBy.name}

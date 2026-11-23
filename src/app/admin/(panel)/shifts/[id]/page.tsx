@@ -29,18 +29,18 @@ export default async function ShiftReportPage({ params }: { params: Promise<{ id
   );
 
   return (
-    <div className="shift-report mx-auto max-w-xl rounded-lg border border-line bg-white p-6 text-[14px] print:border-0 print:p-0">
+    <div className="shift-report max-w-[760px] rounded-2xl border border-hairline bg-white p-6 text-[14px] print:border-0 print:p-0">
       <style>{`@media print { body * { visibility: hidden; } .shift-report, .shift-report * { visibility: visible; } .shift-report { position: absolute; left: 0; top: 0; width: 100%; } }`}</style>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-[18px] font-medium">Кассын ээлжийн тайлан</h1>
-          <p className="text-navy/60">
+          <p className="text-ink-soft">
             {sh.openedBy.name} · {dt(sh.openedAt)} — {sh.closedAt ? `${dt(sh.closedAt)} · ${sh.closedBy?.name ?? ""}` : "нээлттэй"}
           </p>
         </div>
         <PrintButton />
       </div>
-      <dl className="divide-y divide-line border-y border-line">
+      <dl className="divide-y divide-hairline border-y border-hairline">
         {row("Эхний бэлэн мөнгө", formatMNT(sh.openingCash))}
         {row("Борлуулалтын тоо", String(r.salesCount))}
         {row("Борлуулалтын дүн", formatMNT(r.salesTotal))}
@@ -51,11 +51,11 @@ export default async function ShiftReportPage({ params }: { params: Promise<{ id
         {sh.countedCash !== null && row("Тоолсон", formatMNT(sh.countedCash), true)}
         {sh.difference !== null && row("Зөрүү", formatMNT(sh.difference), true)}
       </dl>
-      {sh.note && <p className="mt-3 text-navy/70">Тайлбар: {sh.note}</p>}
+      {sh.note && <p className="mt-3 text-ink-soft">Тайлбар: {sh.note}</p>}
       {sh.movements.length > 0 && (
         <>
-          <h2 className="mb-2 mt-5 text-[13px] font-medium uppercase tracking-[0.4px] text-navy/55">Бэлэн мөнгөний хөдөлгөөн</h2>
-          <ul className="divide-y divide-line text-[13px]">
+          <h2 className="mb-2 mt-5 text-[13px] font-medium uppercase tracking-[0.4px] text-ink-soft">Бэлэн мөнгөний хөдөлгөөн</h2>
+          <ul className="divide-y divide-hairline text-[13px]">
             {sh.movements.map((m) => (
               <li key={m.id} className="flex justify-between py-1.5">
                 <span>

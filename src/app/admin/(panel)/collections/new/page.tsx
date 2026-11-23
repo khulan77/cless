@@ -12,7 +12,7 @@ export default async function NewCollectionPage({ searchParams }: { searchParams
   const [{ kind }, parents] = await Promise.all([searchParams, listCollectionOptions()]);
   return (
     <>
-      <PageHeader title="Шинэ ангилал" />
+      <PageHeader eyebrow="Ангилал" title="Шинэ ангилал" description="Дэлгүүрийн цэс ба шүүлтүүрт харагдана." />
       <CollectionForm
         parents={parents}
         products={[]}

@@ -26,7 +26,7 @@ function RoomRow({ room }: { room: Room }) {
       <Button size="sm" variant="secondary" disabled={save.pending} onClick={() => save.run(v, { onSuccess: () => router.refresh() })}>
         {r.save}
       </Button>
-      <button type="button" aria-label={`${r.delete}: ${room.name}`} className="ml-auto rounded p-1 text-navy/45 hover:text-red-700" onClick={() => setConfirm(true)}>
+      <button type="button" aria-label={`${r.delete}: ${room.name}`} className="ml-auto rounded p-1 text-ink-faint hover:text-danger" onClick={() => setConfirm(true)}>
         <Trash2 className="size-4" />
       </button>
       <ConfirmDialog
@@ -50,11 +50,11 @@ export function RoomsEditor({ rooms }: { rooms: Room[] }) {
   const add = useServerAction(saveRoomAction);
   return (
     <div className="space-y-4">
-      <p className="text-[13px] text-navy/60">{r.hint}</p>
+      <p className="text-[13px] text-ink-soft">{r.hint}</p>
       {rooms.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-[14px] text-navy/60">{r.empty}</p>
+        <p className="rounded-2xl border border-dashed border-hairline px-4 py-6 text-center text-[14px] text-ink-soft">{r.empty}</p>
       ) : (
-        <ul className="divide-y divide-line rounded-lg border border-line bg-white">
+        <ul className="divide-y divide-hairline rounded-2xl border border-hairline bg-white">
           {rooms.map((room) => (
             <RoomRow key={`${room.id}:${room.name}:${room.isActive}:${room.sortOrder}`} room={room} />
           ))}

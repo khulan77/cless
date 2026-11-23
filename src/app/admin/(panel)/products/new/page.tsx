@@ -12,7 +12,7 @@ export default async function NewProductPage() {
   const collections = await listCollectionOptions();
   return (
     <>
-      <PageHeader title="Шинэ бүтээгдэхүүн" />
+      <PageHeader eyebrow="Бүтээгдэхүүн" title="Шинэ бүтээгдэхүүн" description="Нэр, зураг, хэмжээ ба үнэ — хадгалаад «Сайтад нийтлэх» сонгоход дэлгүүрт гарна." />
       <ProductForm
         collections={collections}
         initial={{

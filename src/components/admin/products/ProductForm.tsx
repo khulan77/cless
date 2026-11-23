@@ -72,9 +72,9 @@ function BenefitsInput({ value, onChange }: { value: string[]; onChange: (v: str
     <div>
       <div className="mb-2 flex flex-wrap gap-1.5">
         {value.map((b) => (
-          <span key={b} className="inline-flex items-center gap-1 rounded-full border border-line bg-navy/[0.03] py-1 pl-3 pr-1.5 text-[12.5px]">
+          <span key={b} className="inline-flex items-center gap-1 rounded-full border border-hairline bg-ink/[0.04] py-1 pl-3 pr-1.5 text-[13px]">
             {b}
-            <button type="button" aria-label={F.removeBenefit(b)} onClick={() => onChange(value.filter((x) => x !== b))} className="rounded-full p-0.5 hover:bg-navy/10">
+            <button type="button" aria-label={F.removeBenefit(b)} onClick={() => onChange(value.filter((x) => x !== b))} className="rounded-full p-0.5 hover:bg-ink/[0.08]">
               <X className="size-3" />
             </button>
           </span>
@@ -116,18 +116,18 @@ function LinesTextarea({ id, value, onChange, rows = 4 }: { id: string; value: s
 function OrderedList({ items, onChange, render }: { items: string[]; onChange: (v: string[]) => void; render: (id: string, i: number) => ReactNode }) {
   if (items.length === 0) return null;
   return (
-    <ol className="mt-3 divide-y divide-line/60 rounded-md border border-line">
+    <ol className="mt-3 divide-y divide-hairline rounded-xl border border-hairline">
       {items.map((id, i) => (
-        <li key={id} className="flex items-center gap-2 px-3 py-2 text-[13.5px]">
-          <span className="w-5 text-[12px] text-navy/45">{i + 1}.</span>
+        <li key={id} className="flex items-center gap-2 px-3 py-2 text-[14px]">
+          <span className="w-5 text-[13px] text-ink-faint">{i + 1}.</span>
           <span className="flex-1">{render(id, i)}</span>
-          <button type="button" aria-label={F.moveUp} disabled={i === 0} onClick={() => onChange(move(items, i, i - 1))} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+          <button type="button" aria-label={F.moveUp} disabled={i === 0} onClick={() => onChange(move(items, i, i - 1))} className="rounded p-1 hover:bg-ink/[0.05] disabled:opacity-30">
             <ArrowUp className="size-4" />
           </button>
-          <button type="button" aria-label={F.moveDown} disabled={i === items.length - 1} onClick={() => onChange(move(items, i, i + 1))} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+          <button type="button" aria-label={F.moveDown} disabled={i === items.length - 1} onClick={() => onChange(move(items, i, i + 1))} className="rounded p-1 hover:bg-ink/[0.05] disabled:opacity-30">
             <ArrowDown className="size-4" />
           </button>
-          <button type="button" aria-label={t.admin.remove} onClick={() => onChange(items.filter((_, j) => j !== i))} className="rounded p-1 text-navy/50 hover:bg-red-50 hover:text-red-700">
+          <button type="button" aria-label={t.admin.remove} onClick={() => onChange(items.filter((_, j) => j !== i))} className="rounded p-1 text-ink-soft hover:bg-err-bg hover:text-danger">
             <Trash2 className="size-4" />
           </button>
         </li>
@@ -188,7 +188,7 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
   return (
     <form onSubmit={onSubmit} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]" noValidate>
       <div className="min-w-0 space-y-5">
-        <div role="tablist" aria-label={F.basics} className="flex flex-wrap gap-1 border-b border-line">
+        <div role="tablist" aria-label={F.basics} className="flex flex-wrap gap-1 border-b border-hairline">
           {TABS.map((tb) => (
             <button
               key={tb}
@@ -196,7 +196,7 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
               role="tab"
               aria-selected={tab === tb}
               onClick={() => setTab(tb)}
-              className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13.5px] ${tab === tb ? "border-navy font-medium" : "border-transparent text-navy/60 hover:text-navy"}`}
+              className={`-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-[14px] ${tab === tb ? "border-navy font-medium" : "border-transparent text-ink-soft hover:text-navy"}`}
             >
               {F.tabs[tb]}
               {tabHasError(tb) && <span aria-hidden className="size-1.5 rounded-full bg-red-500" />}
@@ -242,7 +242,7 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
 
           <Card title={F.images}>
             <GalleryUploader value={form.images} onChange={(v) => set("images", v)} folder="products" defaultAlt={form.name} />
-            {err("images") && <p className="mt-2 text-[12px] text-red-600">{err("images")![0]}</p>}
+            {err("images") && <p className="mt-2 text-[13px] text-danger">{err("images")![0]}</p>}
           </Card>
 
           <Card
@@ -254,11 +254,11 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
               </Button>
             }
           >
-            {err("variants") && <p className="mb-3 text-[12px] text-red-600">{err("variants")![0]}</p>}
+            {err("variants") && <p className="mb-3 text-[13px] text-danger">{err("variants")![0]}</p>}
             <div className="-mx-5 -mb-5 overflow-x-auto">
               <table className="w-full min-w-[900px] text-[13px]">
                 <thead>
-                  <tr className="text-left text-[11.5px] uppercase tracking-[0.4px] text-navy/55">
+                  <tr className="text-left text-[13px] uppercase tracking-[0.4px] text-ink-soft">
                     <th className="px-3 py-2 pl-5 font-medium">{F.sku}</th>
                     <th className="px-2 py-2 font-medium">{F.size}</th>
                     <th className="px-2 py-2 font-medium">{F.price}</th>
@@ -272,12 +272,12 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
                 <tbody>
                   {form.variants.map((v, i) => {
                     const cell = (key: keyof VariantInput) => err(`variants.${i}.${key}`);
-                    const cls = (key: keyof VariantInput) => `${inputClass} h-8 ${cell(key) ? "border-red-500" : ""}`;
+                    const cls = (key: keyof VariantInput) => `${inputClass} h-10 ${cell(key) ? "border-danger" : ""}`;
                     return (
-                      <tr key={v.id ?? `new-${i}`} className={`border-t border-line/60 align-top ${v.isActive ? "" : "bg-navy/[0.03] text-navy/50"}`}>
+                      <tr key={v.id ?? `new-${i}`} className={`border-t border-hairline align-top ${v.isActive ? "" : "bg-ink/[0.04] text-ink-soft"}`}>
                         <td className="px-3 py-2 pl-5">
-                          <input aria-label={F.sku} value={v.sku} onChange={(e) => setVariant(i, { sku: e.target.value.toUpperCase() })} className={`${cls("sku")} w-52 font-mono text-[12px]`} />
-                          {cell("sku") && <p className="mt-1 text-[11px] text-red-600">{cell("sku")![0]}</p>}
+                          <input aria-label={F.sku} value={v.sku} onChange={(e) => setVariant(i, { sku: e.target.value.toUpperCase() })} className={`${cls("sku")} w-52 font-mono text-[13px]`} />
+                          {cell("sku") && <p className="mt-1 text-[13px] text-danger">{cell("sku")![0]}</p>}
                         </td>
                         <td className="px-2 py-2">
                           <input aria-label={F.size} value={v.size} onChange={(e) => setVariant(i, { size: e.target.value })} placeholder={F.sizePlaceholder} className={`${cls("size")} w-24`} />
@@ -291,13 +291,13 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
                         <td className="px-2 py-2">
                           <input aria-label={F.lowStockAt} type="number" min={0} value={numValue(v.lowStockAt)} onChange={(e) => setVariant(i, { lowStockAt: num(e.target.value) })} className={`${cls("lowStockAt")} w-20 text-right`} />
                         </td>
-                        <td className="px-2 py-2 pt-3.5 tabular-nums text-navy/60">{v.id ? (stockByVariant[v.id] ?? 0) : "—"}</td>
+                        <td className="px-2 py-2 pt-3.5 tabular-nums text-ink-soft">{v.id ? (stockByVariant[v.id] ?? 0) : "—"}</td>
                         <td className="px-2 py-2 pt-3">
                           <input type="checkbox" aria-label={t.admin.active} checked={v.isActive} onChange={(e) => setVariant(i, { isActive: e.target.checked })} className="size-4 accent-navy" />
                         </td>
                         <td className="px-2 py-2 pr-5 text-right">
                           {!v.id && (
-                            <button type="button" onClick={() => set("variants", form.variants.filter((_, j) => j !== i))} aria-label={t.admin.removeRow} className="rounded p-1.5 text-navy/50 hover:bg-red-50 hover:text-red-700">
+                            <button type="button" onClick={() => set("variants", form.variants.filter((_, j) => j !== i))} aria-label={t.admin.removeRow} className="rounded p-1.5 text-ink-soft hover:bg-err-bg hover:text-danger">
                               <Trash2 className="size-4" />
                             </button>
                           )}
@@ -379,14 +379,14 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
               </Card>
             );
           })}
-          {err("relations") && <p className="text-[12px] text-red-600">{err("relations")![0]}</p>}
+          {err("relations") && <p className="text-[13px] text-danger">{err("relations")![0]}</p>}
         </div>
 
         {/* Bundle */}
         <div hidden={tab !== "bundle"}>
           <Card title={F.bundleItems} description={F.bundleHint}>
             {!isBundle ? (
-              <p className="text-[14px] text-navy/60">{F.bundleOnlyForBundle}</p>
+              <p className="text-[14px] text-ink-soft">{F.bundleOnlyForBundle}</p>
             ) : (
               <>
                 <VariantPicker
@@ -397,10 +397,10 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
                   }}
                 />
                 {form.bundleItems.length > 0 && (
-                  <ol className="mt-3 divide-y divide-line/60 rounded-md border border-line">
+                  <ol className="mt-3 divide-y divide-hairline rounded-xl border border-hairline">
                     {form.bundleItems.map((b, i) => (
-                      <li key={b.variantId} className="flex items-center gap-2 px-3 py-2 text-[13.5px]">
-                        <span className="w-5 text-[12px] text-navy/45">{i + 1}.</span>
+                      <li key={b.variantId} className="flex items-center gap-2 px-3 py-2 text-[14px]">
+                        <span className="w-5 text-[13px] text-ink-faint">{i + 1}.</span>
                         <span className="flex-1">{labels[b.variantId] ?? b.variantId}</span>
                         <input
                           type="number"
@@ -408,15 +408,15 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
                           aria-label={F.qty}
                           value={numValue(b.qty)}
                           onChange={(e) => set("bundleItems", form.bundleItems.map((x, j) => (j === i ? { ...x, qty: num(e.target.value) } : x)))}
-                          className={`${inputClass} h-8 w-16 text-right`}
+                          className={`${inputClass} h-10 w-16 text-right`}
                         />
-                        <button type="button" aria-label={F.moveUp} disabled={i === 0} onClick={() => set("bundleItems", move(form.bundleItems, i, i - 1))} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+                        <button type="button" aria-label={F.moveUp} disabled={i === 0} onClick={() => set("bundleItems", move(form.bundleItems, i, i - 1))} className="rounded p-1 hover:bg-ink/[0.05] disabled:opacity-30">
                           <ArrowUp className="size-4" />
                         </button>
-                        <button type="button" aria-label={F.moveDown} disabled={i === form.bundleItems.length - 1} onClick={() => set("bundleItems", move(form.bundleItems, i, i + 1))} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+                        <button type="button" aria-label={F.moveDown} disabled={i === form.bundleItems.length - 1} onClick={() => set("bundleItems", move(form.bundleItems, i, i + 1))} className="rounded p-1 hover:bg-ink/[0.05] disabled:opacity-30">
                           <ArrowDown className="size-4" />
                         </button>
-                        <button type="button" aria-label={t.admin.remove} onClick={() => set("bundleItems", form.bundleItems.filter((_, j) => j !== i))} className="rounded p-1 text-navy/50 hover:bg-red-50 hover:text-red-700">
+                        <button type="button" aria-label={t.admin.remove} onClick={() => set("bundleItems", form.bundleItems.filter((_, j) => j !== i))} className="rounded p-1 text-ink-soft hover:bg-err-bg hover:text-danger">
                           <Trash2 className="size-4" />
                         </button>
                       </li>
@@ -425,7 +425,7 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
                 )}
               </>
             )}
-            {err("bundleItems") && <p className="mt-2 text-[12px] text-red-600">{err("bundleItems")![0]}</p>}
+            {err("bundleItems") && <p className="mt-2 text-[13px] text-danger">{err("bundleItems")![0]}</p>}
           </Card>
         </div>
 
@@ -448,7 +448,7 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
         <Card title={t.admin.status}>
           <div className="space-y-4">
             <Checkbox label={F.publish} checked={form.isPublished} onChange={(e) => set("isPublished", e.target.checked)} />
-            <p className="-mt-2 text-[12px] text-navy/50">{F.publishHint}</p>
+            <p className="-mt-2 text-[13px] text-ink-soft">{F.publishHint}</p>
             <Field label={F.badge} htmlFor="badge">
               <Select id="badge" value={form.badge ?? ""} onChange={(e) => set("badge", (e.target.value || null) as ProductInput["badge"])}>
                 <option value="">{F.noBadge}</option>
@@ -485,7 +485,7 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
           </div>
         </Card>
 
-        <div className="sticky bottom-4 flex gap-2 rounded-lg border border-line bg-white p-3 shadow-sm">
+        <div className="sticky bottom-4 flex gap-2 rounded-2xl border border-hairline bg-white p-3 shadow-sm">
           <Button type="submit" disabled={pending} className="flex-1">
             {pending ? t.admin.saving : t.admin.save}
           </Button>

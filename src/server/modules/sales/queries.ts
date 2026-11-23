@@ -77,7 +77,7 @@ export async function openPosSales() {
   });
 }
 
-export type SalesFilter = { q?: string; status?: SaleStatus; date?: string; page?: number };
+export type SalesFilter = { q?: string; status?: SaleStatus; date?: string; from?: string; page?: number };
 
 export async function listSales(f: SalesFilter) {
   const pageSize = 30;
@@ -94,6 +94,9 @@ export async function listSales(f: SalesFilter) {
   if (f.date && /^\d{4}-\d{2}-\d{2}$/.test(f.date)) {
     const { start, end } = ubDayRange(new Date(`${f.date}T12:00:00+08:00`));
     where.createdAt = { gte: start, lt: end };
+  } else if (f.from && /^\d{4}-\d{2}-\d{2}$/.test(f.from)) {
+    // "7 хоног" / "Энэ сар": тухайн өдрөөс хойш
+    where.createdAt = { gte: ubDayRange(new Date(`${f.from}T12:00:00+08:00`)).start };
   }
   const [rows, count] = await Promise.all([
     db.sale.findMany({

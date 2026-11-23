@@ -21,14 +21,14 @@ export default async function InquiriesPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title={s.title} description={s.description} />
-      <nav aria-label={s.changeStatus} className="mb-4 flex flex-wrap gap-1 border-b border-line">
+      <PageHeader eyebrow="Үйлчлүүлэгч" title={s.title} description={s.description} />
+      <nav aria-label={s.changeStatus} className="mb-4 flex flex-wrap gap-1 border-b border-hairline">
         {[undefined, ...INQUIRY_STATUSES].map((k) => (
           <Link
             key={k ?? "all"}
             href={k ? `/admin/inquiries?status=${k}` : "/admin/inquiries"}
             aria-current={status === k ? "page" : undefined}
-            className={`-mb-px border-b-2 px-3 py-2 text-[14px] ${status === k ? "border-navy font-medium" : "border-transparent text-navy/60 hover:text-navy"}`}
+            className={`-mb-px border-b-2 px-3 py-2 text-[14px] ${status === k ? "border-navy font-medium" : "border-transparent text-ink-soft hover:text-navy"}`}
           >
             {k ? s.status[k] : s.all}
           </Link>
@@ -36,7 +36,7 @@ export default async function InquiriesPage({ searchParams }: { searchParams: Pr
       </nav>
       <Card>
         {rows.length === 0 ? (
-          <p className="text-[14px] text-navy/55">{s.empty}</p>
+          <p className="text-[14px] text-ink-soft">{s.empty}</p>
         ) : (
           <Table>
             <thead>
@@ -67,7 +67,7 @@ export default async function InquiriesPage({ searchParams }: { searchParams: Pr
                     <ul className="space-y-0.5 text-[13px]">
                       {r.items.map((i) => (
                         <li key={i.variantId}>
-                          {i.productName} — {i.size} × {i.qty} <span className="text-navy/50">({formatMNT(i.price * i.qty)})</span>
+                          {i.productName} — {i.size} × {i.qty} <span className="text-ink-soft">({formatMNT(i.price * i.qty)})</span>
                         </li>
                       ))}
                     </ul>
@@ -75,7 +75,7 @@ export default async function InquiriesPage({ searchParams }: { searchParams: Pr
                   <td className={`${tdClass} max-w-[260px] whitespace-pre-line break-words text-[13px]`}>{r.note ?? "—"}</td>
                   <td className={tdClass}>
                     <InquiryStatusSelect id={r.id} status={r.status} />
-                    {r.handledBy && <p className="mt-1 text-[11px] text-navy/50">{s.handledBy(r.handledBy.name)}</p>}
+                    {r.handledBy && <p className="mt-1 text-[13px] text-ink-soft">{s.handledBy(r.handledBy.name)}</p>}
                   </td>
                 </tr>
               ))}

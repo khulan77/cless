@@ -233,7 +233,7 @@ export async function checkout(raw: CartInput, actor: Actor, approval?: Approval
     let number: string | null = null;
     if (cart.saleId) {
       const row = await lockSaleRow(tx, cart.saleId);
-      if (row.status !== "DRAFT") throw new UserError("Энэ борлуулалтыг засах боломжгүй (ноорог биш).");
+      if (row.status !== "DRAFT") throw new UserError("Энэ борлуулалтыг засах боломжгүй (төлбөрт шилжсэн).");
       saleId = row.id;
       number = row.number; // unlock хийгдсэн бол дугаараа хадгална
       await tx.saleItem.deleteMany({ where: { saleId } });

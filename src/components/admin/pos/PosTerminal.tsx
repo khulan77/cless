@@ -331,20 +331,20 @@ export function PosTerminal({
   const otherDrafts = drafts.filter((d) => d.id !== saleId);
   const draftBar = (
     <div className="mb-4 flex flex-wrap items-center gap-2 lg:col-span-2">
-      <span className="text-[13px] font-medium text-navy/70">{s.drafts(otherDrafts.length + (saleId || dirty ? 1 : 0))}</span>
-      <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-navy bg-white px-2.5 text-[13px]" aria-current="true">
+      <span className="text-[13px] font-medium text-ink-soft">{s.drafts(otherDrafts.length + (saleId || dirty ? 1 : 0))}</span>
+      <span className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-navy bg-white px-2.5 text-[13px]" aria-current="true">
         <FileText className="size-3.5" aria-hidden />
         {customer?.name ?? s.walkIn}
-        <span className="text-navy/50" aria-live="polite">
+        <span className="text-ink-soft" aria-live="polite">
           {saveState === "saving" ? s.saving : saveState === "error" ? s.saveFailed : dirty ? s.unsaved : saleId ? <Check className="inline size-3.5" aria-label={s.saved} /> : null}
         </span>
       </span>
       {otherDrafts.map((d) => (
-        <span key={d.id} className="inline-flex h-8 items-center rounded-md border border-line bg-white text-[13px]">
-          <button type="button" className="h-full px-2.5 hover:bg-navy/[0.03]" onClick={() => void go(`/admin/pos?sale=${d.id}`)}>
-            {d.customerName ?? s.walkIn} <span className="text-navy/50">· {s.lineCount(d.lines)}</span>
+        <span key={d.id} className="inline-flex h-8 items-center rounded-xl border border-hairline bg-white text-[13px]">
+          <button type="button" className="h-full px-2.5 hover:bg-canvas" onClick={() => void go(`/admin/pos?sale=${d.id}`)}>
+            {d.customerName ?? s.walkIn} <span className="text-ink-soft">· {s.lineCount(d.lines)}</span>
           </button>
-          <button type="button" className="h-full border-l border-line px-1.5 text-navy/45 hover:text-red-700" aria-label={`${s.discardDraft}: ${d.customerName ?? s.walkIn}`} onClick={() => setDiscardId(d.id)}>
+          <button type="button" className="h-full border-l border-hairline px-1.5 text-ink-faint hover:text-danger" aria-label={`${s.discardDraft}: ${d.customerName ?? s.walkIn}`} onClick={() => setDiscardId(d.id)}>
             <X className="size-3.5" />
           </button>
         </span>
@@ -372,7 +372,7 @@ export function PosTerminal({
       {/* ── Left: catalog ── */}
       <div className="space-y-4">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-navy/40" aria-hidden />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-faint" aria-hidden />
           <input
             ref={searchRef}
             autoFocus
@@ -394,15 +394,15 @@ export function PosTerminal({
             aria-label={s.searchLabel}
             className={`${inputClass} h-11 w-full pl-9 text-[15px]`}
           />
-          <p className="mt-1 text-[12px] text-navy/45">{s.searchHint}</p>
+          <p className="mt-1 text-[13px] text-ink-faint">{s.searchHint}</p>
         </div>
 
         <CatalogList title={s.services} empty={!catalog?.services.length}>
           {catalog?.services.map((sv) => (
-            <button key={sv.id} type="button" onClick={() => addService(sv)} className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-navy/[0.03]">
+            <button key={sv.id} type="button" onClick={() => addService(sv)} className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-canvas">
               <span className="min-w-0">
                 <span className="block truncate text-[14px]">{sv.name}</span>
-                <span className="text-[12px] text-navy/50">{sv.durationMin}′</span>
+                <span className="text-[13px] text-ink-soft">{sv.durationMin}′</span>
               </span>
               <span className="shrink-0 text-[14px] tabular-nums">{formatMNT(sv.price)}</span>
             </button>
@@ -411,10 +411,10 @@ export function PosTerminal({
 
         <CatalogList title={s.products} empty={!catalog?.products.length}>
           {catalog?.products.map((v) => (
-            <div key={v.id} className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-navy/[0.03]">
+            <div key={v.id} className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-canvas">
               <button type="button" onClick={() => addProduct(v)} disabled={v.available <= 0} className="min-w-0 flex-1 text-left disabled:opacity-50">
                 <span className="block truncate text-[14px]">{v.name}</span>
-                <span className="text-[12px] text-navy/50">
+                <span className="text-[13px] text-ink-soft">
                   {v.size} · {v.sku} · {s.available(v.available)}
                 </span>
               </button>
@@ -442,7 +442,7 @@ export function PosTerminal({
                 </Field>
               </div>
               <fieldset>
-                <legend className="mb-1.5 text-[13px] font-medium text-navy/80">{s.concerns}</legend>
+                <legend className="mb-1.5 text-[13px] font-medium text-ink">{s.concerns}</legend>
                 <div className="flex flex-wrap gap-1.5">
                   {concernOptions.map((c) => {
                     const on = concerns.includes(c.slug);
@@ -452,28 +452,28 @@ export function PosTerminal({
                         type="button"
                         aria-pressed={on}
                         onClick={() => toggleConcern(c.slug)}
-                        className={`rounded-full border px-3 py-1 text-[13px] ${on ? "border-navy bg-navy text-white" : "border-line bg-white text-navy/75 hover:border-navy/40"}`}
+                        className={`rounded-full border px-3 py-1 text-[13px] ${on ? "border-navy bg-navy text-white" : "border-hairline bg-white text-ink hover:border-navy/40"}`}
                       >
                         {c.name}
                       </button>
                     );
                   })}
                 </div>
-                <p className="mt-1 text-[12px] text-navy/50">{s.concernsHint}</p>
+                <p className="mt-1 text-[13px] text-ink-soft">{s.concernsHint}</p>
               </fieldset>
               <Field label={s.notes} htmlFor="pos-notes">
                 <Textarea id="pos-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
               </Field>
               <div>
-                <p className="mb-1.5 text-[13px] font-medium text-navy/80">{s.recommendations}</p>
-                {recs.length === 0 && <p className="text-[13px] text-navy/50">{s.recommend} — ＋</p>}
+                <p className="mb-1.5 text-[13px] font-medium text-ink">{s.recommendations}</p>
+                {recs.length === 0 && <p className="text-[13px] text-ink-soft">{s.recommend} — ＋</p>}
                 <ul className="space-y-2">
                   {recs.map((r) => (
-                    <li key={r.variantId} className="rounded-md border border-line p-2.5">
-                      <div className="mb-1.5 flex items-center justify-between gap-2 text-[13.5px]">
+                    <li key={r.variantId} className="rounded-xl border border-hairline p-2.5">
+                      <div className="mb-1.5 flex items-center justify-between gap-2 text-[14px]">
                         <span>{r.name}</span>
                         <button type="button" aria-label={s.remove} onClick={() => setRecs((x) => x.filter((y) => y.variantId !== r.variantId))}>
-                          <X className="size-4 text-navy/50" />
+                          <X className="size-4 text-ink-soft" />
                         </button>
                       </div>
                       <Textarea
@@ -501,15 +501,15 @@ export function PosTerminal({
           extra={
             todayAppointments.length > 0 && (
               <div>
-                <p className="mb-1 text-[12px] font-medium uppercase tracking-[0.4px] text-navy/55">{s.todayAppts}</p>
-                <ul className="max-h-48 divide-y divide-line overflow-y-auto rounded-md border border-line">
+                <p className="mb-1 text-[13px] font-medium uppercase tracking-[0.4px] text-ink-soft">{s.todayAppts}</p>
+                <ul className="max-h-48 divide-y divide-hairline overflow-y-auto rounded-xl border border-hairline">
                   {todayAppointments.map((a) => (
                     <li key={a.id}>
                       <button
                         type="button"
                         disabled={openAppt.pending}
                         aria-label={s.openAppt(a.time, a.customer)}
-                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] hover:bg-navy/[0.03]"
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] hover:bg-canvas"
                         onClick={async () => {
                           await flush();
                           void openAppt.run(a.id, { onSuccess: (r) => router.push(`/admin/pos?sale=${r.saleId}`) });
@@ -517,11 +517,11 @@ export function PosTerminal({
                       >
                         <span className="min-w-0">
                           <span className="font-medium tabular-nums">{a.time}</span> {a.customer}
-                          <span className="block truncate text-[12px] text-navy/55">
+                          <span className="block truncate text-[13px] text-ink-soft">
                             {a.service} · {a.staff}
                           </span>
                         </span>
-                        <span className="shrink-0 text-[11px] text-navy/50">{a.status}</span>
+                        <span className="shrink-0 text-[13px] text-ink-soft">{a.status}</span>
                       </button>
                     </li>
                   ))}
@@ -533,9 +533,9 @@ export function PosTerminal({
 
         <Card title={s.cart}>
           {lines.length === 0 ? (
-            <p className="text-[14px] text-navy/55">{s.emptyCart}</p>
+            <p className="text-[14px] text-ink-soft">{s.emptyCart}</p>
           ) : (
-            <ul className="-my-2 divide-y divide-line">
+            <ul className="-my-2 divide-y divide-hairline">
               {lines.map((l) => {
                 const pl = priced?.lines.find((x) => x.key === l.key);
                 return (
@@ -543,20 +543,20 @@ export function PosTerminal({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-[14px]">{l.name}</p>
-                        <p className="text-[12px] text-navy/50">
+                        <p className="text-[13px] text-ink-soft">
                           {l.detail} · {formatMNT(l.unitPrice)}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="text-[14px] tabular-nums">{formatMNT(pl?.lineTotal ?? l.unitPrice * l.qty)}</p>
                         {pl && pl.lineDiscount + pl.allocatedSaleDiscount > 0 && (
-                          <p className="text-[12px] text-navy/45 line-through tabular-nums">{formatMNT(pl.gross)}</p>
+                          <p className="text-[13px] text-ink-faint line-through tabular-nums">{formatMNT(pl.gross)}</p>
                         )}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {l.kind === "PRODUCT" ? (
-                        <div className="flex items-center rounded-md border border-line">
+                        <div className="flex items-center rounded-xl border border-hairline">
                           <button type="button" aria-label="-" className="px-2 py-1" onClick={() => update(l.key, { qty: Math.max(1, l.qty - 1) })}>
                             <Minus className="size-3.5" />
                           </button>
@@ -568,7 +568,7 @@ export function PosTerminal({
                           </button>
                         </div>
                       ) : (
-                        <Select aria-label={s.staff} value={l.staffId} onChange={(e) => update(l.key, { staffId: e.target.value })} className="h-8 w-40 text-[13px]" aria-invalid={!l.staffId}>
+                        <Select aria-label={s.staff} value={l.staffId} onChange={(e) => update(l.key, { staffId: e.target.value })} className="h-10 w-44 text-[14px]" aria-invalid={!l.staffId}>
                           <option value="">{s.chooseStaff}</option>
                           {staff.map((u) => (
                             <option key={u.id} value={u.id}>
@@ -578,12 +578,12 @@ export function PosTerminal({
                         </Select>
                       )}
                       <DiscountInputs value={l.discount} onChange={(d) => update(l.key, { discount: d })} label={s.lineDiscount} small />
-                      <button type="button" className="ml-auto rounded p-1 text-navy/50 hover:text-red-700" aria-label={`${s.remove}: ${l.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
+                      <button type="button" className="ml-auto rounded p-1 text-ink-soft hover:text-danger" aria-label={`${s.remove}: ${l.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
                         <Trash2 className="size-4" />
                       </button>
                     </div>
                     {l.discount && l.discount.value > 0 && (
-                      <Input value={l.discountReason} onChange={(e) => update(l.key, { discountReason: e.target.value })} placeholder={s.discountReason} aria-label={s.discountReason} className="h-8 text-[13px]" />
+                      <Input value={l.discountReason} onChange={(e) => update(l.key, { discountReason: e.target.value })} placeholder={s.discountReason} aria-label={s.discountReason} className="h-10 text-[14px]" />
                     )}
                   </li>
                 );
@@ -595,22 +595,22 @@ export function PosTerminal({
         <Card>
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[13px] font-medium text-navy/80">{s.saleDiscount}</span>
+              <span className="text-[13px] font-medium text-ink">{s.saleDiscount}</span>
               <DiscountInputs value={saleDiscount} onChange={setSaleDiscount} label={s.saleDiscount} />
             </div>
             {saleDiscount && saleDiscount.value > 0 && (
               <Input value={saleDiscountReason} onChange={(e) => setSaleDiscountReason(e.target.value)} placeholder={s.discountReason} aria-label={s.discountReason} />
             )}
-            <dl className="space-y-1 border-t border-line pt-3 text-[14px]">
+            <dl className="space-y-1 border-t border-hairline pt-3 text-[14px]">
               <Row label={s.subtotal} value={priced?.subtotal ?? 0} />
               {priced && priced.lineDiscountTotal + priced.saleDiscount > 0 && <Row label={s.discounts} value={-(priced.lineDiscountTotal + priced.saleDiscount)} />}
               <div className="flex items-baseline justify-between pt-1">
                 <dt className="text-[15px] font-medium">{s.total}</dt>
                 <dd className="text-[24px] font-light tabular-nums">{formatMNT(priced?.total ?? 0)}</dd>
               </div>
-              {priced && <p className="text-right text-[12px] text-navy/45">{s.vat(formatMNT(priced.vatTotal))}</p>}
+              {priced && <p className="text-right text-[13px] text-ink-faint">{s.vat(formatMNT(priced.vatTotal))}</p>}
             </dl>
-            {overLimit && <p className="rounded-md bg-amber-50 px-3 py-2 text-[13px] text-amber-800">{s.limitWarning(maxDiscountPercent)}</p>}
+            {overLimit && <p className="rounded-xl bg-warn-bg px-3 py-2 text-[13px] text-warn">{s.limitWarning(maxDiscountPercent)}</p>}
             <Button id="pos-checkout" className="h-11 w-full text-[15px]" disabled={lines.length === 0 || checkout.pending || visitAction.pending} onClick={() => doCheckout(false)}>
               {s.checkout} · F2
             </Button>
@@ -626,7 +626,7 @@ export function PosTerminal({
             void doCheckout(true);
           }}
         >
-          <p className="text-[13px] text-navy/60">{s.approvalHint}</p>
+          <p className="text-[13px] text-ink-soft">{s.approvalHint}</p>
           <Field label={s.email} htmlFor="appr-email" error={checkout.fieldErrors.email}>
             <Input id="appr-email" type="email" autoComplete="off" value={approval.email} onChange={(e) => setApproval((a) => ({ ...a, email: e.target.value }))} />
           </Field>
@@ -664,7 +664,7 @@ export function PosTerminal({
 
 function Row({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex justify-between text-navy/70">
+    <div className="flex justify-between text-ink-soft">
       <dt>{label}</dt>
       <dd className="tabular-nums">{formatMNT(value)}</dd>
     </div>
@@ -673,9 +673,9 @@ function Row({ label, value }: { label: string; value: number }) {
 
 function CatalogList({ title, empty, children }: { title: string; empty: boolean; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-line bg-white">
-      <h2 className="border-b border-line px-3 py-2 text-[12px] font-medium uppercase tracking-[0.4px] text-navy/55">{title}</h2>
-      {empty ? <p className="px-3 py-3 text-[13px] text-navy/50">{s.noResults}</p> : <div className="max-h-72 divide-y divide-line/60 overflow-y-auto">{children}</div>}
+    <section className="rounded-2xl border border-hairline bg-white">
+      <h2 className="border-b border-hairline px-3 py-2 text-[13px] font-medium uppercase tracking-[0.4px] text-ink-soft">{title}</h2>
+      {empty ? <p className="px-3 py-3 text-[13px] text-ink-soft">{s.noResults}</p> : <div className="max-h-72 divide-y divide-hairline overflow-y-auto">{children}</div>}
     </section>
   );
 }
@@ -702,7 +702,7 @@ function DiscountInputs({ value, onChange, label, small }: { value: Discount; on
       </div>
       <button
         type="button"
-        className={`rounded-md border border-line px-2 text-[12px] ${small ? "h-8" : "h-9"}`}
+        className={`rounded-xl border border-hairline px-2 text-[13px] ${small ? "h-8" : "h-9"}`}
         onClick={() => onChange(value ? { type: type === "AMOUNT" ? "PERCENT" : "AMOUNT", value: 0 } : { type: type === "AMOUNT" ? "PERCENT" : "AMOUNT", value: Number.NaN })}
         aria-label={type === "AMOUNT" ? s.discountPercent : s.discountAmount}
       >

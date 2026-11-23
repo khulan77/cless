@@ -42,7 +42,7 @@ function Shell({ title, description, onSubmit, pending, children }: {
     <form onSubmit={onSubmit} noValidate>
       <Card title={title} description={description}>
         <div className="space-y-5">{children}</div>
-        <div className="mt-6 flex justify-end border-t border-line pt-4">
+        <div className="mt-6 flex justify-end border-t border-hairline pt-4">
           <Button type="submit" disabled={pending}>{pending ? t.admin.saving : t.admin.save}</Button>
         </div>
       </Card>
@@ -55,7 +55,7 @@ function ImageField({ value, onChange, prefix, err }: { value: Image; onChange: 
     <div className="grid gap-3 md:grid-cols-[auto_1fr]">
       <div>
         <SingleImageUploader value={value.src || null} onChange={(src) => onChange({ ...value, src: src ?? "" })} folder="content" />
-        {err(`${prefix}.src`) && <p className="mt-1 text-[12px] text-red-600">{err(`${prefix}.src`)![0]}</p>}
+        {err(`${prefix}.src`) && <p className="mt-1 text-[13px] text-danger">{err(`${prefix}.src`)![0]}</p>}
       </div>
       <Field label={t.admin.content.imageAlt} htmlFor={`${prefix}-alt`} hint={t.admin.content.imageAltHint}>
         <Input id={`${prefix}-alt`} value={value.alt} onChange={(e) => onChange({ ...value, alt: e.target.value })} />
@@ -92,7 +92,7 @@ export function AnnouncementForm({ initial }: { initial: SiteSettings["announcem
             </Button>
           </div>
         ))}
-        {err("messages") && <p className="text-[12px] text-red-600">{err("messages")![0]}</p>}
+        {err("messages") && <p className="text-[13px] text-danger">{err("messages")![0]}</p>}
         {value.messages.length < 6 && (
           <Button variant="secondary" size="sm" onClick={() => setValue({ ...value, messages: [...value.messages, ""] })}>
             <Plus className="size-4" /> {t.admin.addRow}
@@ -141,7 +141,7 @@ export function PromoTrioForm({ initial }: { initial: SiteSettings["promoTrio"] 
   return (
     <Shell title={t.admin.content.promoTrio} onSubmit={submit} pending={pending}>
       {value.items.map((it, i) => (
-        <fieldset key={i} className="space-y-3 rounded-md border border-line p-4">
+        <fieldset key={i} className="space-y-3 rounded-xl border border-hairline p-4">
           <legend className="px-1 text-[13px] font-medium">{t.admin.content.card(i + 1)}</legend>
           <ImageField value={it.image} onChange={(image) => setItem(i, { image })} prefix={`items.${i}.image`} err={err} />
           <Field label={t.admin.title} htmlFor={`p${i}-title`} error={err(`items.${i}.title`)}>
@@ -268,9 +268,9 @@ export function ContactFooterForm({ initial }: { initial: SiteSettings["footer"]
   const C = t.admin.content;
   return (
     <Shell title={C.contactFooter} description={C.contactFooterHint} onSubmit={submit} pending={pending}>
-      <p className="text-[13px] text-navy/60">
+      <p className="text-[13px] text-ink-soft">
         {C.contactMoved}{" "}
-        <NextLink href="/admin/settings?tab=salon" className="underline">
+        <NextLink href="/admin/settings/salon" className="underline">
           {C.contactMovedLink}
         </NextLink>
       </p>

@@ -33,9 +33,9 @@ export function MoneyInput({
           const digits = e.target.value.replace(/[^\d]/g, "").slice(0, 12);
           onChange(digits === "" ? Number.NaN : Number(digits));
         }}
-        className={`${inputClass} pr-7 text-right tabular-nums ${invalid ? "border-red-500" : ""} ${className}`}
+        className={`${inputClass} pr-7 text-right tabular-nums ${invalid ? "border-danger" : ""} ${className}`}
       />
-      <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] text-navy/40">
+      <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[13px] text-ink-faint">
         ₮
       </span>
     </div>

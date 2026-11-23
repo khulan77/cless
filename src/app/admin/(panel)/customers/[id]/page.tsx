@@ -28,13 +28,14 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   return (
     <>
       <PageHeader
+        eyebrow="Үйлчлүүлэгч"
         title={c.name}
         description={[c.phone, c.email].filter(Boolean).join(" · ")}
         actions={
           <>
             {can(user.role, "pos:use") && (
               <Link href="/admin/pos" className={btnClass("primary")}>
-                POS
+                Төлбөр авах
               </Link>
             )}
             {can(user.role, "customer:write") && (
@@ -62,22 +63,22 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           ["Айлчлал", String(visits.length)],
           ["Арьсны төрөл", c.skinType ? t.admin.skinTypes[c.skinType] : "—"],
         ].map(([k, v]) => (
-          <div key={k} className="rounded-lg border border-line bg-white p-4">
-            <p className="text-[12px] text-navy/55">{k}</p>
+          <div key={k} className="rounded-2xl border border-hairline bg-white p-4">
+            <p className="text-[13px] text-ink-soft">{k}</p>
             <p className="mt-1.5 text-[20px] font-light tabular-nums">{v}</p>
           </div>
         ))}
       </div>
-      {c.notes && <p className="mb-5 whitespace-pre-line rounded-lg border border-line bg-white p-4 text-[14px]">{c.notes}</p>}
+      {c.notes && <p className="mb-5 whitespace-pre-line rounded-2xl border border-hairline bg-white p-4 text-[14px]">{c.notes}</p>}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card title="Айлчлалууд">
           {visits.length === 0 ? (
-            <p className="text-[14px] text-navy/55">Айлчлал алга.</p>
+            <p className="text-[14px] text-ink-soft">Айлчлал алга.</p>
           ) : (
-            <ul className="-my-2 divide-y divide-line">
+            <ul className="-my-2 divide-y divide-hairline">
               {visits.map((v) => (
-                <li key={v.id} className="space-y-2 py-3 text-[13.5px]">
+                <li key={v.id} className="space-y-2 py-3 text-[14px]">
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <Badge tone={v.emailStatus === "SENT" ? "green" : v.emailStatus === "FAILED" ? "red" : "neutral"}>{t.admin.emailStatus[v.emailStatus]}</Badge>
                     {c.email && can(user.role, "visit:write") && <ResendEmailButton visitId={v.id} />}
@@ -98,7 +99,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
                     }}
                   />
                   {v.sale && (
-                    <Link href={`/admin/sales/${v.sale.id}`} className="text-[12px] underline underline-offset-4">
+                    <Link href={`/admin/sales/${v.sale.id}`} className="text-[13px] underline underline-offset-4">
                       {v.sale.number}
                     </Link>
                   )}
@@ -109,15 +110,15 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         </Card>
         <Card title="Борлуулалт">
           {sales.length === 0 ? (
-            <p className="text-[14px] text-navy/55">Борлуулалт алга.</p>
+            <p className="text-[14px] text-ink-soft">Борлуулалт алга.</p>
           ) : (
-            <ul className="-my-2 divide-y divide-line text-[13.5px]">
+            <ul className="-my-2 divide-y divide-hairline text-[14px]">
               {sales.map((s) => (
                 <li key={s.id} className="flex items-center justify-between gap-2 py-2">
-                  <Link href={`/admin/sales/${s.id}`} className="font-mono text-[12.5px] hover:underline">
+                  <Link href={`/admin/sales/${s.id}`} className="font-mono text-[13px] hover:underline">
                     {s.number ?? "—"}
                   </Link>
-                  <span className="text-navy/55">{ubDateKey(s.createdAt)}</span>
+                  <span className="text-ink-soft">{ubDateKey(s.createdAt)}</span>
                   <Badge tone={saleStatusTone(s.status)}>{t.admin.saleStatus[s.status]}</Badge>
                   <span className="tabular-nums">{formatMNT(s.total)}</span>
                 </li>

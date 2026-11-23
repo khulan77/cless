@@ -37,7 +37,7 @@ describe("POS drafts", () => {
     const locked = await db.sale.findUniqueOrThrow({ where: { id: first.saleId } });
     expect(locked.status).toBe("PENDING_PAYMENT");
     expect(locked.draftData).toBeNull();
-    await expect(saveDraft({ saleId: first.saleId, data: {} }, manager.id)).rejects.toThrow(/ноорог биш/);
+    await expect(saveDraft({ saleId: first.saleId, data: {} }, manager.id)).rejects.toThrow(/төлбөрт шилжсэн/);
     expect((await listDrafts(manager.id)).map((d) => d.id)).toEqual([second]);
     // Unlock → дахин ноорог (мөрүүдтэй, дугаар хэвээр)
     await unlock(first.saleId, manager.id);

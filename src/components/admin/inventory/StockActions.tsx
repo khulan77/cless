@@ -65,7 +65,7 @@ export function StockActions({ variantId, label, stock, costPrice }: Props) {
           <Field label={t.admin.stock.note} htmlFor="r-note" error={receive.fieldErrors.note}>
             <Textarea id="r-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.admin.stock.notePlaceholder} />
           </Field>
-          <p className="text-[13px] text-navy/60">
+          <p className="text-[13px] text-ink-soft">
             {t.admin.stock.current(stock, stock + (Number(qty) || 0))}
           </p>
           <div className="flex justify-end gap-2">
@@ -89,7 +89,7 @@ export function StockActions({ variantId, label, stock, costPrice }: Props) {
           <Field label={t.admin.stock.reason} htmlFor="a-reason" error={adjust.fieldErrors.reason}>
             <Textarea id="a-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t.admin.stock.reasonPlaceholder} required />
           </Field>
-          <p className="text-[13px] text-navy/60">
+          <p className="text-[13px] text-ink-soft">
             {t.admin.stock.diff(
               stock,
               Number.isNaN(num(newQty)) ? "—" : `${num(newQty) - stock > 0 ? "+" : ""}${num(newQty) - stock}`,

@@ -18,7 +18,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
   if (!user) notFound();
   return (
     <>
-      <PageHeader title={user.name} />
+      <PageHeader eyebrow="Хэрэглэгч ба эрх" title={user.name} description="Эрх, цалин, нууц үг" />
       <div className="grid max-w-[1000px] gap-5 lg:grid-cols-[1fr_340px]">
         <EditUserForm
           email={user.email}

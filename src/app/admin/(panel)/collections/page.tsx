@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Badge, PageHeader, Table, btnClass, tdClass, thClass } from "@/components/admin/ui";
+import { Plus } from "lucide-react";
+import { Badge, PageHeader, SegmentedTabs, Table, btnClass, tdClass, thClass } from "@/components/admin/ui";
 import type { CollectionKind } from "@/generated/prisma/enums";
 import { COLLECTION_KIND_LABELS } from "@/lib/validation/collection";
 import { listCollectionOptions } from "@/server/queries/admin";
@@ -31,23 +32,21 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
   return (
     <>
       <PageHeader
+        eyebrow="Дэлгүүр"
         title="Ангилал"
-        description="Бүтээгдэхүүний ангилал ба арьсны асуудал (протокол)"
-        actions={<Link href={`/admin/collections/new?kind=${kind}`} className={btnClass("primary")}>+ Шинэ</Link>}
-      />
-      <div className="mb-4 inline-flex rounded-md border border-line bg-white p-0.5" role="tablist">
-        {(["CATEGORY", "CONCERN"] as const).map((k) => (
-          <Link
-            key={k}
-            href={`/admin/collections?kind=${k}`}
-            role="tab"
-            aria-selected={k === kind}
-            className={`rounded px-3 py-1.5 text-[13px] ${k === kind ? "bg-navy text-white" : "text-navy/70 hover:bg-navy/5"}`}
-          >
-            {COLLECTION_KIND_LABELS[k]}
+        description="Дэлгүүрийн цэс: бүтээгдэхүүний ангилал ба арьсны асуудлаар сонгох протокол"
+        actions={
+          <Link href={`/admin/collections/new?kind=${kind}`} className={btnClass("primary")}>
+            <Plus className="size-[18px]" strokeWidth={2} /> Ангилал нэмэх
           </Link>
-        ))}
-      </div>
+        }
+      />
+      <SegmentedTabs
+        className="mb-6"
+        label="Ангиллын төрөл"
+        value={kind}
+        items={(["CATEGORY", "CONCERN"] as const).map((k) => ({ value: k, label: COLLECTION_KIND_LABELS[k], href: `/admin/collections?kind=${k}` }))}
+      />
       <Table>
         <thead>
           <tr>
@@ -61,10 +60,10 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
         </thead>
         <tbody>
           {collections.map((c) => (
-            <tr key={c.id} className="hover:bg-navy/[0.02]">
+            <tr key={c.id} className="hover:bg-canvas">
               <td className={tdClass}>
-                <div className="relative size-10 overflow-hidden rounded bg-card">
-                  {c.tileImage && <Image src={c.tileImage} alt="" fill sizes="40px" unoptimized={c.tileImage.endsWith(".svg")} className="object-cover" />}
+                <div className="relative size-12 overflow-hidden rounded-xl bg-canvas">
+                  {c.tileImage && <Image src={c.tileImage} alt="" fill sizes="48px" unoptimized={c.tileImage.endsWith(".svg")} className="object-cover" />}
                 </div>
               </td>
               <td className={tdClass}>
@@ -72,7 +71,7 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
                   {c.depth > 0 && <span className="mr-1 text-navy/30">└</span>}
                   <Link href={`/admin/collections/${c.id}`} className="font-medium hover:underline">{c.name}</Link>
                 </span>
-                <p className="font-mono text-[11px] text-navy/45">{c.slug}</p>
+                <p className="font-mono text-[13px] text-ink-faint">{c.slug}</p>
               </td>
               <td className={tdClass}>{c.showInMenu ? <Badge tone="green">Цэсэнд</Badge> : <Badge>Нуугдсан</Badge>}{c._count.tiles > 0 && <span className="ml-1.5"><Badge>{`${c._count.tiles} tile`}</Badge></span>}</td>
               <td className={`${tdClass} text-right tabular-nums`}>{c._count.products}</td>

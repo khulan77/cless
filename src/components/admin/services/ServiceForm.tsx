@@ -114,10 +114,10 @@ export function ServiceForm({ initial, variantLabels: initialLabels, categories 
             }}
           />
           {form.consumables.length > 0 && (
-            <ul className="mt-4 divide-y divide-line/60 rounded-md border border-line">
+            <ul className="mt-4 divide-y divide-hairline rounded-xl border border-hairline">
               {form.consumables.map((c, i) => (
                 <li key={c.variantId} className="flex items-center gap-3 px-3 py-2">
-                  <span className="flex-1 text-[13.5px]">{labels[c.variantId] ?? c.variantId}</span>
+                  <span className="flex-1 text-[14px]">{labels[c.variantId] ?? c.variantId}</span>
                   <input
                     type="number"
                     step={0.01}
@@ -125,10 +125,10 @@ export function ServiceForm({ initial, variantLabels: initialLabels, categories 
                     aria-label={t.admin.serviceForm.consumableQty}
                     value={numValue(c.qtyPerService)}
                     onChange={(e) => set("consumables", form.consumables.map((x, j) => (j === i ? { ...x, qtyPerService: num(e.target.value) } : x)))}
-                    className={`${inputClass} h-8 w-24 text-right ${err(`consumables.${i}.qtyPerService`) ? "border-red-500" : ""}`}
+                    className={`${inputClass} h-10 w-24 text-right ${err(`consumables.${i}.qtyPerService`) ? "border-danger" : ""}`}
                   />
-                  <span className="w-12 text-[12px] text-navy/50">{Number.isNaN(c.qtyPerService) ? "" : `${Math.round(c.qtyPerService * 1000) / 10}%`}</span>
-                  <button type="button" onClick={() => set("consumables", form.consumables.filter((_, j) => j !== i))} aria-label={t.admin.serviceForm.removeConsumable} className="rounded p-1.5 text-navy/50 hover:bg-red-50 hover:text-red-700">
+                  <span className="w-12 text-[13px] text-ink-soft">{Number.isNaN(c.qtyPerService) ? "" : `${Math.round(c.qtyPerService * 1000) / 10}%`}</span>
+                  <button type="button" onClick={() => set("consumables", form.consumables.filter((_, j) => j !== i))} aria-label={t.admin.serviceForm.removeConsumable} className="rounded p-1.5 text-ink-soft hover:bg-err-bg hover:text-danger">
                     <Trash2 className="size-4" />
                   </button>
                 </li>
@@ -142,7 +142,7 @@ export function ServiceForm({ initial, variantLabels: initialLabels, categories 
         <Card title={t.admin.status}>
           <div className="space-y-4">
             <Checkbox label={t.admin.active} checked={form.isActive} onChange={(e) => set("isActive", e.target.checked)} />
-            <p className="-mt-2 text-[12px] text-navy/50">{t.admin.serviceForm.archiveHint}</p>
+            <p className="-mt-2 text-[13px] text-ink-soft">{t.admin.serviceForm.archiveHint}</p>
             <Field label={t.admin.sortOrder} htmlFor="sortOrder" error={err("sortOrder")}>
               <Input id="sortOrder" type="number" min={0} value={numValue(form.sortOrder)} onChange={(e) => set("sortOrder", num(e.target.value))} />
             </Field>
@@ -151,7 +151,7 @@ export function ServiceForm({ initial, variantLabels: initialLabels, categories 
         <Card title={t.admin.image}>
           <SingleImageUploader value={form.image} onChange={(v) => set("image", v)} folder="services" />
         </Card>
-        <div className="sticky bottom-4 flex gap-2 rounded-lg border border-line bg-white p-3 shadow-sm">
+        <div className="sticky bottom-4 flex gap-2 rounded-2xl border border-hairline bg-white p-3 shadow-sm">
           <Button type="submit" disabled={pending} className="flex-1">{pending ? t.admin.saving : t.admin.save}</Button>
           <Button variant="secondary" onClick={() => router.push("/admin/services")}>{t.admin.back}</Button>
         </div>

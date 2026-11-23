@@ -55,7 +55,7 @@ export async function readiness(now = new Date()): Promise<{ items: ReadinessIte
   ].filter(Boolean) as string[];
 
   const items: ReadinessItem[] = [
-    { key: "salon", ok: salonOk, label: "Салоны мэдээлэл (нэр, хаяг, утас, имэйл, ажлын цаг)", href: "/admin/settings?tab=salon" },
+    { key: "salon", ok: salonOk, label: "Салоны мэдээлэл (нэр, хаяг, утас, имэйл, ажлын цаг)", href: "/admin/settings/salon" },
     { key: "services", ok: services > 0, label: "Цаг захиалж болох ≥1 идэвхтэй үйлчилгээ", detail: `${services}`, href: "/admin/services" },
     { key: "staff", ok: staff > 0, label: "Хуваарьтай ≥1 bookable ажилтан", detail: `${staff}`, href: "/admin/staff-schedules" },
     { key: "products", ok: products > 0, label: "Зурагтай ≥1 нийтлэгдсэн бүтээгдэхүүн", detail: `${products}`, href: "/admin/products" },
@@ -72,9 +72,9 @@ export async function readiness(now = new Date()): Promise<{ items: ReadinessIte
       ok: emailOk,
       label: "Имэйл тохирсон (Resend түлхүүр + илгээгч)",
       detail: emailOk ? emailFrom : !process.env.RESEND_API_KEY ? "RESEND_API_KEY алга" : "Илгээгч алга",
-      href: "/admin/settings?tab=email",
+      href: "/admin/settings/email",
     },
-    { key: "qpay", ok: qpayOk, label: "QPay горим сонгосон", detail: qpay.mode === "api" ? "API" : "Гараар", href: "/admin/settings?tab=qpay" },
+    { key: "qpay", ok: qpayOk, label: "QPay горим сонгосон", detail: qpay.mode === "api" ? "API" : "Гараар", href: "/admin/settings/payments" },
     {
       key: "worker",
       ok: !worker.stale,

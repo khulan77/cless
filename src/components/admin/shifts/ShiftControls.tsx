@@ -89,7 +89,7 @@ export function ShiftOpenControls({ shiftId, expected, threshold = 0 }: { shiftI
             <MoneyInput id="sh-counted" className="w-full" value={counted} onChange={setCounted} />
           </Field>
           {diff !== null && (
-            <p className={`text-[14px] ${diff === 0 ? "text-emerald-700" : "text-red-700"}`}>
+            <p className={`text-[14px] ${diff === 0 ? "text-ok" : "text-danger"}`}>
               {s.difference}: <span className="tabular-nums">{diff > 0 ? "+" : ""}{formatMNT(diff)}</span>
             </p>
           )}
@@ -113,14 +113,14 @@ export function ShiftOpenControls({ shiftId, expected, threshold = 0 }: { shiftI
       >
         <dl className="space-y-1.5 text-[14px]">
           <div className="flex justify-between">
-            <dt className="text-navy/65">{s.expected}</dt>
+            <dt className="text-ink-soft">{s.expected}</dt>
             <dd className="tabular-nums">{formatMNT(expected)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-navy/65">{s.counted}</dt>
+            <dt className="text-ink-soft">{s.counted}</dt>
             <dd className="tabular-nums">{Number.isNaN(counted) ? "—" : formatMNT(counted)}</dd>
           </div>
-          <div className={`flex justify-between font-medium ${diff === 0 ? "text-emerald-700" : "text-red-700"}`}>
+          <div className={`flex justify-between font-medium ${diff === 0 ? "text-ok" : "text-danger"}`}>
             <dt>{s.difference}</dt>
             <dd className="tabular-nums" data-testid="close-diff">
               {diff !== null && diff > 0 ? "+" : ""}
@@ -129,7 +129,7 @@ export function ShiftOpenControls({ shiftId, expected, threshold = 0 }: { shiftI
           </div>
         </dl>
         {diff !== null && threshold > 0 && Math.abs(diff) > threshold && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-[13px] text-red-800">
+          <p role="alert" className="rounded-xl bg-err-bg px-3 py-2 text-[13px] text-err">
             {s.bigDifference(formatMNT(threshold))}
           </p>
         )}
@@ -138,7 +138,7 @@ export function ShiftOpenControls({ shiftId, expected, threshold = 0 }: { shiftI
             <Textarea id="sh-note" className="min-h-16" value={note} onChange={(e) => setNote(e.target.value)} autoFocus />
           </Field>
         )}
-        <p className="text-[13px] text-navy/60">{s.closeHint}</p>
+        <p className="text-[13px] text-ink-soft">{s.closeHint}</p>
       </ConfirmDialog>
     </div>
   );

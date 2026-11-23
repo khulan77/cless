@@ -1,22 +1,22 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Button, Select, inputClass } from "@/components/admin/ui";
+import { Avatar, Button, SegmentedTabs, Select, pastelFor } from "@/components/admin/ui";
 import { t } from "@/i18n";
-import { addDays, formatHm, formatTime, ubAt, ubDateKey, ubMinuteOfDay } from "@/lib/time";
+import { formatMNT } from "@/lib/money";
+import { addDays, formatHm, formatTime, ubAt, ubDateKey, ubMinuteOfDay, ubWeekday } from "@/lib/time";
 import { apptMove } from "@/server/actions/appointments";
 import { AppointmentDialog, type ApptDialogInit } from "./AppointmentDialog";
 import { AppointmentPanel } from "./AppointmentPanel";
 import { FreeSlotSearch } from "./FreeSlotSearch";
-import { cardClass } from "./status";
 import type { CalAppt, CalColumn, CalPerms, CalService } from "./types";
 
 const c = t.admin.calendar;
-/** Height of one slot row in px */
-const ROW = 22;
+/** 1 minute = 1.6px → a 30-minute row is 48px */
+const PX_PER_MIN = 1.6;
 
 type Props = {
   view: "day" | "week";
@@ -30,12 +30,24 @@ type Props = {
   staff: { id: string; name: string }[];
   cancelReasons: string[];
   perms: CalPerms;
+  /** Cancelled appointments in the visible range (not drawn) */
+  cancelled: number;
 };
 
 const within = (list: { start: string; end: string }[], from: number, to: number) =>
   list.some((i) => Date.parse(i.start) <= from && Date.parse(i.end) >= to);
 const overlaps = (list: { start: string; end: string }[], from: number, to: number) =>
   list.some((i) => Date.parse(i.start) < to && Date.parse(i.end) > from);
+const minutes = (list: { start: string; end: string }[]) => list.reduce((s, i) => s + (Date.parse(i.end) - Date.parse(i.start)) / 60_000, 0);
+const apptMin = (a: CalAppt) => (Date.parse(a.endsAt) - Date.parse(a.startsAt)) / 60_000;
+const counts = (a: CalAppt) => a.status !== "NO_SHOW";
+const hoursLabel = (min: number) => {
+  const h = Math.round((min / 60) * 2) / 2;
+  return Number.isInteger(h) ? String(h) : h.toFixed(1);
+};
+
+/** "2026-11-23" → "23 / 11 / 2026" */
+const bigDate = (key: string) => key.split("-").reverse().join(" / ");
 
 export function CalendarBoard(p: Props) {
   const router = useRouter();
@@ -92,8 +104,29 @@ export function CalendarBoard(p: Props) {
     for (let m = p.axis.startMin; m < p.axis.endMin; m += p.slotMinutes) list.push(m);
     return list;
   }, [p.axis, p.slotMinutes]);
-  const top = (iso: string) => ((ubMinuteOfDay(new Date(iso)) - p.axis.startMin) / p.slotMinutes) * ROW;
-  const height = (from: string, to: string) => ((Date.parse(to) - Date.parse(from)) / 60_000 / p.slotMinutes) * ROW;
+  const ROW = p.slotMinutes * PX_PER_MIN;
+  const gridH = rows.length * ROW;
+  const top = (iso: string) => (ubMinuteOfDay(new Date(iso)) - p.axis.startMin) * PX_PER_MIN;
+  const height = (from: string, to: string) => ((Date.parse(to) - Date.parse(from)) / 60_000) * PX_PER_MIN;
+
+  // ── Stats (from what is on screen) ──
+  const stats = useMemo(() => {
+    const working = p.columns.reduce((s, col) => s + minutes(col.working), 0);
+    const booked = p.appointments.filter(counts).reduce((s, a) => s + apptMin(a), 0);
+    const total = p.appointments.filter(counts).reduce((s, a) => s + a.price, 0);
+    const paid = p.appointments.reduce((s, a) => s + a.paid, 0);
+    return {
+      bookings: p.appointments.length,
+      staffOn: p.columns.filter((col) => col.working.length > 0).length,
+      load: working > 0 ? Math.min(100, Math.round((booked / working) * 100)) : 0,
+      free: Math.max(0, working - booked),
+      total,
+      paid,
+      remaining: Math.max(0, total - paid),
+    };
+  }, [p.columns, p.appointments]);
+
+  const colAppts = (col: CalColumn) => p.appointments.filter((a) => a.staffId === col.staffId && ubDateKey(new Date(a.startsAt)) === col.date);
 
   const move = async (appt: CalAppt, col: CalColumn, minute: number) => {
     const startsAt = ubAt(col.date, formatHm(minute)).toISOString();
@@ -103,190 +136,232 @@ export function CalendarBoard(p: Props) {
     else if (res.message) toast.success(res.message);
     router.refresh();
   };
+  const drop = (col: CalColumn, m: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const a = p.appointments.find((x) => x.id === dragId);
+    if (a) void move(a, col, m);
+    setDragId(null);
+  };
+
+  const nowMin = nowMs !== null ? ubMinuteOfDay(new Date(nowMs)) : null;
+  const nowTop = nowMin !== null ? (nowMin - p.axis.startMin) * PX_PER_MIN : null;
+  const nowVisible = nowTop !== null && nowTop >= 0 && nowTop <= gridH && p.columns.some((col) => col.date === today);
+  const isToday = p.date === today;
 
   return (
-    <div>
-      {/* ── Toolbar ── */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex items-center rounded-md border border-line bg-white">
-          <button type="button" className="px-2 py-2" aria-label={p.view === "week" ? c.prevWeek : c.prevDay} onClick={() => go({ date: addDays(p.date, -step) })}>
-            <ChevronLeft className="size-4" />
+    <div className="flex min-h-[640px] flex-col lg:h-[calc(100dvh-9rem)]">
+      {/* ── Header: today · ‹ › · big date · actions ── */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <button
+          type="button"
+          onClick={() => go({ date: ubDateKey() })}
+          className={`h-10 rounded-full border px-4 text-[14px] font-medium transition-colors ${isToday ? "border-navy bg-navy text-white" : "border-hairline bg-white text-ink hover:border-ink/25"}`}
+        >
+          {c.today}
+        </button>
+        <div className="flex items-center">
+          <button type="button" className="grid size-10 place-items-center rounded-full text-ink-soft hover:bg-ink/[0.05] hover:text-ink" aria-label={p.view === "week" ? c.prevWeek : c.prevDay} onClick={() => go({ date: addDays(p.date, -step) })}>
+            <ChevronLeft className="size-5" strokeWidth={1.75} />
           </button>
-          <button type="button" className="border-x border-line px-3 py-1.5 text-[13px]" onClick={() => go({ date: ubDateKey() })}>
-            {c.today}
-          </button>
-          <button type="button" className="px-2 py-2" aria-label={p.view === "week" ? c.nextWeek : c.nextDay} onClick={() => go({ date: addDays(p.date, step) })}>
-            <ChevronRight className="size-4" />
+          <button type="button" className="grid size-10 place-items-center rounded-full text-ink-soft hover:bg-ink/[0.05] hover:text-ink" aria-label={p.view === "week" ? c.nextWeek : c.nextDay} onClick={() => go({ date: addDays(p.date, step) })}>
+            <ChevronRight className="size-5" strokeWidth={1.75} />
           </button>
         </div>
-        <input type="date" aria-label={c.date} value={p.date} onChange={(e) => e.target.value && go({ date: e.target.value })} className={`${inputClass} w-40`} />
-        <div role="tablist" aria-label={c.view} className="flex rounded-md bg-navy/[0.05] p-0.5">
-          {(["day", "week"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              aria-selected={p.view === v}
-              onClick={() => go({ view: v, staff: v === "week" ? (p.weekStaffId ?? p.staff[0]?.id ?? null) : null })}
-              className={`h-8 rounded px-3 text-[13px] ${p.view === v ? "bg-white font-medium shadow-sm" : "text-navy/60"}`}
-            >
-              {v === "day" ? c.dayView : c.weekView}
-            </button>
-          ))}
-        </div>
-        {p.view === "week" && (
-          <div className="w-52">
-            <Select aria-label={c.staff} value={p.weekStaffId ?? ""} onChange={(e) => go({ staff: e.target.value })}>
-              {p.staff.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        )}
-        <div className="ml-auto flex gap-2">
+        <p className="flex items-baseline gap-3" aria-live="polite">
+          <span className="font-display text-[30px] font-semibold leading-none tabular-nums text-ink">{bigDate(p.date)}</span>
+          <span className="font-display text-[24px] font-medium leading-none text-ink-faint">{t.time.weekdays[ubWeekday(p.date)]}</span>
+        </p>
+        <label className="relative grid size-10 cursor-pointer place-items-center rounded-full text-ink-soft hover:bg-ink/[0.05] hover:text-ink" title={c.pickDate}>
+          <CalendarDays className="size-5" strokeWidth={1.75} aria-hidden />
+          <input
+            type="date"
+            aria-label={c.pickDate}
+            value={p.date}
+            onChange={(e) => e.target.value && go({ date: e.target.value })}
+            onClick={(e) => e.currentTarget.showPicker?.()}
+            className="absolute inset-0 cursor-pointer opacity-0"
+          />
+        </label>
+        <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => setFreeOpen(true)}>
-            <Search className="size-4" /> {c.findFree}
+            <Search className="size-[18px]" strokeWidth={1.75} /> {c.findFree}
           </Button>
           {p.perms.canWrite && (
             <Button onClick={() => setDialog({ date: p.date })}>
-              <Plus className="size-4" /> {c.newAppt}
+              <Plus className="size-[18px]" strokeWidth={2} /> {c.newAppt}
             </Button>
           )}
         </div>
       </div>
-      <p className="-mt-2 mb-3 text-[12px] text-navy/45">{c.shortcuts}</p>
+
+      {/* ── Stats + view switch ── */}
+      <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-hairline pb-4">
+        <dl className="flex flex-wrap items-baseline gap-x-7 gap-y-2 text-[15px]">
+          {[
+            [c.stats.bookings, stats.bookings],
+            [c.stats.staffOn, stats.staffOn],
+            [c.stats.load, `${stats.load}%`],
+            [c.stats.free, c.stats.hours(hoursLabel(stats.free))],
+            [c.stats.cancelled, p.cancelled],
+          ].map(([k, v]) => (
+            <div key={String(k)} className="flex items-baseline gap-2">
+              <dt className="text-ink-soft">{k}</dt>
+              <dd className="font-semibold tabular-nums text-ink">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {p.view === "week" && (
+            <div className="w-56">
+              <Select aria-label={c.staff} value={p.weekStaffId ?? ""} onChange={(e) => go({ staff: e.target.value })}>
+                {p.staff.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+          <SegmentedTabs
+            label={c.view}
+            value={p.view}
+            onChange={(v) => go({ view: v, staff: v === "week" ? (p.weekStaffId ?? p.staff[0]?.id ?? null) : null })}
+            items={[
+              { value: "day", label: c.dayView },
+              { value: "week", label: c.weekView },
+            ]}
+          />
+        </div>
+      </div>
 
       {p.columns.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line px-6 py-10 text-center text-[14px] text-navy/60">{c.noStaff}</p>
+        <p className="mt-6 rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center text-[15px] text-ink-soft">{c.noStaff}</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-white">
-          <div className="grid min-w-[720px]" style={{ gridTemplateColumns: `56px repeat(${p.columns.length}, minmax(150px, 1fr))` }}>
-            {/* Header */}
-            <div className="sticky top-0 z-20 border-b border-line bg-white" />
-            {p.columns.map((col) => (
-              <div key={col.key} className={`sticky top-0 z-20 border-b border-l border-line bg-white px-2 py-2 text-center ${col.date === today && p.view === "week" ? "bg-navy/[0.04]" : ""}`}>
-                <p className="truncate text-[13px] font-medium">{col.label}</p>
-                {col.sublabel && <p className="text-[11px] text-navy/50">{col.sublabel}</p>}
-              </div>
-            ))}
-
-            {/* Time axis */}
-            <div className="relative" style={{ height: rows.length * ROW }}>
-              {rows.map((m, i) =>
-                m % 60 === 0 ? (
-                  <span key={m} className={`absolute right-1.5 text-[11px] tabular-nums text-navy/45 ${i === 0 ? "translate-y-0.5" : "-translate-y-1/2"}`} style={{ top: i * ROW }}>
-                    {formatHm(m)}
-                  </span>
-                ) : null,
-              )}
-            </div>
-
-            {/* Columns */}
-            {p.columns.map((col) => {
-              const appts = p.appointments.filter((a) => a.staffId === col.staffId && ubDateKey(new Date(a.startsAt)) === col.date);
-              const nowTop = nowMs !== null && col.date === today ? ((ubMinuteOfDay(new Date(nowMs)) - p.axis.startMin) / p.slotMinutes) * ROW : null;
-              return (
-                <div key={col.key} className="relative border-l border-line" style={{ height: rows.length * ROW }}>
-                  {rows.map((m) => {
-                    const from = ubAt(col.date, formatHm(m)).getTime();
-                    const to = from + p.slotMinutes * 60_000;
-                    const off = !within(col.working, from, to) || overlaps(col.timeOff, from, to);
-                    const cls = `absolute inset-x-0 border-t ${m % 60 === 0 ? "border-line" : "border-line/40"}`;
-                    const style = { top: ((m - p.axis.startMin) / p.slotMinutes) * ROW, height: ROW };
-                    if (off) {
-                      return (
-                        <div
-                          key={m}
-                          aria-hidden
-                          className={`${cls} bg-[repeating-linear-gradient(135deg,#f4f4f2_0,#f4f4f2_5px,#ebebe8_5px,#ebebe8_10px)]`}
-                          style={style}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            const a = p.appointments.find((x) => x.id === dragId);
-                            if (a) void move(a, col, m);
-                            setDragId(null);
-                          }}
-                        />
-                      );
-                    }
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        disabled={!p.perms.canWrite}
-                        aria-label={c.emptyCell(col.label, formatHm(m))}
-                        className={`${cls} hover:bg-navy/[0.04] focus-visible:bg-navy/[0.06] focus-visible:outline-none disabled:cursor-default disabled:hover:bg-transparent`}
-                        style={style}
-                        onClick={() => setDialog({ date: col.date, staffId: col.staffId, time: formatHm(m) })}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const a = p.appointments.find((x) => x.id === dragId);
-                          if (a) void move(a, col, m);
-                          setDragId(null);
-                        }}
-                      />
-                    );
-                  })}
-
-                  {appts.map((a) => {
-                    const draggable = p.perms.canWrite && (a.status === "BOOKED" || a.status === "CONFIRMED");
-                    const bufferH = height(a.endsAt, a.blockedUntil);
-                    return (
-                      <div
-                        key={a.id}
-                        className={`absolute z-10 ${a.status === "NO_SHOW" ? "left-1 right-1/3 opacity-80" : "inset-x-1"}`}
-                        style={{ top: top(a.startsAt) + 1, height: height(a.startsAt, a.blockedUntil) - 2 }}
-                      >
-                        <button
-                          type="button"
-                          draggable={draggable}
-                          onDragStart={(e) => {
-                            setDragId(a.id);
-                            e.dataTransfer.effectAllowed = "move";
-                          }}
-                          onDragEnd={() => setDragId(null)}
-                          onClick={() => setPanelId(a.id)}
-                          className={`flex w-full flex-col items-stretch justify-start overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-[12px] leading-tight shadow-sm ${cardClass[a.status]} ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
-                          style={{ height: Math.max(height(a.startsAt, a.endsAt) - 2, 18) }}
-                        >
-                          <span className="block tabular-nums opacity-80">
-                            {formatTime(new Date(a.startsAt))}–{formatTime(new Date(a.endsAt))}
-                          </span>
-                          <span className="block truncate font-medium">{a.customer.name}</span>
-                          <span className="block truncate opacity-80">
-                            {a.service.name}
-                            {a.room ? ` · ${a.room.name}` : ""}
-                          </span>
-                        </button>
-                        {bufferH > 0 && (
-                          <div
-                            aria-label={c.buffer}
-                            title={c.buffer}
-                            className="rounded-b-md bg-[repeating-linear-gradient(135deg,transparent_0,transparent_3px,rgba(15,23,42,0.12)_3px,rgba(15,23,42,0.12)_5px)]"
-                            style={{ height: bufferH }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {nowTop !== null && nowTop >= 0 && nowTop <= rows.length * ROW && (
-                    <div aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-red-500" style={{ top: nowTop }}>
-                      <span className="absolute -left-1 -top-[5px] size-2 rounded-full bg-red-500" />
+        <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-hairline bg-white">
+          <div className="min-h-0 flex-1 overflow-auto">
+            <div className="grid" style={{ gridTemplateColumns: `68px repeat(${p.columns.length}, minmax(180px, 1fr))`, minWidth: 68 + p.columns.length * 180 }}>
+              {/* Column headers */}
+              <div className="sticky left-0 top-0 z-30 border-b border-hairline bg-white" />
+              {p.columns.map((col) => {
+                const list = colAppts(col).filter(counts);
+                const sum = list.reduce((s, a) => s + a.price, 0);
+                const highlight = p.view === "week" && col.date === today;
+                return (
+                  <div key={col.key} className={`sticky top-0 z-20 flex items-center justify-center gap-3 border-b border-l border-hairline px-3 py-3 ${highlight ? "bg-[#F6F1E9]" : "bg-white"}`}>
+                    {p.view === "day" && <Avatar name={col.label} id={col.staffId} size={36} />}
+                    <div className="min-w-0 text-left">
+                      <p className="truncate text-[15px] font-semibold text-ink">{col.label}</p>
+                      <p className="truncate text-[13px] text-ink-soft tabular-nums">{c.staffHead(list.length, formatMNT(sum))}</p>
                     </div>
+                  </div>
+                );
+              })}
+
+              {/* Time axis */}
+              <div className="sticky left-0 z-20 border-r border-hairline bg-white" style={{ height: gridH }}>
+                <div className="relative h-full">
+                  {rows.map((m, i) =>
+                    m % 30 === 0 && !(nowVisible && Math.abs(i * ROW - nowTop!) < 14) ? (
+                      <span
+                        key={m}
+                        className={`absolute right-2.5 font-mono text-[13px] tabular-nums ${m % 60 === 0 ? "text-ink-soft" : "text-ink-faint"} ${i === 0 ? "translate-y-1" : "-translate-y-1/2"}`}
+                        style={{ top: i * ROW }}
+                      >
+                        {formatHm(m)}
+                      </span>
+                    ) : null,
+                  )}
+                  {nowVisible && nowMin !== null && (
+                    <span className="absolute right-1.5 z-10 -translate-y-1/2 rounded-full bg-[#C0392B] px-1.5 py-0.5 font-mono text-[13px] font-medium text-white tabular-nums" style={{ top: nowTop! }}>
+                      {formatHm(nowMin)}
+                    </span>
                   )}
                 </div>
-              );
-            })}
+              </div>
+
+              {/* Columns */}
+              {p.columns.map((col) => {
+                const appts = colAppts(col);
+                const showNow = nowVisible && col.date === today;
+                return (
+                  <div key={col.key} className="relative border-l border-hairline" style={{ height: gridH }}>
+                    {rows.map((m) => {
+                      const from = ubAt(col.date, formatHm(m)).getTime();
+                      const to = from + p.slotMinutes * 60_000;
+                      const off = !within(col.working, from, to) || overlaps(col.timeOff, from, to);
+                      const line = m % 60 === 0 ? "border-t border-hairline" : m % 30 === 0 ? "border-t border-dashed border-hairline/70" : "";
+                      const style = { top: (m - p.axis.startMin) * PX_PER_MIN, height: ROW };
+                      if (off) {
+                        return <div key={m} aria-hidden className={`absolute inset-x-0 bg-[#F4F3F0] ${line}`} style={style} onDragOver={(e) => e.preventDefault()} onDrop={drop(col, m)} />;
+                      }
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          disabled={!p.perms.canWrite}
+                          aria-label={c.emptyCell(col.label, formatHm(m))}
+                          className={`absolute inset-x-0 ${line} transition-colors duration-100 hover:bg-[#F6F1E9] focus-visible:bg-[#F6F1E9] focus-visible:outline-none disabled:cursor-default disabled:hover:bg-transparent`}
+                          style={style}
+                          onClick={() => setDialog({ date: col.date, staffId: col.staffId, time: formatHm(m) })}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={drop(col, m)}
+                        />
+                      );
+                    })}
+
+                    {appts.map((a) => (
+                      <ApptCard
+                        key={a.id}
+                        a={a}
+                        top={top(a.startsAt)}
+                        h={height(a.startsAt, a.endsAt)}
+                        bufferH={height(a.endsAt, a.blockedUntil)}
+                        draggable={p.perms.canWrite && (a.status === "BOOKED" || a.status === "CONFIRMED")}
+                        onOpen={() => setPanelId(a.id)}
+                        onDragStart={() => setDragId(a.id)}
+                        onDragEnd={() => setDragId(null)}
+                      />
+                    ))}
+
+                    {showNow && (
+                      <div aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-[#C0392B]" style={{ top: nowTop! }}>
+                        <span className="absolute -left-[5px] -top-[6px] size-2.5 rounded-full bg-[#C0392B]" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sticky totals */}
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2 border-t border-hairline bg-canvas/70 px-5 py-3.5 text-[15px]">
+            <p className="flex items-baseline gap-2">
+              <span className="text-ink-soft">{p.view === "week" ? c.footer.week : c.footer.day}</span>
+              <span className="text-[20px] font-semibold tabular-nums text-ink">{formatMNT(stats.total)}</span>
+            </p>
+            <p className="ml-auto flex cursor-help items-baseline gap-2" title={c.footer.paidHint}>
+              <span className="text-ink-soft underline decoration-dotted decoration-ink-faint underline-offset-4">{c.footer.paid}</span>
+              <span className="sr-only">({c.footer.paidHint})</span>
+              <span className="font-semibold tabular-nums text-ok">{formatMNT(stats.paid)}</span>
+            </p>
+            <p className="flex items-baseline gap-2">
+              <span className="text-ink-soft">{c.footer.remaining}</span>
+              <span className={`font-semibold tabular-nums ${stats.remaining > 0 ? "text-err" : "text-ink"}`}>{formatMNT(stats.remaining)}</span>
+            </p>
           </div>
         </div>
       )}
+      <p className="mt-2 text-[13px] text-ink-faint">{c.shortcuts}</p>
 
-      <AppointmentDialog open={dialog !== null} init={dialog} services={p.services} onClose={() => setDialog(null)} />
+      <AppointmentDialog
+        open={dialog !== null}
+        init={dialog}
+        services={p.services}
+        cancelReasons={p.cancelReasons}
+        canCancel={p.perms.canStatus}
+        onClose={() => setDialog(null)}
+      />
       <FreeSlotSearch
         open={freeOpen}
         onClose={() => setFreeOpen(false)}
@@ -308,6 +383,70 @@ export function CalendarBoard(p: Props) {
             setPanelId(null);
             setDialog(init);
           }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Pastel card in the staff member's colour; status shown with a small mark, not a colour change */
+function ApptCard({ a, top, h, bufferH, draggable, onOpen, onDragStart, onDragEnd }: {
+  a: CalAppt;
+  top: number;
+  h: number;
+  bufferH: number;
+  draggable: boolean;
+  onOpen: () => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const color = pastelFor(a.staffId);
+  const short = h < 60;
+  const done = a.status === "DONE";
+  const noShow = a.status === "NO_SHOW";
+  const mark =
+    a.status === "CONFIRMED" ? <Check className="size-3.5" strokeWidth={2.5} aria-hidden /> :
+    a.status === "ARRIVED" ? <span className="size-2 rounded-full bg-ok" aria-hidden /> :
+    a.status === "IN_PROGRESS" ? <span className="size-2 rounded-full bg-[#C08A2E]" aria-hidden /> : null;
+  return (
+    <div className={`absolute z-10 ${noShow ? "left-1.5 right-1/3" : "inset-x-1.5"}`} style={{ top: top + 2, height: h + bufferH - 4 }}>
+      <button
+        type="button"
+        draggable={draggable}
+        onDragStart={(e) => {
+          onDragStart();
+          e.dataTransfer.effectAllowed = "move";
+        }}
+        onDragEnd={onDragEnd}
+        onClick={onOpen}
+        title={t.admin.apptStatus[a.status]}
+        className={`relative flex w-full flex-col items-stretch justify-start overflow-hidden rounded-xl ${short ? "py-1" : "py-1.5"} pl-3 pr-2.5 text-left text-ink shadow-[0_1px_2px_rgba(28,34,48,0.06)] transition-[filter] duration-150 hover:brightness-[0.97] ${
+          done ? "opacity-55" : ""
+        } ${noShow ? "border border-dashed border-err/50 bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,rgba(140,53,48,0.07)_6px,rgba(140,53,48,0.07)_12px)]" : ""} ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
+        style={{ height: Math.max(h - 4, 22), background: noShow ? undefined : color.bg, boxShadow: `inset 3px 0 0 ${color.bar}` }}
+      >
+        <span className="flex items-center gap-1.5 font-mono text-[13px] leading-4 tabular-nums" style={{ color: color.bar }}>
+          {formatTime(new Date(a.startsAt))}–{formatTime(new Date(a.endsAt))}
+        </span>
+        <span className={`block truncate text-[14px] font-semibold leading-5 ${a.status === "CANCELLED" ? "line-through" : ""}`}>{a.customer.name}</span>
+        {!short && (
+          <span className="block truncate text-[13px] leading-[18px] text-ink-soft">
+            {a.service.name}
+            {a.room ? ` · ${a.room.name}` : ""}
+          </span>
+        )}
+        <span className="sr-only">, {t.admin.apptStatus[a.status]}</span>
+        {mark && <span className="absolute right-2 top-2 grid place-items-center" style={{ color: color.bar }}>{mark}</span>}
+        {!short && h >= 72 && a.price > 0 && (
+          <span className="absolute bottom-1.5 right-2.5 text-[13px] font-medium tabular-nums text-ink">{formatMNT(a.price)}</span>
+        )}
+      </button>
+      {bufferH > 0 && (
+        <div
+          aria-label={c.buffer}
+          title={c.buffer}
+          className="mx-1 rounded-b-lg bg-[repeating-linear-gradient(135deg,transparent_0,transparent_3px,rgba(28,34,48,0.07)_3px,rgba(28,34,48,0.07)_5px)]"
+          style={{ height: Math.max(0, bufferH) }}
         />
       )}
     </div>

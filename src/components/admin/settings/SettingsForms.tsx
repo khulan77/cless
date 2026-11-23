@@ -47,7 +47,7 @@ export function SalonForm({ initial }: { initial: SalonValue }) {
       <Field label={s.facebook} htmlFor="st-fb" error={fe.facebook}>
         <Input id="st-fb" value={v.facebook} onChange={(e) => setV({ ...v, facebook: e.target.value })} placeholder="https://facebook.com/…" />
       </Field>
-      <p className="text-[13px] text-navy/60 md:col-span-2">
+      <p className="text-[13px] text-ink-soft md:col-span-2">
         {s.hoursNote}{" "}
         <Link href="/admin/staff-schedules" className="underline">
           {s.hoursLink}
@@ -137,14 +137,14 @@ export function QPayModeForm({ mode, apiAvailable }: { mode: "manual" | "api"; a
       }}
     >
       <fieldset className="space-y-2">
-        <legend className="mb-1 text-[13px] font-medium text-navy/80">{s.qpayMode}</legend>
+        <legend className="mb-1 text-[13px] font-medium text-ink">{s.qpayMode}</legend>
         {(["manual", "api"] as const).map((m) => (
-          <label key={m} className={`flex items-start gap-2 text-[14px] ${m === "api" && !apiAvailable ? "text-navy/45" : ""}`}>
+          <label key={m} className={`flex items-start gap-2 text-[14px] ${m === "api" && !apiAvailable ? "text-ink-faint" : ""}`}>
             <input type="radio" name="qpay-mode" value={m} checked={v === m} disabled={m === "api" && !apiAvailable} onChange={() => setV(m)} className="mt-1 accent-navy" />
             <span>{m === "manual" ? s.qpayManual : s.qpayApi}</span>
           </label>
         ))}
-        {!apiAvailable && <p className="text-[12px] text-amber-800">{s.qpayApiDisabled}</p>}
+        {!apiAvailable && <p className="text-[13px] text-warn">{s.qpayApiDisabled}</p>}
       </fieldset>
       <Button type="submit" disabled={a.pending || v === mode}>
         {s.save}
@@ -166,15 +166,15 @@ export function ShopModeForm({ mode, checkoutAvailable }: { mode: "CATALOG" | "C
       }}
     >
       <fieldset className="space-y-2">
-        <legend className="mb-1 text-[13px] font-medium text-navy/80">{s.shopMode}</legend>
+        <legend className="mb-1 text-[13px] font-medium text-ink">{s.shopMode}</legend>
         {(["CATALOG", "CHECKOUT"] as const).map((m) => {
           const disabled = m === "CHECKOUT" && !checkoutAvailable;
           return (
-            <label key={m} className={`flex items-start gap-2 text-[14px] ${disabled ? "text-navy/45" : ""}`}>
+            <label key={m} className={`flex items-start gap-2 text-[14px] ${disabled ? "text-ink-faint" : ""}`}>
               <input type="radio" name="shop-mode" value={m} checked={v === m} disabled={disabled} onChange={() => setV(m)} className="mt-1 accent-navy" />
               <span>
                 {s.shopModes[m]}
-                {disabled && <span className="ml-2 rounded bg-navy/10 px-1.5 py-0.5 text-[11px]">{s.soon}</span>}
+                {disabled && <span className="ml-2 rounded bg-ink/[0.07] px-1.5 py-0.5 text-[13px]">{s.soon}</span>}
               </span>
             </label>
           );

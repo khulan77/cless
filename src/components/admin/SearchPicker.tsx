@@ -50,7 +50,7 @@ export function SearchPicker({ search, onSelect, exclude, label, placeholder }: 
 
   return (
     <div className="relative">
-      <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-navy/40" aria-hidden />
+      <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-ink-faint" aria-hidden />
       <input
         role="combobox"
         aria-expanded={open}
@@ -74,9 +74,9 @@ export function SearchPicker({ search, onSelect, exclude, label, placeholder }: 
         }}
       />
       {open && (
-        <ul id={listId} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-line bg-white py-1 shadow-lg">
-          {loading && options.length === 0 && <li className="px-3 py-2 text-[13px] text-navy/50">{t.admin.variantSearch.searching}</li>}
-          {!loading && options.length === 0 && <li className="px-3 py-2 text-[13px] text-navy/50">{t.admin.variantSearch.empty}</li>}
+        <ul id={listId} role="listbox" className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-hairline bg-white py-1 shadow-lg">
+          {loading && options.length === 0 && <li className="px-3 py-2 text-[13px] text-ink-soft">{t.admin.variantSearch.searching}</li>}
+          {!loading && options.length === 0 && <li className="px-3 py-2 text-[13px] text-ink-soft">{t.admin.variantSearch.empty}</li>}
           {options.map((o, i) => (
             <li
               key={o.id}
@@ -87,9 +87,9 @@ export function SearchPicker({ search, onSelect, exclude, label, placeholder }: 
                 choose(o);
               }}
               onMouseEnter={() => setActive(i)}
-              className={`cursor-pointer px-3 py-2 text-[13px] ${i === active ? "bg-navy/5" : ""}`}
+              className={`cursor-pointer px-3 py-2 text-[13px] ${i === active ? "bg-ink/[0.04]" : ""}`}
             >
-              {o.label} {o.hint && <span className="font-mono text-[11px] text-navy/45">{o.hint}</span>}
+              {o.label} {o.hint && <span className="font-mono text-[13px] text-ink-faint">{o.hint}</span>}
             </li>
           ))}
         </ul>

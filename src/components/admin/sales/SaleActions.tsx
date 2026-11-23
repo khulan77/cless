@@ -65,11 +65,11 @@ export function RefundButton({ saleId, lines, methods }: { saleId: string; lines
             );
           }}
         >
-          <ul className="divide-y divide-line rounded-md border border-line">
+          <ul className="divide-y divide-hairline rounded-xl border border-hairline">
             {lines.map((l) => {
               const left = l.qty - l.refundedQty;
               return (
-                <li key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 text-[13.5px]">
+                <li key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 text-[14px]">
                   <span className="min-w-0 truncate">{l.name}</span>
                   <Input
                     type="number"
@@ -101,7 +101,7 @@ export function RefundButton({ saleId, lines, methods }: { saleId: string; lines
           {lines.some((l) => l.kind === "PRODUCT") && (
             <div>
               <Checkbox label={s.restock} checked={restock} onChange={(e) => setRestock(e.target.checked)} />
-              <p className="mt-1 text-[12px] text-navy/50">{s.restockHint}</p>
+              <p className="mt-1 text-[13px] text-ink-soft">{s.restockHint}</p>
             </div>
           )}
           <p className="text-[15px] font-medium tabular-nums">{s.refundTotal(formatMNT(total))}</p>

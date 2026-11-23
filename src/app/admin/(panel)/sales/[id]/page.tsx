@@ -63,7 +63,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-5">
           <Card title="Мөрүүд">
-            <table className="-mx-5 -my-5 w-[calc(100%+40px)] text-[13.5px]">
+            <table className="-mx-5 -my-5 w-[calc(100%+40px)] text-[14px]">
               <thead>
                 <tr>
                   <th className={thClass}>Нэр</th>
@@ -78,7 +78,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
                   <tr key={i.id}>
                     <td className={tdClass}>
                       {i.nameSnapshot}
-                      <span className="block text-[12px] text-navy/50">
+                      <span className="block text-[13px] text-ink-soft">
                         {i.skuSnapshot ?? (i.staff ? `Ажилтан: ${i.staff.name}` : "")}
                         {i.lineDiscountReason ? ` · ${i.lineDiscountReason}` : ""}
                         {i.refundedQty > 0 ? ` · буцаасан ${i.refundedQty}` : ""}
@@ -96,19 +96,19 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
 
           <Card title="Төлбөрүүд">
             {sale.payments.length === 0 ? (
-              <p className="text-[14px] text-navy/55">Төлбөр алга.</p>
+              <p className="text-[14px] text-ink-soft">Төлбөр алга.</p>
             ) : (
-              <ul className="-my-2 divide-y divide-line text-[13.5px]">
+              <ul className="-my-2 divide-y divide-hairline text-[14px]">
                 {sale.payments.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span>
                       {t.admin.payMethod[p.method]}
-                      <span className="ml-2 text-[12px] text-navy/50">
+                      <span className="ml-2 text-[13px] text-ink-soft">
                         {p.approvalCode ?? p.externalRef ?? p.transactions[0]?.providerInvoiceId ?? ""}
                         {p.tendered ? ` · өгсөн ${formatMNT(p.tendered)}, хариулт ${formatMNT(p.change ?? 0)}` : ""}
                         {` · ${p.createdBy.name} · ${dt(p.createdAt)}`}
                       </span>
-                      {p.reviewReason && <span className="block text-[12px] text-amber-800">{p.reviewReason}</span>}
+                      {p.reviewReason && <span className="block text-[13px] text-warn">{p.reviewReason}</span>}
                     </span>
                     <span className="flex items-center gap-2">
                       <Badge tone={p.status === "SUCCEEDED" ? "green" : p.status === "PROCESSING" ? "amber" : "neutral"}>{t.admin.payStatus[p.status]}</Badge>
@@ -142,16 +142,16 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
 
           {sale.refunds.length > 0 && (
             <Card title="Буцаалт">
-              <ul className="-my-2 divide-y divide-line text-[13.5px]">
+              <ul className="-my-2 divide-y divide-hairline text-[14px]">
                 {sale.refunds.map((r) => (
                   <li key={r.id} className="flex justify-between gap-2 py-2">
                     <span>
                       {t.admin.payMethod[r.method]} · {r.reason}
-                      <span className="block text-[12px] text-navy/50">
+                      <span className="block text-[13px] text-ink-soft">
                         {r.requestedBy.name} · {dt(r.createdAt)} · {r.restock ? "үлдэгдэлд буцаасан" : "гэмтэлтэй"}
                       </span>
                     </span>
-                    <span className="tabular-nums text-red-700">−{formatMNT(r.amount)}</span>
+                    <span className="tabular-nums text-danger">−{formatMNT(r.amount)}</span>
                   </li>
                 ))}
               </ul>
@@ -174,13 +174,13 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
                 .filter(([, v], i) => i === 0 || i === 3 || v !== 0)
                 .map(([k, v]) => (
                   <div key={k as string} className="flex justify-between">
-                    <dt className="text-navy/65">{k}</dt>
+                    <dt className="text-ink-soft">{k}</dt>
                     <dd className="tabular-nums">{formatMNT(v as number)}</dd>
                   </div>
                 ))}
             </dl>
-            {sale.saleDiscountReason && <p className="mt-2 text-[12px] text-navy/55">Хөнгөлөлт: {sale.saleDiscountReason}</p>}
-            {sale.discountApprovedBy && <p className="mt-1 text-[12px] text-navy/55">Баталсан: {sale.discountApprovedBy.name}</p>}
+            {sale.saleDiscountReason && <p className="mt-2 text-[13px] text-ink-soft">Хөнгөлөлт: {sale.saleDiscountReason}</p>}
+            {sale.discountApprovedBy && <p className="mt-1 text-[13px] text-ink-soft">Баталсан: {sale.discountApprovedBy.name}</p>}
           </Card>
 
           <Card title="Үйлчлүүлэгч">
@@ -189,7 +189,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
                 {sale.customer.name} · {sale.customer.phone}
               </Link>
             ) : (
-              <p className="text-[14px] text-navy/55">Бүртгэлгүй</p>
+              <p className="text-[14px] text-ink-soft">Бүртгэлгүй</p>
             )}
           </Card>
 
@@ -199,9 +199,9 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
                 <Badge tone={sale.visit.emailStatus === "SENT" ? "green" : sale.visit.emailStatus === "FAILED" ? "red" : "neutral"}>
                   {t.admin.emailStatus[sale.visit.emailStatus]}
                 </Badge>
-                {sale.visit.emailSentAt && <span className="ml-2 text-[12px] text-navy/55">{dt(sale.visit.emailSentAt)}</span>}
+                {sale.visit.emailSentAt && <span className="ml-2 text-[13px] text-ink-soft">{dt(sale.visit.emailSentAt)}</span>}
               </p>
-              {sale.visit.emailError && <p className="mt-2 text-[12px] text-red-700">{sale.visit.emailError}</p>}
+              {sale.visit.emailError && <p className="mt-2 text-[13px] text-danger">{sale.visit.emailError}</p>}
             </Card>
           )}
         </div>

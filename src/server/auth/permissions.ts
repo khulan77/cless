@@ -93,8 +93,8 @@ export function can(role: Role | null | undefined, permission: Permission): bool
 
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "Админ",
-  MANAGER: "Менежер",
-  STAFF: "Ажилтан",
+  MANAGER: "Ресепшн (менежер)",
+  STAFF: "Гоо сайханч",
 };
 
 /** Нэвтэрсний дараа очих анхны хуудас */

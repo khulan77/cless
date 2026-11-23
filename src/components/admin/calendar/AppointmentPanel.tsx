@@ -64,8 +64,10 @@ export function AppointmentPanel({
 
   if (!detail) {
     return (
-      <aside className="fixed inset-y-0 right-0 z-30 w-[min(420px,100vw)] border-l border-line bg-white p-5 shadow-xl" aria-busy="true">
-        <p className="text-[14px] text-navy/55">…</p>
+      <aside className="fixed inset-y-0 right-0 z-30 w-[min(440px,100vw)] space-y-4 border-l border-hairline bg-white p-7 shadow-[0_0_48px_rgba(14,34,67,0.12)]" aria-busy="true">
+        <div className="h-8 w-2/3 animate-pulse rounded-xl bg-ink/[0.06]" />
+        <div className="h-5 w-1/3 animate-pulse rounded-xl bg-ink/[0.06]" />
+        <div className="h-40 animate-pulse rounded-xl bg-ink/[0.06]" />
       </aside>
     );
   }
@@ -107,24 +109,24 @@ export function AppointmentPanel({
   ];
 
   return (
-    <aside role="dialog" aria-label={c.details} className="fixed inset-y-0 right-0 z-30 flex w-[min(420px,100vw)] flex-col border-l border-line bg-white shadow-xl">
-      <header className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+    <aside role="dialog" aria-label={c.details} className="fixed inset-y-0 right-0 z-30 flex w-[min(440px,100vw)] flex-col border-l border-hairline bg-white shadow-[0_0_48px_rgba(14,34,67,0.12)]">
+      <header className="flex items-start justify-between gap-3 border-b border-hairline px-7 pb-5 pt-6">
         <div>
-          <h2 className="text-[16px] font-medium">{detail.customer.name}</h2>
-          <p className="mt-1">
+          <h2 className="font-display text-[26px] font-semibold leading-tight">{detail.customer.name}</h2>
+          <p className="mt-2">
             <Badge tone={statusTone(detail.status)}>{t.admin.apptStatus[detail.status]}</Badge>
           </p>
         </div>
-        <button type="button" onClick={onClose} aria-label={c.close} className="rounded p-1 hover:bg-navy/5">
-          <X className="size-4" />
+        <button type="button" onClick={onClose} aria-label={c.close} className="-mr-2 grid size-10 place-items-center rounded-xl text-ink-soft hover:bg-ink/[0.05] hover:text-ink">
+          <X className="size-5" strokeWidth={1.75} />
         </button>
       </header>
 
-      <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
-        <dl className="grid grid-cols-[120px_minmax(0,1fr)] gap-x-3 gap-y-2 text-[13.5px]">
+      <div className="flex-1 space-y-6 overflow-y-auto px-7 py-5">
+        <dl className="grid grid-cols-[130px_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-[15px]">
           {rows.map(([k, v]) => (
             <div key={k} className="contents">
-              <dt className="text-navy/55">{k}</dt>
+              <dt className="text-ink-soft">{k}</dt>
               <dd>{v}</dd>
             </div>
           ))}
@@ -141,7 +143,7 @@ export function AppointmentPanel({
                 {activeSale ? c.continuePos : c.openPos}
               </Button>
               {!sameDay && (
-                <span id="pos-same-day" className="mt-1 text-[12px] text-navy/55">
+                <span id="pos-same-day" className="mt-1 text-[13px] text-ink-soft">
                   {c.sameDayOnly}
                 </span>
               )}
@@ -154,6 +156,7 @@ export function AppointmentPanel({
                 onEdit({
                   id: detail.id,
                   version: detail.version,
+                  status: detail.status,
                   customer: { id: detail.customer.id, name: detail.customer.name, phone: detail.customer.phone ?? "", email: detail.customer.email ?? null },
                   serviceId: detail.service.id,
                   staffId: detail.staffId,
@@ -190,8 +193,8 @@ export function AppointmentPanel({
 
         {detail.history.length > 0 && (
           <section>
-            <h3 className="mb-1.5 text-[12px] font-medium uppercase tracking-[0.4px] text-navy/55">{c.history}</h3>
-            <ol className="space-y-1 text-[12.5px] text-navy/70">
+            <h3 className="mb-1.5 text-[13px] font-medium uppercase tracking-[0.4px] text-ink-soft">{c.history}</h3>
+            <ol className="space-y-1 text-[13px] text-ink-soft">
               {detail.history.map((h) => (
                 <li key={h.id}>
                   {formatDateTime(new Date(h.createdAt))} · {c.historyActions[h.action] ?? h.action}
@@ -236,7 +239,7 @@ export function AppointmentPanel({
         onClose={() => (setConfirm(null), setReason(""))}
         onConfirm={() => void run("complete", reason)}
       >
-        <p className="text-[13px] text-navy/60">{c.completeHint}</p>
+        <p className="text-[13px] text-ink-soft">{c.completeHint}</p>
         <Field label={c.reason} htmlFor="complete-reason">
           <Textarea id="complete-reason" className="min-h-16" value={reason} onChange={(e) => setReason(e.target.value)} />
         </Field>
@@ -250,7 +253,7 @@ function NoteEditor({ id, initial, onSaved }: { id: string; initial: string; onS
   const save = useServerAction(apptNote);
   return (
     <section className="space-y-1.5">
-      <p className="text-[12px] text-navy/55">{c.lockedHint}</p>
+      <p className="text-[13px] text-ink-soft">{c.lockedHint}</p>
       <Field label={c.note} htmlFor="appt-note">
         <Textarea id="appt-note" className="min-h-16" value={note} onChange={(e) => setNote(e.target.value)} />
       </Field>

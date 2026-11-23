@@ -58,7 +58,8 @@ export default async function VariantHistoryPage({
     <>
       <PageHeader
         title={`${variant.product.name} · ${variant.size}`}
-        description={<span className="font-mono text-[12px]">{variant.sku}</span>}
+        eyebrow="Үлдэгдэл"
+        description={<span>Барааны код: <span className="font-mono text-[14px]">{variant.sku}</span></span>}
         actions={
           <>
             <Link href="/admin/inventory" className={btnClass("secondary")}>← Үлдэгдэл</Link>
@@ -70,10 +71,10 @@ export default async function VariantHistoryPage({
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <Card><p className="text-[12px] text-navy/55">Үлдэгдэл</p><p className={`mt-1 text-[26px] font-light ${variant.stock <= variant.lowStockAt ? "text-red-700" : ""}`}>{variant.stock}</p></Card>
-        <Card><p className="text-[12px] text-navy/55">Нөөцөлсөн</p><p className="mt-1 text-[26px] font-light">{variant.reserved}</p></Card>
+        <Card><p className="text-[13px] text-ink-soft">Үлдэгдэл</p><p className={`mt-1 text-[26px] font-light ${variant.stock <= variant.lowStockAt ? "text-danger" : ""}`}>{variant.stock}</p></Card>
+        <Card><p className="text-[13px] text-ink-soft">Нөөцөлсөн</p><p className="mt-1 text-[26px] font-light">{variant.reserved}</p></Card>
         <Card>
-          <p className="text-[12px] text-navy/55">Хөдөлгөөний нийлбэр</p>
+          <p className="text-[13px] text-ink-soft">Хөдөлгөөний нийлбэр</p>
           <p className="mt-1 text-[26px] font-light">{ledger}</p>
           {ledger !== variant.stock && <Badge tone="red">Кэш зөрүүтэй!</Badge>}
         </Card>
@@ -92,13 +93,13 @@ export default async function VariantHistoryPage({
         </thead>
         <tbody>
           {movements.length === 0 && (
-            <tr><td colSpan={6} className={`${tdClass} py-8 text-center text-navy/50`}>Хөдөлгөөн алга.</td></tr>
+            <tr><td colSpan={6} className={`${tdClass} py-8 text-center text-ink-soft`}>Хөдөлгөөн алга.</td></tr>
           )}
           {movements.map((m) => (
             <tr key={m.id}>
               <td className={`${tdClass} whitespace-nowrap`}>{dt.format(m.createdAt)}</td>
               <td className={tdClass}><Badge tone={m.qty > 0 ? "green" : "amber"}>{TYPE_LABEL[m.type]}</Badge></td>
-              <td className={`${tdClass} text-right tabular-nums ${m.qty > 0 ? "text-emerald-700" : "text-red-700"}`}>{m.qty > 0 ? `+${m.qty}` : m.qty}</td>
+              <td className={`${tdClass} text-right tabular-nums ${m.qty > 0 ? "text-ok" : "text-danger"}`}>{m.qty > 0 ? `+${m.qty}` : m.qty}</td>
               {canCost && <td className={`${tdClass} text-right tabular-nums`}>{m.unitCost != null ? formatMNT(m.unitCost) : "—"}</td>}
               <td className={`${tdClass} max-w-[320px]`}>{m.sale ? `Борлуулалт ${m.sale.number}` : (m.note ?? "—")}</td>
               <td className={tdClass}>{m.createdBy?.name ?? "—"}</td>

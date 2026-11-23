@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { FilterBar } from "@/components/admin/FilterBar";
 import { Pagination, parsePage, str } from "@/components/admin/Pagination";
-import { Badge, EmptyState, PageHeader, Table, btnClass, inputClass, tdClass, thClass } from "@/components/admin/ui";
+import { Plus } from "lucide-react";
+import { Avatar, Badge, EmptyState, PageHeader, Table, btnClass, inputClass, tdClass, thClass } from "@/components/admin/ui";
 import type { Prisma } from "@/generated/prisma/client";
 import { formatMNT } from "@/lib/money";
 import { ROLES } from "@/lib/validation/user";
@@ -41,7 +42,16 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <PageHeader title="Хэрэглэгчид" description="Ажилтан, эрх, үндсэн цалин" actions={<Link href="/admin/users/new" className={btnClass("primary")}>+ Хэрэглэгч нэмэх</Link>} />
+      <PageHeader
+        eyebrow="Тохиргоо"
+        title="Хэрэглэгч ба эрх"
+        description="Удирдлагад нэвтрэх ажилтнууд, тэдний эрх ба үндсэн цалин"
+        actions={
+          <Link href="/admin/users/new" className={btnClass("primary")}>
+            <Plus className="size-[18px]" strokeWidth={2} /> Хэрэглэгч нэмэх
+          </Link>
+        }
+      />
       <FilterBar action="/admin/users" resetHref={q || role || status ? "/admin/users" : undefined}>
         <input name="q" defaultValue={q} placeholder="Нэр, имэйл, утас" aria-label="Хайх" className={`${inputClass} w-64`} />
         <select name="role" defaultValue={role ?? ""} aria-label="Эрх" className={`${inputClass} w-36`}>
@@ -55,7 +65,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         </select>
       </FilterBar>
       {users.length === 0 ? (
-        <EmptyState title="Хэрэглэгч олдсонгүй" />
+        <EmptyState title="Хэрэглэгч олдсонгүй">Хайлт, шүүлтүүрээ өөрчилж үзнэ үү.</EmptyState>
       ) : (
         <Table>
           <thead>
@@ -70,14 +80,17 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className={u.isActive ? "hover:bg-navy/[0.02]" : "text-navy/45"}>
+              <tr key={u.id} className={u.isActive ? "hover:bg-canvas" : "text-ink-faint"}>
                 <td className={tdClass}>
-                  <Link href={`/admin/users/${u.id}`} className="font-medium hover:underline">{u.name}</Link>
-                  {u.id === me.id && <span className="ml-2 text-[11px] text-navy/45">(та)</span>}
+                  <Link href={`/admin/users/${u.id}`} className="inline-flex items-center gap-3 font-medium hover:underline">
+                    <Avatar name={u.name} id={u.id} size={32} />
+                    {u.name}
+                  </Link>
+                  {u.id === me.id && <span className="ml-2 text-[13px] text-ink-faint">(та)</span>}
                 </td>
                 <td className={tdClass}>{u.email}</td>
                 <td className={tdClass}>{u.phone ?? "—"}</td>
-                <td className={tdClass}><Badge tone={u.role === "ADMIN" ? "navy" : "neutral"}>{ROLE_LABELS[u.role]}</Badge></td>
+                <td className={tdClass}><Badge tone={u.role === "ADMIN" ? "navy" : u.role === "MANAGER" ? "champagne" : "neutral"}>{ROLE_LABELS[u.role]}</Badge></td>
                 <td className={`${tdClass} text-right tabular-nums`}>{formatMNT(u.baseSalary)}</td>
                 <td className={tdClass}>{u.isActive ? <Badge tone="green">Идэвхтэй</Badge> : <Badge>Идэвхгүй</Badge>}</td>
               </tr>
