@@ -11,6 +11,7 @@ type Props = {
   variants: CardVariant[];
   /** Bundles have no size radios */
   hideSizes?: boolean;
+  /** Kept for callers; cards and quick view now share one price size (text-price) */
   large?: boolean;
   /** Controlled selection (product page) */
   value?: string;
@@ -94,7 +95,7 @@ export function CartButton({ label = t.product.addToCart }: { label?: string }) 
 }
 
 /** Card and quick view: size → price → cart */
-export function VariantPicker({ variants, hideSizes, large, value, onChange }: Props) {
+export function VariantPicker({ variants, hideSizes, value, onChange }: Props) {
   const [internal, setInternal] = useState(() => defaultVariantId(variants));
   const selectedId = value ?? internal;
   const select = (id: string) => (onChange ? onChange(id) : setInternal(id));
@@ -114,18 +115,18 @@ export function VariantPicker({ variants, hideSizes, large, value, onChange }: P
 
       <div className="flex min-h-11 items-center justify-between gap-3">
         <div>
-          <p className={large ? "text-[17px]" : "text-[15px]"} aria-live="polite">
+          <p className="text-price" aria-live="polite">
             {formatMNT(selected.price)}
           </p>
-          {!catalog && selected.lowStock && <p className="text-[12px] text-muted">{t.product.lowStock}</p>}
+          {!catalog && selected.lowStock && <p className="text-note text-muted">{t.product.lowStock}</p>}
           {catalog && (
-            <p className={`text-[12px] ${selected.available ? "" : "text-muted"}`}>
+            <p className={`text-note ${selected.available ? "" : "text-muted"}`}>
               {!selected.available ? t.stock.soldOut : selected.lowStock ? t.stock.low : t.stock.inSalon}
             </p>
           )}
         </div>
         {catalog ? null : allSoldOut || !selected.available ? (
-          <span className="text-[13px] text-muted">{t.product.soldOut}</span>
+          <span className="text-meta text-muted">{t.product.soldOut}</span>
         ) : (
           <CartButton />
         )}

@@ -19,6 +19,8 @@
     "test:e2e": "playwright test",
     "worker": "bun --preload ./src/worker/preload.ts src/worker/index.ts",
     "preflight": "bun --preload ./src/worker/preload.ts scripts/preflight.ts",
+    "images:build": "bun scripts/build-default-images.ts",
+    "images:attach": "bun --preload ./src/worker/preload.ts scripts/attach-default-images.ts",
     "seed:demo-sales": "bun --preload ./src/worker/preload.ts scripts/seed-demo-sales.ts",
     "admin:create": "bun scripts/create-admin.ts",
     "worker:build": "bun scripts/build-worker.ts"

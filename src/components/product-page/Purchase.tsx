@@ -81,14 +81,14 @@ export function PriceLine() {
   const catalog = useCatalogMode();
   return (
     <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1" aria-live="polite">
-      <span className="text-[19px]">{formatMNT(selected.price)}</span>
-      {!isBundle && <span className="text-[14px] text-muted">{selected.size}</span>}
+      <span className="text-price">{formatMNT(selected.price)}</span>
+      {!isBundle && <span className="text-body text-muted">{selected.size}</span>}
       {catalog ? (
-        <span className={`ml-auto text-[13px] ${selected.available ? "text-navy" : "text-muted"}`} data-testid="stock-label">
+        <span className={`ml-auto text-meta ${selected.available ? "text-navy" : "text-muted"}`} data-testid="stock-label">
           {stockLabel(selected)}
         </span>
       ) : (
-        selected.lowStock && <span className="ml-auto text-[12px] text-muted">{t.product.lowStock}</span>
+        selected.lowStock && <span className="ml-auto text-note text-muted">{t.product.lowStock}</span>
       )}
     </div>
   );
@@ -126,7 +126,7 @@ export function AddToCartMain() {
               type="button"
               onClick={open}
               aria-haspopup="dialog"
-              className="flex min-h-12 w-full items-center justify-center rounded-full bg-navy text-[15px] tracking-[0.02em] text-white transition-opacity hover:opacity-90"
+              className="flex min-h-12 w-full items-center justify-center rounded-full bg-navy text-body tracking-[0.02em] text-white transition-opacity hover:opacity-90"
             >
               {t.inquiry.cta}
             </button>
@@ -139,7 +139,7 @@ export function AddToCartMain() {
     <div className="mt-6" ref={setMainButton}>
       {soldOut ? (
         <>
-          <button type="button" disabled className="h-12 w-full cursor-not-allowed rounded-full bg-navy/30 text-[14px] text-white">
+          <button type="button" disabled className="h-12 w-full cursor-not-allowed rounded-full bg-navy/30 text-button text-white">
             {t.product.soldOut}
           </button>
           {allSoldOut && <NotifyMe />}
@@ -148,7 +148,7 @@ export function AddToCartMain() {
         <button
           type="button"
           // TODO (cart round): add to cart
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-navy text-[14px] tracking-[0.02em] text-white transition-opacity hover:opacity-90"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-navy text-button tracking-[0.02em] text-white transition-opacity hover:opacity-90"
         >
           <ShoppingBag className="size-[18px]" strokeWidth={1.25} aria-hidden />
           {t.product.addToCart}
@@ -163,7 +163,7 @@ function NotifyMe() {
   const id = useId();
   return (
     <form className="mt-5" onSubmit={(e) => e.preventDefault()}>
-      <p className="mb-2 text-[13px] text-muted">{t.product.notifyHint}</p>
+      <p className="mb-2 text-meta text-muted">{t.product.notifyHint}</p>
       <div className="flex gap-2">
         <label htmlFor={id} className="sr-only">{t.product.notifyEmail}</label>
         <input
@@ -172,9 +172,9 @@ function NotifyMe() {
           required
           autoComplete="email"
           placeholder={t.product.notifyEmail}
-          className="h-11 min-w-0 flex-1 border-b border-navy/30 bg-transparent text-[14px] focus:border-navy focus:outline-none"
+          className="h-11 min-w-0 flex-1 border-b border-navy/30 bg-transparent text-body focus:border-navy focus:outline-none"
         />
-        <button type="submit" className="h-11 shrink-0 rounded-full border border-navy px-5 text-[13px] transition-colors hover:bg-navy hover:text-white">
+        <button type="submit" className="h-11 shrink-0 rounded-full border border-navy px-5 text-button transition-colors hover:bg-navy hover:text-white">
           {t.product.notifyMe}
         </button>
       </div>
@@ -212,8 +212,8 @@ export function StickyPurchaseBar({ name, image }: { name: string; image: { src:
           </div>
         )}
         <div className="hidden min-w-0 flex-1 sm:block">
-          <p className="text-product truncate text-[14px]">{name}</p>
-          <p className="text-[13px] text-muted">
+          <p className="text-product truncate text-body">{name}</p>
+          <p className="text-meta text-muted">
             {!isBundle && `${selected.size} · `}
             {formatMNT(selected.price)}
           </p>
@@ -226,7 +226,7 @@ export function StickyPurchaseBar({ name, image }: { name: string; image: { src:
                 type="button"
                 onClick={open}
                 aria-haspopup="dialog"
-                className="min-h-12 w-full rounded-full bg-navy px-8 text-[15px] text-white transition-opacity hover:opacity-90 sm:w-auto"
+                className="min-h-12 w-full rounded-full bg-navy px-8 text-body text-white transition-opacity hover:opacity-90 sm:w-auto"
               >
                 {t.inquiry.cta}
                 <span className="sm:hidden"> · {formatMNT(selected.price)}</span>
@@ -237,7 +237,7 @@ export function StickyPurchaseBar({ name, image }: { name: string; image: { src:
           <button
             type="button"
             disabled={soldOut}
-            className="h-11 w-full rounded-full bg-navy px-8 text-[14px] text-white transition-opacity hover:opacity-90 disabled:bg-navy/30 sm:w-auto"
+            className="h-11 w-full rounded-full bg-navy px-8 text-button text-white transition-opacity hover:opacity-90 disabled:bg-navy/30 sm:w-auto"
           >
             {soldOut ? t.product.soldOut : `${t.product.addToCart} · ${formatMNT(selected.price)}`}
           </button>

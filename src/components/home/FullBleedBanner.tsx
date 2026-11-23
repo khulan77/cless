@@ -22,12 +22,12 @@ export function FullBleedBanner({ banner, id, extra }: { banner: BannerSetting; 
       )}
       <div className={`${src ? "absolute inset-0" : "relative py-20"} flex flex-col items-center justify-center px-6 text-center text-white`}>
         {banner.eyebrow && <p className="text-micro mb-4 uppercase tracking-[0.8px]">{banner.eyebrow}</p>}
-        <h2 id={id} className="text-section md:text-[34px]">
+        <h2 id={id} className="text-section">
           {banner.title}
         </h2>
         {banner.text && <p className="mt-4 max-w-[48ch] text-white/90">{banner.text}</p>}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-          <Link href={banner.cta.href} className="link-underline inline-flex min-h-11 items-center text-[14px]">
+          <Link href={banner.cta.href} className="link-underline inline-flex min-h-11 items-center text-button">
             {banner.cta.label}
           </Link>
           {extra}

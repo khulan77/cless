@@ -36,10 +36,10 @@ function SearchForm({ q }: { q: string }) {
           minLength={2}
           maxLength={80}
           autoComplete="off"
-          className="block h-12 w-full border-b border-navy/40 bg-transparent text-[16px] focus:border-navy focus:outline-none"
+          className="block h-12 w-full border-b border-navy/40 bg-transparent text-input focus:border-navy focus:outline-none"
         />
       </label>
-      <button type="submit" className="h-12 shrink-0 rounded-full bg-navy px-6 text-[14px] text-white hover:bg-navy/90">
+      <button type="submit" className="h-12 shrink-0 rounded-full bg-navy px-6 text-button text-white hover:bg-navy/90">
         {S.submit}
       </button>
     </form>
@@ -53,7 +53,7 @@ async function Results({ searchParams }: Props) {
     return (
       <>
         <SearchForm q={q} />
-        <p className="mt-4 text-center text-[14px] text-muted">{S.hint}</p>
+        <p className="mt-4 text-center text-body text-muted">{S.hint}</p>
       </>
     );
   }
@@ -62,7 +62,7 @@ async function Results({ searchParams }: Props) {
   return (
     <>
       <SearchForm q={q} />
-      <p role="status" className="mt-6 text-center text-[14px] text-muted">
+      <p role="status" className="mt-6 text-center text-body text-muted">
         {total ? S.results(q, total) : S.none(q)}
       </p>
       {services.length > 0 && (

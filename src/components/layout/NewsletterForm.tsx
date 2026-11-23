@@ -18,9 +18,9 @@ export function NewsletterForm({ placeholder, button }: Props) {
         required
         autoComplete="email"
         placeholder={placeholder}
-        className="on-dark min-w-0 flex-1 bg-transparent py-3 text-[16px] text-white placeholder:text-white/60 focus-visible:outline-none"
+        className="on-dark min-w-0 flex-1 bg-transparent py-3 text-input text-white placeholder:text-white/60 focus-visible:outline-none"
       />
-      <button type="submit" className="on-dark shrink-0 py-3 pl-4 text-[13px] uppercase tracking-[0.6px]">
+      <button type="submit" className="on-dark shrink-0 py-3 pl-4 text-button uppercase tracking-[0.6px]">
         {button}
       </button>
     </form>

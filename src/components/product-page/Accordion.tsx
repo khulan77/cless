@@ -24,7 +24,7 @@ export function Accordion({ items }: { items: AccordionItem[] }) {
                 aria-expanded={isOpen}
                 aria-controls={panel}
                 onClick={() => setOpen(isOpen ? null : item.id)}
-                className="flex w-full items-center justify-between py-4 text-left text-[13px] uppercase tracking-[0.06em]"
+                className="flex w-full items-center justify-between py-4 text-left text-meta uppercase tracking-[0.06em]"
               >
                 {item.title}
                 {isOpen ? <Minus className="size-4" strokeWidth={1.25} aria-hidden /> : <Plus className="size-4" strokeWidth={1.25} aria-hidden />}
@@ -37,7 +37,7 @@ export function Accordion({ items }: { items: AccordionItem[] }) {
               className={`grid transition-[grid-template-rows] duration-300 ease-out ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
             >
               <div className="overflow-hidden" inert={!isOpen}>
-                <div className="pb-6 text-[14px] leading-relaxed">{item.content}</div>
+                <div className="pb-6 text-body leading-relaxed">{item.content}</div>
               </div>
             </div>
           </section>

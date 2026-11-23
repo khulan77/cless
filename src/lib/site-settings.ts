@@ -35,7 +35,25 @@ export type NavItem = {
 
 export type NavigationSetting = { items: NavItem[] };
 
-export type HeroSetting = { image: Image; title: string[]; cta: Link };
+export type HeroSetting = {
+  image: Image;
+  title: string[];
+  cta: Link;
+  /** Focal point in % (object-position) — keeps the subject in frame when cropped */
+  focal?: { x: number; y: number };
+  /** Separate portrait image for phones (optional) */
+  mobileImage?: Image | null;
+  /**
+   * "center" (as on biologique-recherche.com): on md+ the image keeps a natural scale, centred and
+   * anchored to the top, edges feathered into `background` — for portrait / low-res shots on a plain backdrop.
+   * "cover" (default): fills the whole hero.
+   */
+  layout?: "cover" | "center";
+  /** Backdrop colour for "center" — match the photo's background */
+  background?: string;
+  /** "dark": navy logo and icons over a light photo */
+  headerTone?: "light" | "dark";
+};
 
 export type PromoCard = { image: Image; title: string; text: string; cta: Link };
 export type PromoTrioSetting = { items: PromoCard[] };

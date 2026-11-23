@@ -16,17 +16,17 @@ export function BookingSheetButton({ salon, variant = "pill", className = "" }: 
     variant === "icon"
       ? "grid size-11 place-items-center"
       : variant === "link"
-        ? "link-underline text-[14px]"
+        ? "link-underline text-button"
         : variant === "outline"
-          ? "inline-flex min-h-12 items-center justify-center rounded-full border border-current px-6 text-[14px] tracking-[0.4px]"
-          : "inline-flex min-h-12 items-center justify-center rounded-full bg-navy px-6 text-[14px] tracking-[0.4px] text-white hover:bg-navy/90";
+          ? "inline-flex min-h-12 items-center justify-center rounded-full border border-current px-6 text-button tracking-[0.4px]"
+          : "inline-flex min-h-12 items-center justify-center rounded-full bg-navy px-6 text-button tracking-[0.4px] text-white hover:bg-navy/90";
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={variant === "icon" ? t.salon.book : undefined} className={`${cls} ${className}`}>
         {variant === "icon" ? <CalendarCheck className="size-[22px]" strokeWidth={1.25} aria-hidden /> : t.salon.book}
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title={t.salon.bookTitle} closeLabel={t.salon.close}>
-        <p className="mb-5 text-[14px] text-muted">{t.salon.bookIntro}</p>
+        <p className="mb-5 text-body text-muted">{t.salon.bookIntro}</p>
         <ContactButtons salon={salon} />
         <div className="mt-6 border-t border-line pt-5">
           <SalonDetails salon={salon} />

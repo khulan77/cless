@@ -63,6 +63,11 @@ export const settingSchemas = {
     image,
     title: z.array(requiredText(80)).min(1).max(3),
     cta: link,
+    focal: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
+    mobileImage: image.nullable().optional(),
+    layout: z.enum(["cover", "center"]).optional(),
+    background: z.string().regex(/^#[0-9a-f]{6}$/i, "#RRGGBB хэлбэрээр").optional(),
+    headerTone: z.enum(["light", "dark"]).optional(),
   }),
   promoTrio: z.object({
     items: z

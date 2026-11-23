@@ -9,7 +9,7 @@ export function Breadcrumbs({ items, current, className = "" }: { items: Crumb[]
   const all = [{ name: t.common.home, href: "/" }, ...items, current];
   return (
     <>
-      <nav aria-label={t.common.breadcrumb} className={`text-[12px] text-muted ${className}`}>
+      <nav aria-label={t.common.breadcrumb} className={`text-note text-muted ${className}`}>
         <ol className="flex flex-wrap items-center gap-1.5">
           {all.map((c, i) => (
             <li key={c.href + i} className="flex items-center gap-1.5">

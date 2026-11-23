@@ -19,7 +19,7 @@ export function MegaMenu({ item, onBack, onNavigate }: Props) {
       className="h-full w-screen overflow-y-auto border-l border-line bg-white px-6 pb-10 pt-4 text-navy sm:w-[380px] md:w-[420px] md:bg-promo"
     >
       <div className="mb-6 flex h-10 items-center md:hidden">
-        <button type="button" onClick={onBack} className="-ml-2 flex items-center gap-1 py-2 text-[14px]">
+        <button type="button" onClick={onBack} className="-ml-2 flex items-center gap-1 py-2 text-button">
           <ChevronLeft className="size-4" strokeWidth={1.25} aria-hidden />
           {t.layout.back}
         </button>
@@ -35,7 +35,7 @@ export function MegaMenu({ item, onBack, onNavigate }: Props) {
             <ul className="space-y-0.5">
               {g.links.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} onClick={onNavigate} className="block py-1.5 text-[15px] hover:underline">
+                  <Link href={l.href} onClick={onNavigate} className="block py-1.5 text-body hover:underline">
                     {l.label}
                   </Link>
                 </li>
@@ -43,7 +43,7 @@ export function MegaMenu({ item, onBack, onNavigate }: Props) {
             </ul>
           </div>
         ))}
-        <Link href={item.href} onClick={onNavigate} className="link-underline inline-block text-[14px]">
+        <Link href={item.href} onClick={onNavigate} className="link-underline inline-block text-button">
           {t.common.viewAll}
         </Link>
       </div>

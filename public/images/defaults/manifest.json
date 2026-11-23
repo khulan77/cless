@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-11-23T08:32:49.995Z",
+  "totalBytes": 770072,
+  "sections": {
+    "hero": [
+      "/images/defaults/hero/gift-tower.webp"
+    ],
+    "promo": [
+      "/images/defaults/promo/1-br-shot-02-083.webp",
+      "/images/defaults/promo/2-serum-drops.webp",
+      "/images/defaults/promo/3-pompom-box.webp"
+    ],
+    "split": [
+      "/images/defaults/split/fur-pouch-set.webp"
+    ],
+    "featured": [
+      "/images/defaults/featured/br-31183-rajout-matiere.webp"
+    ]
+  },
+  "colors": {
+    "/images/defaults/hero/gift-tower.webp": "#e1ded8"
+  },
+  "products": {},
+  "unmatched": []
+}

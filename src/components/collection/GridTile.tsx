@@ -14,11 +14,11 @@ export function GridTile({ tile }: { tile: CollectionGridTile }) {
       <div className="absolute inset-x-0 bottom-0 flex flex-col items-start gap-2 p-5 md:p-6">
         {tile.eyebrow && <p className="text-micro">{tile.eyebrow}</p>}
         <h3 className="text-product">{tile.title}</h3>
-        {tile.text && <p className="text-[14px] text-white/85">{tile.text}</p>}
+        {tile.text && <p className="text-body text-white/85">{tile.text}</p>}
         {tile.ctaLabel && tile.ctaHref && (
           <Link
             href={tile.ctaHref}
-            className="mt-2 inline-flex rounded-full border border-white px-5 py-2.5 text-[14px] transition-colors hover:bg-white hover:text-navy"
+            className="mt-2 inline-flex rounded-full border border-white px-5 py-2.5 text-button transition-colors hover:bg-white hover:text-navy"
           >
             {tile.ctaLabel}
           </Link>

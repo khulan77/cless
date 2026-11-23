@@ -49,7 +49,7 @@ export function AnnouncementBar({ messages, intervalMs }: Props) {
             <p
               key={i}
               aria-hidden={i !== index}
-              className={`absolute inset-0 flex items-center justify-center truncate px-2 text-center text-[12px] tracking-[0.4px] transition-all duration-500 ${
+              className={`absolute inset-0 flex items-center justify-center truncate px-2 text-center text-note transition-all duration-500 ${
                 i === index ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
               }`}
             >
