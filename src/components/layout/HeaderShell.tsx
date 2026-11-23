@@ -20,7 +20,7 @@ const scrolledPast = () => window.scrollY > 40;
 export function HeaderShell({ children }: { children: ReactNode }) {
   const scrolled = useSyncExternalStore(subscribe, scrolledPast, () => false);
   return (
-    <header data-scrolled={scrolled} className="site-header group/header sticky top-0 z-40 border-b transition-colors duration-300">
+    <header data-header-shell="" data-scrolled={scrolled} className="site-header group/header sticky top-0 z-40 border-b transition-colors duration-300">
       {children}
     </header>
   );

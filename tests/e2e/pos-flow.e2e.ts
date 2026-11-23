@@ -146,7 +146,8 @@ test("POS: shift → draft survives reload → split payment → e-mail SENT →
 
   // ── 6. Sale detail shows the diagnosis ──
   await dlg.getByRole("link", { name: "Дэлгэрэнгүй" }).click();
-  await expect(page.getByText("Айлчлал / оношлогоо")).toBeVisible();
+  // Next keeps the previous route hidden in the DOM (<Activity>) — check the visible copy
+  await expect(page.getByText("Айлчлал / оношлогоо").filter({ visible: true })).toBeVisible();
   const main = page.locator("main");
   await expect(main).toContainText("Тослог");
   await expect(main).toContainText("Батга ба арьсны согог");
