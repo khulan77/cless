@@ -104,8 +104,8 @@ async function ProductView({ params }: Props) {
       title: t.product.ingredients,
       content: (
         <>
-          <p lang="la" className="text-[13px]">{p.ingredients}</p>
-          <p className="mt-3 text-[12px] text-muted">{t.product.ingredientsWarning}</p>
+          <p lang="la" className="text-meta">{p.ingredients}</p>
+          <p className="mt-3 text-note text-muted">{t.product.ingredientsWarning}</p>
         </>
       ),
     },
@@ -143,8 +143,8 @@ async function ProductView({ params }: Props) {
             />
             {p.badge && <p className="text-micro mt-6">{t.badge[p.badge]}</p>}
             <h1 className="text-section mt-2 text-left">{p.name}</h1>
-            {p.tagline && <p className="mt-2 text-[16px]">{p.tagline}</p>}
-            {p.recommendedFor && <p className="mt-2 text-[14px] text-muted">{p.recommendedFor}</p>}
+            {p.tagline && <p className="text-body mt-2">{p.tagline}</p>}
+            {p.recommendedFor && <p className="mt-2 text-body text-muted">{p.recommendedFor}</p>}
             {p.benefits.length > 0 && <p className="text-micro mt-4 text-muted">{p.benefits.join(" / ")}</p>}
 
             <PriceLine />
@@ -164,7 +164,7 @@ async function ProductView({ params }: Props) {
       )}
 
       {p.similar.length > 0 && (
-        <Container as="section" aria-labelledby="similar-title" className="mt-16 md:mt-24">
+        <Container as="section" aria-labelledby="similar-title" className="section-gap">
           <SectionTitle id="similar-title">{t.product.similar}</SectionTitle>
           <ProductCarousel label={t.product.similar}>
             {p.similar.map((s) => (

@@ -25,7 +25,7 @@ export function Sheet({ open, onClose, title, closeLabel, children }: { open: bo
       className="sheet m-0 mt-auto max-h-[88dvh] w-full max-w-none overflow-y-auto rounded-t-2xl bg-white p-0 text-navy backdrop:bg-navy/40 md:ml-auto md:mt-0 md:h-dvh md:max-h-none md:w-[440px] md:rounded-none"
     >
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-white px-5 py-4">
-        <h2 className="text-[16px] font-medium tracking-[0.2px]">{title}</h2>
+        <h2 className="text-h1">{title}</h2>
         <button type="button" onClick={onClose} aria-label={closeLabel} className="-mr-2 grid size-11 place-items-center rounded-full hover:bg-navy/5">
           <X className="size-5" strokeWidth={1.5} aria-hidden />
         </button>

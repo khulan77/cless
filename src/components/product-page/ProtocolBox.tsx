@@ -17,28 +17,28 @@ function ProtocolItem({ product }: { product: ProductCardData }) {
   const img = product.images[0];
   return (
     <div className="flex gap-4">
-      <Link href={`/products/${product.slug}`} className="relative size-24 shrink-0 bg-white">
+      <Link href={`/products/${product.slug}`} tabIndex={-1} aria-hidden className="relative size-24 shrink-0 bg-white">
         {img && <Img src={img.src} alt={img.alt || t.product.image(product.name)} fill sizes="96px" className="object-contain p-1" />}
       </Link>
       <div className="min-w-0 flex-1">
-        <Link href={`/products/${product.slug}`} className="text-product block text-[14px] hover:underline">
+        <Link href={`/products/${product.slug}`} className="text-product block text-body hover:underline">
           {product.name}
         </Link>
-        {selected && <p className="mt-1 text-[13px]">{formatMNT(selected.price)}</p>}
+        {selected && <p className="text-price mt-1">{formatMNT(selected.price)}</p>}
         {product.kind !== "BUNDLE" && product.variants.length > 1 && (
           <div className="mt-2">
             <SizeOptions variants={product.variants} selectedId={selected?.id} onSelect={setSelectedId} />
           </div>
         )}
         {catalog ? (
-          selected && <p className="mt-2 text-[13px] text-muted">{!selected.available ? t.stock.soldOut : selected.lowStock ? t.stock.low : t.stock.inSalon}</p>
+          selected && <p className="mt-2 text-meta text-muted">{!selected.available ? t.stock.soldOut : selected.lowStock ? t.stock.low : t.stock.inSalon}</p>
         ) : selected?.available ? (
           // TODO (checkout phase): add to cart
-          <button type="button" className="link-underline relative mt-2 text-[13px] before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']">
+          <button type="button" className="link-underline relative mt-2 text-button before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']">
             {t.product.addToCart}
           </button>
         ) : (
-          <p className="mt-2 text-[13px] text-muted">{t.product.soldOut}</p>
+          <p className="mt-2 text-meta text-muted">{t.product.soldOut}</p>
         )}
       </div>
     </div>
@@ -82,7 +82,7 @@ export function ProtocolBox({ items }: { items: ProductCardData[] }) {
       <button
         type="button"
         onClick={() => setDrawer(true)}
-        className="mt-3 w-full rounded-full border border-navy px-5 py-2.5 text-[14px] transition-colors hover:bg-navy hover:text-white"
+        className="mt-3 w-full rounded-full border border-navy px-5 py-2.5 text-button transition-colors hover:bg-navy hover:text-white"
       >
         {t.common.viewAllProducts}
       </button>
@@ -113,7 +113,7 @@ export function ProtocolBox({ items }: { items: ProductCardData[] }) {
               ))}
             </ol>
             <div className="border-t border-line p-4">
-              <button type="button" onClick={() => setDrawer(false)} className="h-11 w-full rounded-full border border-navy text-[14px]">
+              <button type="button" onClick={() => setDrawer(false)} className="h-11 w-full rounded-full border border-navy text-button">
                 {t.common.close}
               </button>
             </div>

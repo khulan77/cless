@@ -40,7 +40,7 @@ export default async function SalonPage() {
           <p className="mt-4 text-muted">{banner?.text || P.intro}</p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
             <BookingSheetButton salon={salon} />
-            <Link href="/services" className="link-underline inline-flex min-h-11 items-center text-[14px]">
+            <Link href="/services" className="link-underline inline-flex min-h-11 items-center text-button">
               {t.salon.services}
             </Link>
           </div>
@@ -55,55 +55,55 @@ export default async function SalonPage() {
           ))}
         </ul>
 
-        <dl className="mx-auto mt-12 grid max-w-[960px] gap-px bg-line md:grid-cols-3">
+        <ul className="mx-auto mt-12 grid max-w-[960px] gap-px bg-line md:grid-cols-3">
           {salon.address && (
-            <div className="flex gap-4 bg-white p-6">
+            <li className="flex gap-4 bg-white p-6">
               <MapPin className="mt-0.5 size-5 shrink-0" strokeWidth={1.25} aria-hidden />
               <div>
-                <dt className="text-micro mb-2 text-muted">{t.salon.address}</dt>
-                <dd className="whitespace-pre-line text-[15px]">{salon.address}</dd>
+                <h2 className="text-micro mb-2 text-muted">{t.salon.address}</h2>
+                <p className="whitespace-pre-line text-body">{salon.address}</p>
                 {salon.mapsUrl && (
-                  <dd className="mt-3">
+                  <p className="mt-3">
                     <a
                       href={salon.mapsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex min-h-11 items-center rounded-full border border-navy px-5 text-[14px] transition-colors hover:bg-navy hover:text-white"
+                      className="inline-flex min-h-11 items-center rounded-full border border-navy px-5 text-button transition-colors hover:bg-navy hover:text-white"
                     >
                       {t.salon.openMap}
                     </a>
-                  </dd>
+                  </p>
                 )}
               </div>
-            </div>
+            </li>
           )}
           {salon.hoursLines.length > 0 && (
-            <div className="flex gap-4 bg-white p-6">
+            <li className="flex gap-4 bg-white p-6">
               <Clock className="mt-0.5 size-5 shrink-0" strokeWidth={1.25} aria-hidden />
               <div>
-                <dt className="text-micro mb-2 text-muted">{t.salon.hours}</dt>
+                <h2 className="text-micro mb-2 text-muted">{t.salon.hours}</h2>
                 {salon.hoursLines.map((l) => (
-                  <dd key={l} className="text-[15px]">
+                  <p key={l} className="text-body">
                     {l}
-                  </dd>
+                  </p>
                 ))}
               </div>
-            </div>
+            </li>
           )}
           {tel && (
-            <div className="flex gap-4 bg-white p-6">
+            <li className="flex gap-4 bg-white p-6">
               <Phone className="mt-0.5 size-5 shrink-0" strokeWidth={1.25} aria-hidden />
               <div>
-                <dt className="text-micro mb-2 text-muted">{P.phone}</dt>
-                <dd className="text-[15px]">
+                <h2 className="text-micro mb-2 text-muted">{P.phone}</h2>
+                <p className="text-body">
                   <a href={`tel:${tel}`} className="link-underline">
                     {salon.phone}
                   </a>
-                </dd>
+                </p>
               </div>
-            </div>
+            </li>
           )}
-        </dl>
+        </ul>
       </Container>
     </>
   );

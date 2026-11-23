@@ -64,7 +64,7 @@ export default async function HomePage() {
       {featured && featuredProduct && <FeaturedProduct setting={featured} product={featuredProduct} />}
 
       {iconic && badgedProducts.length > 0 && (
-        <Container as="section" aria-labelledby="iconic-title" className="mt-16 md:mt-24">
+        <Container as="section" aria-labelledby="iconic-title" className="section-gap">
           <SectionTitle id="iconic-title">{iconic.title}</SectionTitle>
           <ProductCarousel label={iconic.title}>
             {badgedProducts.map((p) => (

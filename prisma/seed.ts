@@ -5,6 +5,7 @@
  * Анхаар: бүх текст, үнэ нь PLACEHOLDER. Бодит үнэ, тайлбар, зургийг
  * дистрибьютер админ хэсгээс оруулна.
  */
+import { defaultImage, defaultImageColor, defaultProductImages } from "../src/lib/default-images";
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type Role } from "../src/generated/prisma/client";
@@ -163,7 +164,9 @@ async function seedProducts(adminId: string) {
     const product = await db.product.upsert({ where: { slug: p.slug }, create: { slug: p.slug, ...data }, update: data });
 
     // Зураг: үндсэн + 2 өнцөг
-    const images = [`/placeholders/product-${n}.svg`, `/placeholders/product-${n}-2.svg`, `/placeholders/product-${n}-3.svg`];
+    // Brand images (scripts/build-default-images.ts) when present, otherwise dev placeholders
+    const defaults = defaultProductImages(p.slug).map((x) => x.src);
+    const images = defaults.length ? defaults : [`/placeholders/product-${n}.svg`, `/placeholders/product-${n}-2.svg`, `/placeholders/product-${n}-3.svg`];
     for (const [k, url] of images.entries()) {
       const id = k === 0 ? `seed-img-${p.slug}` : `seed-img-${p.slug}-${k + 1}`;
       const img = { url, alt: `${p.name} — ${k === 0 ? "бүтээгдэхүүний зураг" : `зураг ${k + 1}`}`, sortOrder: k };
@@ -333,7 +336,7 @@ const services = [
   {
     slug: "pigmentation-protocol-75",
     category: "Нүүрний эмчилгээ",
-    name: "Пигментацийн протокол",
+    name: "Пигментацийн эмчилгээ",
     description: "Толбо, жигд бус өнгийг багасгах 75 минутын эмчилгээ.",
     durationMin: 75,
     price: 320_000,
@@ -415,14 +418,14 @@ const settings: SiteSettings = {
     intervalMs: 5000,
     messages: [
       "Biologique Recherche-ийн Монгол дахь албан ёсны дистрибьютор",
-      "Салон дээр арьсны оношлогоо — утсаар цаг аваарай",
-      "Гоо сайханчийн зөвлөгөөтэйгөөр арчилгаагаа сонгоорой",
+      "Салон дээр арьсны оношлогоо",
+      "Арчилгаагаа гоо сайханчтайгаа сонгоорой",
     ],
   },
   brand: {
     wordmark: ["BIOLOGIQUE", "RECHERCHE", "PARIS"],
     siteName: "Biologique Recherche Mongolia",
-    description: "Biologique Recherche-ийн Монгол дахь албан ёсны дистрибьютер — СПА салон ба онлайн дэлгүүр.",
+    description: "Biologique Recherche-ийн Монгол дахь албан ёсны дистрибьютор. Салон ба арчилгааны бүтээгдэхүүн.",
   },
   navigation: {
     items: [
@@ -446,61 +449,66 @@ const settings: SiteSettings = {
     ],
   },
   hero: {
-    image: { src: "/placeholders/hero.svg", alt: "Арьс арчилгааны ритуал — hero зураг" },
-    title: ["Арьс бүр өвөрмөц", "Арчилгаа ч мөн адил"],
-    cta: { label: "Дэлгүүр үзэх", href: "/collections" },
+    image: { src: defaultImage("hero") ?? "/placeholders/hero.svg", alt: "Арьс арчилгааны ритуал — hero зураг" },
+    // Portrait shot on a plain backdrop: centred, top-anchored, navy header — as on biologique-recherche.com
+    focal: { x: 50, y: 0 },
+    layout: "center",
+    background: defaultImageColor("hero") ?? "#e3e0db",
+    headerTone: "dark",
+    title: ["Арьс бүр өөр", "арчилгаа ч өөр"],
+    cta: { label: "Сонголтыг үзэх", href: "/collections" },
   },
   promoTrio: {
     items: [
       {
-        image: { src: "/placeholders/promo-1.svg", alt: "Lotion P50 цуглуулга" },
+        image: { src: defaultImage("promo.0") ?? "/placeholders/promo-1.svg", alt: "Lotion P50 цуглуулга" },
         title: "Lotion P50",
-        text: "Арьсны тэнцвэрийг сэргээх брэндийн хамгийн алдартай лосьон.",
+        text: "Арьсны тэнцвэрийг сэргээх лосьон.",
         cta: { label: "Дэлгэрэнгүй", href: "/collections/lotion-p50" },
       },
       {
-        image: { src: "/placeholders/promo-2.svg", alt: "Серумын цуглуулга" },
+        image: { src: defaultImage("promo.1") ?? "/placeholders/promo-2.svg", alt: "Серумын цуглуулга" },
         title: "Серумын цуглуулга",
-        text: "Арьсны асуудал бүрт зориулсан өндөр идэвхт серумууд.",
-        cta: { label: "Серум үзэх", href: "/collections/serum" },
+        text: "Арьсны хэрэгцээ бүрт тохирсон серум.",
+        cta: { label: "Үзэх", href: "/collections/serum" },
       },
       {
-        image: { src: "/placeholders/promo-3.svg", alt: "Бэлгийн багц" },
+        image: { src: defaultImage("promo.2") ?? "/placeholders/promo-3.svg", alt: "Бэлгийн багц" },
         title: "Бэлгийн багц",
-        text: "Хайртай хүмүүстээ зориулсан тусгай хайрцагтай бэлэг.",
-        cta: { label: "Бэлэг сонгох", href: "/collections/gifts" },
+        text: "Хайртай хүмүүстээ — арчилгааны багц.",
+        cta: { label: "Сонголтыг үзэх", href: "/collections/gifts" },
       },
     ],
   },
   splitPromo: {
     eyebrow: "Хязгаарлагдмал",
     title: "Өвлийн арчилгааны багц",
-    text: "Хүйтэн, хуурай агаарт арьсаа хамгаалах чийгшүүлэх протокол. Тоо хэмжээ хязгаартай.",
-    cta: { label: "Багц үзэх", href: "/collections/gifts" },
-    image: { src: "/placeholders/split.svg", alt: "Өвлийн арчилгааны багц" },
+    text: "Хүйтэн, хуурай улиралд зориулсан чийгшүүлэх арчилгаа.",
+    cta: { label: "Үзэх", href: "/collections/gifts" },
+    image: { src: defaultImage("split") ?? "/placeholders/split.svg", alt: "Өвлийн арчилгааны багц" },
   },
   featuredProduct: {
     title: "Шинэ серум",
     productSlug: "progeskin",
-    image: { src: "/placeholders/featured.svg", alt: "Progeskin серумын lifestyle зураг" },
+    image: { src: defaultImage("featured") ?? "/placeholders/featured.svg", alt: "Progeskin серумын lifestyle зураг" },
   },
   iconicCarousel: {
-    title: "Иконик бүтээгдэхүүн",
+    title: "Сонгодог бүтээгдэхүүн",
     cta: { label: "Бүгдийг харах", href: "/collections" },
   },
   salonBanner: {
     title: "Манай салон",
-    text: "Улаанбаатарын төвд байрлах манай салонд брэндийн протоколоор мэргэшсэн гоо сайханчид үйлчилнэ.",
+    text: "Брэндийн эмчилгээнд мэргэшсэн гоо сайханчид.",
     cta: { label: "Салонтой танилцах", href: "/salon" },
-    image: { src: "/placeholders/salon.svg", alt: "Салоны дотор орчин" },
+    image: { src: defaultImage("salon") ?? "/placeholders/salon.svg", alt: "Салоны дотор орчин" },
   },
-  concernGrid: { title: "Арьсны асуудлаар сонгох", labelPrefix: "Протокол" },
-  categoryGrid: { title: "Ангиллаар сонгох" },
+  concernGrid: { title: "Арьсны хэрэгцээгээр", labelPrefix: "Протокол" },
+  categoryGrid: { title: "Ангиллаар" },
   servicesBanner: {
     title: "Салоны үйлчилгээ",
-    text: "Арьсны оношлогооноос эхлэн бүрэн протокол хүртэл.",
+    text: "Оношлогооноос бүрэн эмчилгээ хүртэл.",
     cta: { label: "Бүгдийг харах", href: "/services" },
-    image: { src: "/placeholders/services.svg", alt: "Салоны үйлчилгээ" },
+    image: { src: defaultImage("services") ?? "/placeholders/services.svg", alt: "Салоны үйлчилгээ" },
   },
   productBenefits: {
     // "Үнэгүй хүргэлт" нөхцөл тодорхой болмогц админаас нэмнэ (#13)
@@ -553,7 +561,7 @@ const settings: SiteSettings = {
     socials: [],
     newsletter: {
       title: "Мэдээлэл авах",
-      text: "Шинэ бүтээгдэхүүн, урамшууллын мэдээг имэйлээр аваарай.",
+      text: "Шинэ бүтээгдэхүүн, салоны мэдээ.",
       placeholder: "Имэйл хаяг",
       button: "Бүртгүүлэх",
     },

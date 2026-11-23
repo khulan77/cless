@@ -59,3 +59,6 @@ next-env.d.ts
 # worker bundle (scripts/build-worker.ts), backup файлууд
 /dist/
 /backups/
+
+# Default image sources from the team (processed by scripts/build-default-images.ts; never committed)
+assets-incoming/

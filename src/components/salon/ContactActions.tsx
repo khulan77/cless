@@ -11,7 +11,7 @@ export type SalonContact = {
   hoursLines: string[];
 };
 
-const btn = "flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-[15px] transition-colors";
+const btn = "flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-body transition-colors";
 
 /** Call (primary), Instagram / Messenger DM — buttons are hidden when the link is not configured */
 export function ContactButtons({ salon }: { salon: SalonContact }) {
@@ -42,7 +42,7 @@ export function ContactButtons({ salon }: { salon: SalonContact }) {
 
 export function SalonDetails({ salon }: { salon: SalonContact }) {
   return (
-    <dl className="space-y-4 text-[14px]">
+    <dl className="space-y-4 text-body">
       {salon.hoursLines.length > 0 && (
         <div>
           <dt className="text-micro text-muted">{t.salon.hours}</dt>

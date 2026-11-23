@@ -47,7 +47,7 @@ export default async function ServicesPage() {
           </section>
         ))
       )}
-      <p className="mt-12 text-center text-[14px] text-muted">{S.bookingNote}</p>
+      <p className="mt-12 text-center text-body text-muted">{S.bookingNote}</p>
     </Container>
   );
 }

@@ -51,7 +51,7 @@ export function CollectionSwitcher({ current, siblings, parent }: Props) {
             setOpen(true);
           }
         }}
-        className="flex h-11 items-center gap-1.5 text-[15px] uppercase tracking-[0.04em]"
+        className="flex h-11 items-center gap-1.5 text-body uppercase tracking-[0.04em]"
       >
         {current.name}
         <ChevronDown className={`size-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} strokeWidth={1.25} aria-hidden />
@@ -81,7 +81,7 @@ export function CollectionSwitcher({ current, siblings, parent }: Props) {
               aria-selected={o.slug === current.slug}
               onMouseEnter={() => setActive(i)}
               onClick={() => choose(o)}
-              className={`cursor-pointer px-4 py-2 text-[14px] ${i === active ? "bg-card" : ""} ${
+              className={`cursor-pointer px-4 py-2 text-body ${i === active ? "bg-card" : ""} ${
                 o.slug === current.slug ? "underline underline-offset-4" : ""
               } ${parent && i === options.length - 1 ? "mt-1 border-t border-line pt-3" : ""}`}
             >

@@ -83,8 +83,8 @@ async function CollectionView({ params, searchParams }: Props) {
 
         {c.seoText && (
           <section className="mx-auto max-w-[720px] py-20 text-center md:py-24">
-            <h2 className="text-section mb-5 text-[21px]">{c.name}</h2>
-            <p className="text-[14px] leading-relaxed text-muted">{c.seoText}</p>
+            <h2 className="text-h1 mb-5 uppercase">{c.name}</h2>
+            <p className="text-body leading-relaxed text-muted">{c.seoText}</p>
           </section>
         )}
       </Container>

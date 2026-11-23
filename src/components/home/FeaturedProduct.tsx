@@ -9,7 +9,7 @@ import { ProductCard } from "@/components/product/ProductCard";
 export function FeaturedProduct({ setting, product }: { setting: FeaturedProductSetting; product: ProductCardData }) {
   const src = realImageSrc(setting.image.src);
   return (
-    <Container as="section" aria-labelledby="featured-title" className="mt-16 md:mt-24">
+    <Container as="section" aria-labelledby="featured-title" className="section-gap">
       <SectionTitle id="featured-title">{setting.title}</SectionTitle>
       <div className={`grid gap-1.5 ${src ? "md:grid-cols-2" : "mx-auto max-w-[720px]"}`}>
         {src && (

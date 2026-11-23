@@ -91,7 +91,7 @@ export function LoadMoreBar() {
   if (total === 0) return null;
   return (
     <div className="mt-12 flex flex-col items-center gap-4">
-      <p className="text-[13px] text-muted" aria-live="polite">
+      <p className="text-meta text-muted" aria-live="polite">
         {t.collection.progress(shown, total)}
       </p>
       <div aria-hidden className="h-px w-48 bg-navy/15">
@@ -103,7 +103,7 @@ export function LoadMoreBar() {
           onClick={loadMore}
           disabled={pending}
           aria-busy={pending}
-          className="rounded-full border border-navy px-6 py-2.5 text-[14px] transition-colors hover:bg-navy hover:text-white disabled:opacity-60"
+          className="rounded-full border border-navy px-6 py-2.5 text-button transition-colors hover:bg-navy hover:text-white disabled:opacity-60"
         >
           {pending ? t.common.loading : t.collection.loadMore}
         </button>

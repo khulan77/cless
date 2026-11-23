@@ -7,7 +7,7 @@ import { realImageSrc } from "@/lib/placeholder";
 export function SplitPromo({ promo }: { promo: SplitPromoSetting }) {
   const src = realImageSrc(promo.image.src);
   return (
-    <Container as="section" aria-labelledby="split-title" className="mt-16 md:mt-24">
+    <Container as="section" aria-labelledby="split-title" className="section-gap">
       <div className={`grid ${src ? "md:grid-cols-2" : ""}`}>
         <div className="order-2 flex flex-col items-center justify-center bg-promo px-6 py-14 text-center md:order-1 md:px-16">
           {promo.eyebrow && <p className="text-micro mb-4 uppercase tracking-[0.8px]">{promo.eyebrow}</p>}

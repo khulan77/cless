@@ -125,7 +125,7 @@ export function MobileMenu({ items, salon }: { items: ResolvedNavItem[]; salon: 
                     type="button"
                     onClick={() => setActive(active === i ? null : i)}
                     aria-expanded={active === i}
-                    className={`flex w-full items-center justify-between py-3 text-left text-[15px] uppercase tracking-[0.6px] ${
+                    className={`flex w-full items-center justify-between py-3 text-left text-body uppercase tracking-[0.6px] ${
                       active === i ? "underline underline-offset-4" : ""
                     }`}
                   >
@@ -138,7 +138,7 @@ export function MobileMenu({ items, salon }: { items: ResolvedNavItem[]; salon: 
                   <Link
                     href={item.href}
                     onClick={close}
-                    className="block py-3 text-[15px] uppercase tracking-[0.6px]"
+                    className="block py-3 text-body uppercase tracking-[0.6px]"
                   >
                     {item.label}
                   </Link>
@@ -147,14 +147,14 @@ export function MobileMenu({ items, salon }: { items: ResolvedNavItem[]; salon: 
             ))}
             {extras.map((l) => (
               <li key={l.href}>
-                <Link href={l.href} onClick={close} className="block py-3 text-[15px] uppercase tracking-[0.6px]">
+                <Link href={l.href} onClick={close} className="block py-3 text-body uppercase tracking-[0.6px]">
                   {l.label}
                 </Link>
               </li>
             ))}
           </ul>
           {(tel || salon.instagram) && (
-            <div className="mt-8 space-y-1 border-t border-line pt-6 text-[14px]">
+            <div className="mt-8 space-y-1 border-t border-line pt-6 text-body">
               {tel && (
                 <a href={`tel:${tel}`} className="flex min-h-11 items-center gap-3">
                   <Phone className="size-[18px]" strokeWidth={1.25} aria-hidden />

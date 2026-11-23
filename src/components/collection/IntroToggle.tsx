@@ -13,7 +13,7 @@ export function IntroToggle({ text }: { text: string }) {
   const preview = needsToggle ? `${text.slice(0, text.lastIndexOf(" ", PREVIEW) > 20 ? text.lastIndexOf(" ", PREVIEW) : PREVIEW)}…` : text;
 
   return (
-    <p id={id} className="mx-auto mt-3 max-w-[60ch] text-[15px] text-white/90">
+    <p id={id} className="mx-auto mt-3 max-w-[60ch] text-body text-white/90">
       {open || !needsToggle ? text : preview}{" "}
       {needsToggle && (
         <button

@@ -56,8 +56,8 @@ export function Footer({
               ))}
             </Link>
             <div className="mt-10">
-              <h2 className="text-micro mb-2">{newsletter.title}</h2>
-              <p className="mb-4 text-[14px] text-white/75">{newsletter.text}</p>
+              <h2 className="text-footer-title mb-2">{newsletter.title}</h2>
+              <p className="mb-4 text-body text-silver">{newsletter.text}</p>
               <NewsletterForm placeholder={newsletter.placeholder} button={newsletter.button} />
             </div>
           </div>
@@ -65,8 +65,8 @@ export function Footer({
           <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-4">
             {visibleColumns.map((col) => (
               <nav key={col.title} aria-label={col.title}>
-                <h2 className="text-micro mb-4">{col.title}</h2>
-                <ul className="text-[14px] text-white/80 md:space-y-2.5">
+                <h2 className="text-footer-title mb-4">{col.title}</h2>
+                <ul className="text-body text-silver md:space-y-2.5">
                   {col.links.map((l) => (
                     <li key={`${l.label}-${l.href}`}>
                       <Link href={l.href} className="inline-flex min-h-11 items-center hover:text-white hover:underline md:min-h-0">
@@ -78,8 +78,8 @@ export function Footer({
               </nav>
             ))}
             <div className="col-span-2 md:col-span-1">
-              <h2 className="text-micro mb-4">{contact.title}</h2>
-              <address className="text-[14px] not-italic text-white/80 md:space-y-2.5 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center md:[&_a]:min-h-0">
+              <h2 className="text-footer-title mb-4">{contact.title}</h2>
+              <address className="text-body not-italic text-silver md:space-y-2.5 [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center md:[&_a]:min-h-0">
                 {salon.address && <p className="whitespace-pre-line">{salon.address}</p>}
                 {salon.mapsUrl && (
                   <p>
@@ -125,7 +125,7 @@ export function Footer({
           </div>
         </div>
 
-        <div className="mt-16 border-t border-white/20 pt-6 text-[12px] text-white/60">
+        <div className="mt-16 border-t border-white/20 pt-6 text-note text-silver">
           © <CurrentYear /> {siteName}
           {copyright ? `. ${copyright}` : ""}
         </div>

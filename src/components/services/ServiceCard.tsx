@@ -26,12 +26,12 @@ export function ServiceCard({ service: s, headingLevel = "h3" }: { service: Publ
             {s.name}
           </Link>
         </H>
-        <p className="mt-2 line-clamp-3 flex-1 text-[14px] text-muted">{s.shortDescription || s.description}</p>
-        <div className="mt-4 flex items-center justify-between gap-3 text-[14px]">
+        <p className="mt-2 line-clamp-3 flex-1 text-body text-muted">{s.shortDescription || s.description}</p>
+        <div className="mt-4 flex items-center justify-between gap-3 text-body">
           <span className="flex items-center gap-1.5 text-muted">
             <Clock className="size-4" strokeWidth={1.25} aria-hidden /> {t.pages.services.minutes(s.durationMin)}
           </span>
-          <span>{servicePrice(s)}</span>
+          <span className="text-price">{servicePrice(s)}</span>
         </div>
       </div>
     </li>

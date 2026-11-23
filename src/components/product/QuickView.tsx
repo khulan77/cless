@@ -29,7 +29,7 @@ export function QuickView({ product, href }: { product: ProductCardData; href: s
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t.product.quickViewOf(product.name)}
-        className="absolute inset-x-3 bottom-3 hidden h-10 translate-y-2 rounded-full bg-white text-[13px] opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 md:block"
+        className="absolute inset-x-3 bottom-3 hidden h-10 translate-y-2 rounded-full bg-white text-button opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 md:block"
       >
         {t.product.quickView}
       </button>
@@ -71,12 +71,12 @@ export function QuickView({ product, href }: { product: ProductCardData; href: s
                 <X className="size-5" strokeWidth={1.25} aria-hidden />
               </button>
               {product.badge && <p className="text-micro mb-3">{t.badge[product.badge]}</p>}
-              <h2 className="text-product text-[21px]">{product.name}</h2>
-              {product.tagline && <p className="mt-2 text-[15px]">{product.tagline}</p>}
+              <h2 className="text-product">{product.name}</h2>
+              {product.tagline && <p className="mt-2 text-body">{product.tagline}</p>}
               {product.benefits.length > 0 && <p className="text-micro mt-3 text-muted">{product.benefits.join(" / ")}</p>}
-              {product.bundleSummary && <p className="mt-3 text-[13px] text-muted">{product.bundleSummary}</p>}
+              {product.bundleSummary && <p className="mt-3 text-meta text-muted">{product.bundleSummary}</p>}
               <VariantPicker variants={product.variants} hideSizes={product.kind === "BUNDLE"} large />
-              <Link href={href} className="link-underline mt-6 self-start text-[14px] relative before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']">
+              <Link href={href} className="link-underline mt-6 self-start text-button relative before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']">
                 {t.product.viewDetails} →
               </Link>
             </div>

@@ -3,10 +3,11 @@
 import NextLink from "next/link";
 import { Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { SingleImageUploader } from "@/components/admin/ImageUploader";
-import { Button, Card, Field, Input, Select, Textarea } from "@/components/admin/ui";
+import { Badge, Button, Card, Field, Input, Select, Textarea } from "@/components/admin/ui";
+import { defaultImage } from "@/lib/default-images";
 import { useServerAction } from "@/components/admin/use-action";
 import type { Image, Link, SiteSettings } from "@/lib/site-settings";
 import { BENEFIT_ICONS, settingSchemas, type EditableSettingKey } from "@/lib/validation/site-settings";
@@ -50,18 +51,51 @@ function Shell({ title, description, onSubmit, pending, children }: {
   );
 }
 
-function ImageField({ value, onChange, prefix, err }: { value: Image; onChange: (v: Image) => void; prefix: string; err: (p: string) => string[] | undefined }) {
+/** Image + alt. With a default slot: "Үндсэн зураг" badge, "Үндсэн рүү буцаах"; hero: low-resolution warning */
+function ImageField({ value, onChange, prefix, err, slot, minWidth }: {
+  value: Image;
+  onChange: (v: Image) => void;
+  prefix: string;
+  err: (p: string) => string[] | undefined;
+  /** Default image slot (lib/default-images) */
+  slot?: string;
+  /** Warn when the uploaded image is narrower than this (px) */
+  minWidth?: number;
+}) {
+  const C = t.admin.content;
+  const def = slot ? defaultImage(slot) : null;
+  const isDefault = Boolean(def && value.src === def);
+  const width = useNaturalWidth(value.src);
   return (
     <div className="grid gap-3 md:grid-cols-[auto_1fr]">
-      <div>
+      <div className="space-y-2">
         <SingleImageUploader value={value.src || null} onChange={(src) => onChange({ ...value, src: src ?? "" })} folder="content" />
+        {isDefault && <Badge tone="champagne">{C.defaultBadge}</Badge>}
+        {def && !isDefault && (
+          <button type="button" onClick={() => onChange({ ...value, src: def })} className="block text-[13px] text-ink-soft underline underline-offset-4 hover:text-ink">
+            {C.resetDefault}
+          </button>
+        )}
+        {minWidth && width !== null && width < minWidth && <p className="max-w-56 text-[13px] text-warn">{C.lowRes(width, minWidth)}</p>}
         {err(`${prefix}.src`) && <p className="mt-1 text-[13px] text-danger">{err(`${prefix}.src`)![0]}</p>}
       </div>
-      <Field label={t.admin.content.imageAlt} htmlFor={`${prefix}-alt`} hint={t.admin.content.imageAltHint}>
+      <Field label={C.imageAlt} htmlFor={`${prefix}-alt`} hint={C.imageAltHint}>
         <Input id={`${prefix}-alt`} value={value.alt} onChange={(e) => onChange({ ...value, alt: e.target.value })} />
       </Field>
     </div>
   );
+}
+
+/** Natural width of an image URL (null until loaded / for SVG placeholders) */
+function useNaturalWidth(src: string) {
+  const [w, setW] = useState<{ src: string; width: number } | null>(null);
+  useEffect(() => {
+    if (!src || src.endsWith(".svg")) return;
+    const img = new window.Image();
+    img.onload = () => setW({ src, width: img.naturalWidth });
+    img.src = src;
+  }, [src]);
+  return w && w.src === src ? w.width : null;
 }
 
 function LinkField({ value, onChange, prefix, err }: { value: Link; onChange: (v: Link) => void; prefix: string; err: (p: string) => string[] | undefined }) {
@@ -111,7 +145,39 @@ export function HeroForm({ initial }: { initial: SiteSettings["hero"] }) {
   const { value, setValue, submit, pending, err } = useSettingForm("hero", initial);
   return (
     <Shell title={t.admin.content.hero} description={t.admin.content.heroHint} onSubmit={submit} pending={pending}>
-      <ImageField value={value.image} onChange={(image) => setValue({ ...value, image })} prefix="image" err={err} />
+      <ImageField value={value.image} onChange={(image) => setValue({ ...value, image })} prefix="image" err={err} slot="hero" minWidth={1920} />
+      <FocalPicker src={value.image.src} focal={value.focal ?? { x: 50, y: 50 }} onChange={(focal) => setValue({ ...value, focal })} />
+      <fieldset className="space-y-3 rounded-xl border border-hairline p-4">
+        <label className="flex items-start gap-3">
+          <input type="checkbox" checked={value.layout === "center"} onChange={(e) => setValue({ ...value, layout: e.target.checked ? "center" : "cover" })} className="mt-1 accent-navy" />
+          <span>
+            <span className="block text-[14px] font-medium">{t.admin.content.layoutCenter}</span>
+            <span className="block text-[13px] text-ink-soft">{t.admin.content.layoutCenterHint}</span>
+          </span>
+        </label>
+        {value.layout === "center" && (
+          <label className="flex items-center gap-3 pl-7 text-[14px]">
+            <input type="color" value={value.background ?? "#ffffff"} onChange={(e) => setValue({ ...value, background: e.target.value })} className="h-8 w-12 cursor-pointer rounded border border-hairline" />
+            <span>{t.admin.content.background}</span>
+            <span className="text-ink-soft tabular-nums">{value.background ?? "#ffffff"}</span>
+          </label>
+        )}
+        <label className="flex items-center gap-3 text-[14px]">
+          <input type="checkbox" checked={value.headerTone === "dark"} onChange={(e) => setValue({ ...value, headerTone: e.target.checked ? "dark" : "light" })} className="accent-navy" />
+          <span>{t.admin.content.headerDark}</span>
+        </label>
+      </fieldset>
+      <fieldset className="space-y-2 rounded-xl border border-hairline p-4">
+        <legend className="px-1 text-[14px] font-medium">{t.admin.content.mobileImage}</legend>
+        <p className="text-[13px] text-ink-soft">{t.admin.content.mobileImageHint}</p>
+        <ImageField
+          value={value.mobileImage ?? { src: "", alt: value.image.alt }}
+          onChange={(mobileImage) => setValue({ ...value, mobileImage: mobileImage.src ? mobileImage : null })}
+          prefix="mobileImage"
+          err={err}
+          minWidth={1080}
+        />
+      </fieldset>
       <div className="grid gap-3 md:grid-cols-2">
         {[0, 1].map((i) => (
           <Field key={i} label={t.admin.content.heroLine(i + 1)} htmlFor={`hero-t${i}`} error={err(`title.${i}`)}>
@@ -133,6 +199,40 @@ export function HeroForm({ initial }: { initial: SiteSettings["hero"] }) {
   );
 }
 
+/** Click the preview (or use the sliders) to set what stays in frame when the hero is cropped */
+function FocalPicker({ src, focal, onChange }: { src: string; focal: { x: number; y: number }; onChange: (f: { x: number; y: number }) => void }) {
+  const C = t.admin.content;
+  if (!src) return null;
+  return (
+    <div className="grid gap-4 md:grid-cols-[320px_1fr]">
+      <button
+        type="button"
+        aria-label={C.focal}
+        className="relative aspect-video overflow-hidden rounded-xl bg-canvas"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          onChange({ x: Math.round(((e.clientX - r.left) / r.width) * 100), y: Math.round(((e.clientY - r.top) / r.height) * 100) });
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded original */}
+        <img src={src} alt="" className="size-full object-cover" style={{ objectPosition: `${focal.x}% ${focal.y}%` }} />
+        <span aria-hidden className="absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow" style={{ left: `${focal.x}%`, top: `${focal.y}%` }} />
+      </button>
+      <div className="space-y-3">
+        <p className="text-[14px] font-medium">{C.focal}</p>
+        <p className="text-[13px] text-ink-soft">{C.focalHint}</p>
+        {(["x", "y"] as const).map((k) => (
+          <label key={k} className="flex items-center gap-3 text-[14px]">
+            <span className="w-28 text-ink-soft">{k === "x" ? C.focalX : C.focalY}</span>
+            <input type="range" min={0} max={100} value={focal[k]} onChange={(e) => onChange({ ...focal, [k]: Number(e.target.value) })} className="flex-1 accent-navy" />
+            <span className="w-10 text-right tabular-nums">{focal[k]}%</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────── Promo trio ─────────────── */
 export function PromoTrioForm({ initial }: { initial: SiteSettings["promoTrio"] }) {
   const { value, setValue, submit, pending, err } = useSettingForm("promoTrio", initial);
@@ -143,7 +243,7 @@ export function PromoTrioForm({ initial }: { initial: SiteSettings["promoTrio"] 
       {value.items.map((it, i) => (
         <fieldset key={i} className="space-y-3 rounded-xl border border-hairline p-4">
           <legend className="px-1 text-[13px] font-medium">{t.admin.content.card(i + 1)}</legend>
-          <ImageField value={it.image} onChange={(image) => setItem(i, { image })} prefix={`items.${i}.image`} err={err} />
+          <ImageField value={it.image} onChange={(image) => setItem(i, { image })} prefix={`items.${i}.image`} err={err} slot={`promo.${i}`} />
           <Field label={t.admin.title} htmlFor={`p${i}-title`} error={err(`items.${i}.title`)}>
             <Input id={`p${i}-title`} value={it.title} onChange={(e) => setItem(i, { title: e.target.value })} />
           </Field>
@@ -174,7 +274,7 @@ export function SplitPromoForm({ initial }: { initial: SiteSettings["splitPromo"
         <Textarea id="sp-text" rows={3} value={value.text} onChange={(e) => setValue({ ...value, text: e.target.value })} />
       </Field>
       <LinkField value={value.cta} onChange={(cta) => setValue({ ...value, cta })} prefix="cta" err={err} />
-      <ImageField value={value.image} onChange={(image) => setValue({ ...value, image })} prefix="image" err={err} />
+      <ImageField value={value.image} onChange={(image) => setValue({ ...value, image })} prefix="image" err={err} slot="split" />
     </Shell>
   );
 }
@@ -195,7 +295,7 @@ export function FeaturedProductForm({ initial, products }: { initial: SiteSettin
           </Select>
         </Field>
       </div>
-      <ImageField value={value.image} onChange={(image) => setValue({ ...value, image })} prefix="image" err={err} />
+      <ImageField value={value.image} onChange={(image) => setValue({ ...value, image })} prefix="image" err={err} slot="featured" />
     </Shell>
   );
 }

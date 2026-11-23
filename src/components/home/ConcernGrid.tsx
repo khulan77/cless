@@ -7,7 +7,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 
 export function ConcernGrid({ setting, concerns }: { setting: GridSectionSetting; concerns: CollectionTile[] }) {
   return (
-    <Container as="section" aria-labelledby="concern-title" className="mt-16 md:mt-24">
+    <Container as="section" aria-labelledby="concern-title" className="section-gap">
       <SectionTitle id="concern-title">{setting.title}</SectionTitle>
       <ul className="grid grid-cols-2 gap-1.5 md:grid-cols-4">
         {concerns.map((c) => (
@@ -23,7 +23,7 @@ export function ConcernGrid({ setting, concerns }: { setting: GridSectionSetting
                 />
               )}
               <span aria-hidden className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/65 to-transparent" />
-              <span className="absolute bottom-4 left-4 right-4 text-[12px] uppercase leading-snug tracking-[0.6px] text-white md:bottom-5 md:left-5 md:text-[14px]">
+              <span className="absolute bottom-4 left-4 right-4 text-note uppercase leading-snug tracking-[0.6px] text-white md:bottom-5 md:left-5">
                 {c.heading ?? (
                   <>
                     {setting.labelPrefix && <span className="block">{setting.labelPrefix}</span>}

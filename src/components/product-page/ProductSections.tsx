@@ -12,7 +12,7 @@ export function BenefitsRow({ setting }: { setting: ProductBenefitsSetting | nul
       {setting.items.map((b) => {
         const Icon = benefitIcons[b.icon];
         return (
-          <li key={b.label} className="flex items-center gap-3 text-[13px]">
+          <li key={b.label} className="flex items-center gap-3 text-meta">
             <Icon className="size-5 shrink-0" strokeWidth={1.25} aria-hidden />
             {b.label}
           </li>
@@ -36,8 +36,8 @@ export function BundleContents({ items }: { items: BundleComponent[] }) {
                 {i.image && <Img src={i.image.src} alt="" fill sizes="48px" className="object-contain p-1" />}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-product truncate text-[13px]">{i.name}</p>
-                <p className="text-[12px] text-muted">
+                <p className="text-product truncate text-meta">{i.name}</p>
+                <p className="text-note text-muted">
                   {i.size}
                   {i.qty > 1 && ` · ${t.product.bundleQty(i.qty)}`}
                   {!i.available && ` · ${t.product.soldOut}`}
@@ -62,7 +62,7 @@ export function PerfectMatch({ product }: { product: ProductCardData }) {
         <p className="text-micro mb-4">{t.product.perfectMatch}</p>
         <h2 id="perfect-match" className="text-section">{product.name}</h2>
         {product.tagline && <p className="mt-4 max-w-[40ch] text-muted">{product.tagline}</p>}
-        <Link href={`/products/${product.slug}`} className="link-underline mt-6 text-[14px]">
+        <Link href={`/products/${product.slug}`} className="link-underline mt-6 text-button">
           {t.common.shop}
         </Link>
       </div>
@@ -74,7 +74,7 @@ export function ClinicalNotes({ notes }: { notes: string[] }) {
   if (notes.length === 0) return null;
   return (
     <section aria-label={t.product.clinicalNotes} className="mt-16 border-t border-line pt-6">
-      <ol className="list-decimal space-y-1 pl-5 text-[12px] text-muted">
+      <ol className="list-decimal space-y-1 pl-5 text-note text-muted">
         {notes.map((n) => (
           <li key={n}>{n}</li>
         ))}

@@ -112,7 +112,10 @@ for (const vp of [
       const TRANSPARENT = "rgba(0, 0, 0, 0)";
       const WHITE = "rgb(255, 255, 255)";
 
+      // Home: transparent over the hero (as on biologique-recherche.com); a page without a banner: white
       await page.goto("/");
+      await expect.poll(bg).toBe(TRANSPARENT);
+      await page.goto("/services");
       await expect.poll(bg).toBe(WHITE);
 
       await page.goto("/collections/serum");

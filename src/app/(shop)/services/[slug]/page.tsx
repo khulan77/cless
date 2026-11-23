@@ -77,39 +77,41 @@ async function ServiceView({ params }: Props) {
           <div>
             {s.category && <p className="text-micro text-muted">{s.category}</p>}
             <h1 className="text-section mt-2 text-left">{s.name}</h1>
-            <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 text-[15px]">
+            <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 text-body">
               <div className="flex items-center gap-1.5">
                 <dt className="sr-only">{S.duration}</dt>
-                <Clock className="size-4 text-muted" strokeWidth={1.25} aria-hidden />
-                <dd>{S.minutes(s.durationMin)}</dd>
+                <dd className="flex items-center gap-1.5">
+                  <Clock className="size-4 text-muted" strokeWidth={1.25} aria-hidden />
+                  {S.minutes(s.durationMin)}
+                </dd>
               </div>
               <div>
                 <dt className="sr-only">{S.price}</dt>
-                <dd>{servicePrice(s)}</dd>
+                <dd className="text-price">{servicePrice(s)}</dd>
               </div>
             </dl>
-            <p className="mt-6 whitespace-pre-line text-[15px] leading-relaxed">{s.description}</p>
+            <p className="mt-6 whitespace-pre-line text-body leading-relaxed">{s.description}</p>
             {s.suitableFor && (
               <section className="mt-8">
                 <h2 className="text-micro mb-2">{S.suitableFor}</h2>
-                <p className="whitespace-pre-line text-[15px] text-navy/85">{s.suitableFor}</p>
+                <p className="whitespace-pre-line text-body text-navy/85">{s.suitableFor}</p>
               </section>
             )}
             {s.results && (
               <section className="mt-6">
                 <h2 className="text-micro mb-2">{S.results}</h2>
-                <p className="whitespace-pre-line text-[15px] text-navy/85">{s.results}</p>
+                <p className="whitespace-pre-line text-body text-navy/85">{s.results}</p>
               </section>
             )}
             <div className="mt-8">
               <BookingSheetButton salon={salon} className="w-full sm:w-auto" />
-              <p className="mt-3 text-[13px] text-muted">{S.bookingNote}</p>
+              <p className="mt-3 text-meta text-muted">{S.bookingNote}</p>
             </div>
           </div>
         </div>
 
         {s.related.length > 0 && (
-          <section aria-labelledby="related-services" className="mt-16 md:mt-24">
+          <section aria-labelledby="related-services" className="section-gap">
             <h2 id="related-services" className="text-micro mb-5 text-center">
               {S.related}
             </h2>

@@ -7,7 +7,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 
 export function CategoryGrid({ setting, categories }: { setting: GridSectionSetting; categories: CollectionTile[] }) {
   return (
-    <Container as="section" aria-labelledby="category-title" className="mt-16 md:mt-24">
+    <Container as="section" aria-labelledby="category-title" className="section-gap">
       <SectionTitle id="category-title">{setting.title}</SectionTitle>
       <ul className="grid grid-cols-2 gap-x-1.5 gap-y-8 md:grid-cols-4">
         {categories.map((c) => (
@@ -24,7 +24,7 @@ export function CategoryGrid({ setting, categories }: { setting: GridSectionSett
                   />
                 )}
               </div>
-              <p className="text-product mt-4 text-center text-[15px] md:text-[17px]">{c.name}</p>
+              <p className="text-product mt-4 text-center">{c.name}</p>
             </Link>
           </li>
         ))}

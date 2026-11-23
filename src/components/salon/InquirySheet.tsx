@@ -11,7 +11,7 @@ import { useStorefront } from "./StorefrontContext";
 
 export type InquiryProduct = { variantId: string; name: string; size: string | null; price: number };
 
-const field = "mt-1.5 block w-full rounded-none border-b border-navy/30 bg-transparent py-2 text-[16px] focus:border-navy focus:outline-none";
+const field = "mt-1.5 block w-full rounded-none border-b border-navy/30 bg-transparent py-2 text-input focus:border-navy focus:outline-none";
 const labelCls = "text-micro text-muted";
 
 /**
@@ -61,20 +61,20 @@ export function InquirySheet({ product, trigger }: { product: InquiryProduct; tr
         {done ? (
           <div className="py-6 text-center">
             <CheckCircle2 className="mx-auto size-10 text-navy" strokeWidth={1.25} aria-hidden />
-            <p role="status" className="mt-4 text-[16px]">
+            <p role="status" className="text-body mt-4">
               {done}
             </p>
-            <button type="button" onClick={() => setOpen(false)} className="mt-8 min-h-12 w-full rounded-full border border-navy text-[14px]">
+            <button type="button" onClick={() => setOpen(false)} className="mt-8 min-h-12 w-full rounded-full border border-navy text-button">
               {t.salon.close}
             </button>
           </div>
         ) : (
           <>
-            <p className="mb-5 text-[14px] text-muted">{t.inquiry.intro}</p>
+            <p className="mb-5 text-body text-muted">{t.inquiry.intro}</p>
             {hasContact && (
               <>
                 <ContactButtons salon={salon} />
-                <div className="my-6 flex items-center gap-3 text-[12px] text-muted" aria-hidden>
+                <div className="my-6 flex items-center gap-3 text-note text-muted" aria-hidden>
                   <span className="h-px flex-1 bg-line" />
                   {t.inquiry.or}
                   <span className="h-px flex-1 bg-line" />
@@ -90,21 +90,21 @@ export function InquirySheet({ product, trigger }: { product: InquiryProduct; tr
               className="space-y-5"
               aria-labelledby={`${id}-title`}
             >
-              <h3 id={`${id}-title`} className="text-[15px] font-medium">
+              <h3 id={`${id}-title`} className="text-product">
                 {t.inquiry.formTitle}
               </h3>
               <div className="flex items-end justify-between gap-4 bg-card px-4 py-3">
                 <div className="min-w-0">
                   <p className={labelCls}>{t.inquiry.item}</p>
-                  <p className="text-product mt-1 text-[14px]">
+                  <p className="text-product mt-1 text-body">
                     {product.name}
                     {product.size && <span className="text-muted"> · {product.size}</span>}
                   </p>
-                  <p className="text-[13px] text-muted">{formatMNT(product.price)}</p>
+                  <p className="text-meta text-muted">{formatMNT(product.price)}</p>
                 </div>
                 <label className="shrink-0">
                   <span className={labelCls}>{t.inquiry.qty}</span>
-                  <select value={qty} onChange={(e) => setQty(Number(e.target.value))} className="mt-1 block min-h-11 bg-transparent text-[16px]">
+                  <select value={qty} onChange={(e) => setQty(Number(e.target.value))} className="mt-1 block min-h-11 bg-transparent text-input">
                     {[1, 2, 3, 4, 5].map((n) => (
                       <option key={n} value={n}>
                         {n}
@@ -119,7 +119,7 @@ export function InquirySheet({ product, trigger }: { product: InquiryProduct; tr
                 </label>
                 <input id={`${id}-name`} name="name" required autoComplete="name" className={field} aria-invalid={!!err("name")} aria-describedby={err("name") ? `${id}-name-err` : undefined} />
                 {err("name") && (
-                  <p id={`${id}-name-err`} className="mt-1 text-[13px] text-red-700">
+                  <p id={`${id}-name-err`} className="mt-1 text-meta text-red-700">
                     {err("name")}
                   </p>
                 )}
@@ -140,7 +140,7 @@ export function InquirySheet({ product, trigger }: { product: InquiryProduct; tr
                   aria-invalid={!!err("phone")}
                   aria-describedby={`${id}-phone-hint`}
                 />
-                <p id={`${id}-phone-hint`} className={`mt-1 text-[13px] ${err("phone") ? "text-red-700" : "text-muted"}`}>
+                <p id={`${id}-phone-hint`} className={`mt-1 text-meta ${err("phone") ? "text-red-700" : "text-muted"}`}>
                   {err("phone") ?? t.inquiry.phoneHint}
                 </p>
               </div>
@@ -158,11 +158,11 @@ export function InquirySheet({ product, trigger }: { product: InquiryProduct; tr
                 </label>
               </div>
               {error && (
-                <p role="alert" className="text-[14px] text-red-700">
+                <p role="alert" className="text-body text-red-700">
                   {error}
                 </p>
               )}
-              <button type="submit" disabled={pending} className="min-h-12 w-full rounded-full bg-navy text-[15px] text-white hover:bg-navy/90 disabled:opacity-60">
+              <button type="submit" disabled={pending} className="min-h-12 w-full rounded-full bg-navy text-body text-white hover:bg-navy/90 disabled:opacity-60">
                 {pending ? t.inquiry.sending : t.inquiry.submit}
               </button>
             </form>

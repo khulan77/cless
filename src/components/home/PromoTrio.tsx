@@ -7,7 +7,7 @@ import { t } from "@/i18n";
 
 export function PromoTrio({ promo }: { promo: PromoTrioSetting }) {
   return (
-    <Container as="section" aria-label={t.layout.featured} className="mt-16 md:mt-24">
+    <Container as="section" aria-label={t.layout.featured} className="section-gap">
       <div className="grid gap-y-12 md:grid-cols-3 md:gap-x-1.5">
         {promo.items.map((item) => {
           const src = realImageSrc(item.image.src);
@@ -20,7 +20,7 @@ export function PromoTrio({ promo }: { promo: PromoTrioSetting }) {
             )}
             <div className={`flex flex-1 flex-col items-center px-4 text-center ${src ? "pt-6" : "justify-center"}`}>
               <h2 className="text-product">{item.title}</h2>
-              <p className="mt-2 max-w-[34ch] text-[14px] text-muted">{item.text}</p>
+              <p className="mt-2 max-w-[34ch] text-body text-muted">{item.text}</p>
               <PillLink href={item.cta.href} className="mt-5">
                 {item.cta.label}
               </PillLink>

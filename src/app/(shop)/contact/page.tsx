@@ -80,17 +80,17 @@ export default async function ContactPage() {
         <p className="mt-4 text-muted">{C.intro}</p>
       </header>
 
-      <dl className="mx-auto mt-12 grid max-w-[880px] gap-px bg-line sm:grid-cols-2">
+      <ul className="mx-auto mt-12 grid max-w-[880px] gap-px bg-line sm:grid-cols-2">
         {rows.map(({ icon: Icon, label, content }) => (
-          <div key={label} className="flex gap-4 bg-white p-6 md:p-8">
+          <li key={label} className="flex gap-4 bg-white p-6 md:p-8">
             <Icon className="mt-0.5 size-5 shrink-0" strokeWidth={1.25} aria-hidden />
             <div>
-              <dt className="text-micro mb-2 text-muted">{label}</dt>
-              <dd className="text-[15px]">{content}</dd>
+              <h2 className="text-micro mb-2 text-muted">{label}</h2>
+              <div className="text-body">{content}</div>
             </div>
-          </div>
+          </li>
         ))}
-      </dl>
+      </ul>
 
       {mapEmbedUrl && (
         <div className="mx-auto mt-12 max-w-[880px]">

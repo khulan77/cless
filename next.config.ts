@@ -39,6 +39,8 @@ const nextConfig: NextConfig = {
       { source: "/shipping", destination: "/salon", permanent: false },
     ];
   },
+  // Hero is served at quality 90 (sharp edges on large screens); everything else at the default 75
+  images: { qualities: [75, 85, 90] },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

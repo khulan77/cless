@@ -12,6 +12,10 @@
   --color-muted: rgb(14 34 67 / 0.64); /* ≥4.5:1 цагаан/#eeebe6/#efeeec дээр (WCAG AA) */
 
   --font-sans: var(--font-brand), ui-sans-serif, system-ui, sans-serif;
+  /* Storefront headings (Inter Tight); body text uses --font-sans (Inter) */
+  --font-heading: var(--font-brand-heading), var(--font-brand), ui-sans-serif, system-ui, sans-serif;
+  /* BR grey for small labels and footer links */
+  --color-silver: #a1a6ae;
 
   /* ─── Admin (Удирдлага) — used only inside .admin-root ─── */
   --color-canvas: #faf9f7;
@@ -42,9 +46,14 @@
   body {
     @apply bg-white font-sans text-navy antialiased;
     font-size: 15px;
-    line-height: 1.55;
+    line-height: 1.5;
     letter-spacing: 0.2px;
     font-weight: 400;
+  }
+  @media (max-width: 768px) {
+    body {
+      font-size: 14px;
+    }
   }
   :focus-visible {
     outline: 1px solid var(--color-navy);
@@ -75,39 +84,135 @@ body:has([data-header-overlay]:not([style*="none"])) .site-header:not([data-scro
   background-color: #fff;
   color: var(--color-navy);
 }
+/* Light hero photo: navy logo and icons (the header stays transparent) */
+body:has([data-header-overlay="dark"]:not([style*="none"])) .site-header:not([data-scrolled="true"]) {
+  color: var(--color-navy);
+}
+body:has([data-header-overlay="dark"]:not([style*="none"])) .site-header:not([data-scrolled="true"]) :focus-visible {
+  outline-color: var(--color-navy);
+}
+body:has([data-header-overlay="dark"]:not([style*="none"])) .site-header:not([data-scrolled="true"]) .header-cart-count {
+  background-color: var(--color-navy);
+  color: #fff;
+}
+/* Hero "center" layout: feather the photo's left, right and bottom edges into the backdrop */
+@media (min-width: 768px) {
+  .hero-feather {
+    mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent), linear-gradient(to bottom, #000 85%, transparent);
+    mask-composite: intersect;
+  }
+}
 
 /* ─── Typography ─── */
 /*
- * Кирилл UPPERCASE латинаас илүү бөөгнөрдөг тул letter-spacing-ийг +0.02em
- * нэмж, урт Монгол үгсийг balance + hyphens-ээр мөр хооронд жигд хуваана.
- * Текстийг хэзээ ч "..."-аар тайрахгүй.
+ * ─── Storefront typography — the ONLY place for sizes (measured on biologique-recherche.com, 1229px) ───
+ * Weight 400 everywhere; 500 only for prices and the active tab.
+ * Cyrillic UPPERCASE runs long: headings use −0.1px tracking, balance and up to 2 lines.
+ * Mobile (≤768px): hero/h2 22px, h3 15px, body 14px.
  */
-@utility text-section {
+@utility text-hero {
+  font-family: var(--font-heading);
   font-size: 27px;
+  line-height: 1;
+  letter-spacing: -0.54px;
+  text-transform: uppercase;
+  text-wrap: balance;
+  @media (max-width: 768px) {
+    font-size: 22px;
+  }
+}
+@utility text-section {
+  font-family: var(--font-heading);
+  font-size: 27px;
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: -0.1px;
+  text-transform: uppercase;
+  text-wrap: balance;
+  @media (max-width: 768px) {
+    font-size: 22px;
+  }
+}
+@utility text-h1 {
+  font-family: var(--font-heading);
+  font-size: 21px;
   line-height: 1.2;
   font-weight: 400;
-  letter-spacing: calc(-0.5px + 0.02em);
-  text-transform: uppercase;
+  letter-spacing: -0.2px;
   text-wrap: balance;
-  hyphens: auto;
 }
 @utility text-product {
+  font-family: var(--font-heading);
   font-size: 17px;
-  line-height: 1.3;
+  line-height: 1.18;
   font-weight: 400;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.1px;
   text-transform: uppercase;
   text-wrap: balance;
-  hyphens: auto;
+  @media (max-width: 768px) {
+    font-size: 15px;
+  }
+}
+@utility text-body {
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
+}
+@utility text-nav {
+  font-size: 15px;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+}
+@utility text-button {
+  font-size: 13px;
+  line-height: 1.8;
+  letter-spacing: 0.2px;
+}
+/* Footer column titles (white on navy) */
+@utility text-footer-title {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: -0.1px;
+}
+/* Secondary lines (meta, hints) */
+@utility text-meta {
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+}
+@utility text-note {
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
 }
 @utility text-micro {
   font-size: 11px;
-  line-height: 1.45;
+  line-height: 1.2;
   font-weight: 400;
-  letter-spacing: calc(0.6px + 0.02em);
+  letter-spacing: 0.2px;
   text-transform: uppercase;
-  text-wrap: balance;
-  hyphens: auto;
+}
+@utility text-price {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+}
+/* Form fields: 16px so iOS does not zoom */
+@utility text-input {
+  font-size: 16px;
+  letter-spacing: 0.2px;
+}
+/* Vertical rhythm between home/collection sections (80–100px) */
+@utility section-gap {
+  margin-top: 80px;
+  @media (min-width: 768px) {
+    margin-top: 100px;
+  }
 }
 
 /* Доогуураа зураастай текст линк */
