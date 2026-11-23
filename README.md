@@ -66,6 +66,37 @@ bun scripts/reset-transactions.ts --confirm  # устгана (NODE_ENV=producti
 
 > `bun run build` нь нүүр хуудсыг build үед prerender хийдэг тул DB-д холбогдох боломжтой байх ёстой.
 
+## Vercel deploy (Supabase)
+
+Vercel дээр зөвхөн вэб апп ажиллана. Worker (имэйл, QPay шалгалт) болон backup нь тусдаа сервер дээр (Docker, `deploy/`).
+
+**Environment Variables** (Vercel → Settings → Environment Variables, Production ба Preview хоёуланд).
+Утгыг хашилтгүй, `NAME=` угтваргүй, зай/шинэ мөргүй оруулна — `bun run build`-ийн өмнө `scripts/check-db-url.ts`
+шалгаад, буруу бол утгыг нь хэвлэхгүйгээр юу нь буруу байгааг хэлнэ.
+
+| Нэр | Заавал | Тайлбар |
+|---|---|---|
+| `DATABASE_URL` | ✓ | Supabase **Transaction pooler**: `postgresql://postgres.<ref>:<password>@<region>.pooler.supabase.com:6543/postgres?pgbouncer=true` |
+| `DIRECT_URL` | ✓ | Supabase **Session pooler** (порт 5432) эсвэл Direct — зөвхөн `prisma migrate`-д |
+| `AUTH_SECRET` | ✓ | `openssl rand -base64 32` — локалынхаас өөр |
+| `NEXT_PUBLIC_SITE_URL` | ✓ | `https://<domain>` (төгсгөлийн `/`-гүй) |
+| `INTERNAL_REVALIDATE_SECRET` | ✓ | 32+ тэмдэгт; worker-тэй ИЖИЛ утга |
+| `RESEND_API_KEY`, `EMAIL_FROM` | ✓ | Имэйл (production-д заавал) |
+| `DB_POOL_MAX` | | Нэг instance-ийн pg холболт. Default 3 (Vercel) |
+| `QPAY_*` | | Зөвхөн CHECKOUT горимд |
+
+**Build ба DB.** Build нь нүүр хуудас, layout-ийн кэштэй өгөгдлийг prerender хийхдээ DB уншина (Supabase-д хүрэх
+ёстой). `/products/[slug]`, `/collections/[slug]`, `/services/[slug]`-ийн жагсаалт DB-ээс уншигдахгүй бол build
+унахгүй — анхааруулга бичээд, тэдгээр хуудас анх зочлоход render хийгдэж кэшлэгдэнэ (`src/server/static-params.ts`).
+
+**Migration** (Vercel build migration хийхгүй — deploy-оос өмнө гараар):
+```bash
+set -a; . ./.env.demo; set +a      # DIRECT_URL = Session pooler 5432
+bunx prisma migrate status
+bunx prisma migrate deploy
+```
+Seed нь бодит өгөгдөлтэй DB дээр (төлөгдсөн борлуулалт эсвэл `system.launchedAt`) өөрөө зогсоно.
+
 ## Бүтэц
 
 ```

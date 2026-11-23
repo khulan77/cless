@@ -14,6 +14,7 @@ import { JsonLd } from "@/components/ui/JsonLd";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { t } from "@/i18n";
 import { absoluteUrl } from "@/lib/site-url";
+import { isPlaceholderSlug, staticSlugParams } from "@/server/static-params";
 import { getAllProductSlugs, getProductPage, productHref, type ProductPageData } from "@/server/queries/catalog";
 import { getSetting } from "@/server/queries/settings";
 import { getSalonInfo } from "@/server/queries/storefront";
@@ -21,11 +22,12 @@ import { getSalonInfo } from "@/server/queries/storefront";
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateStaticParams() {
-  return (await getAllProductSlugs()).map((slug) => ({ slug }));
+  return staticSlugParams("/products/[slug]", getAllProductSlugs);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  if (isPlaceholderSlug(slug)) return { title: t.notFound.productTitle };
   const [p, brand] = await Promise.all([getProductPage(slug), getSetting("brand")]);
   if (!p) return { title: t.notFound.productTitle };
   const site = brand?.siteName ?? "";
@@ -80,6 +82,7 @@ function productJsonLd(p: ProductPageData, catalog: boolean, sellerName: string)
 
 async function ProductView({ params }: Props) {
   const { slug } = await params;
+  if (isPlaceholderSlug(slug)) notFound();
   const [p, benefits, salon] = await Promise.all([getProductPage(slug), getSetting("productBenefits"), getSalonInfo()]);
   if (!p) notFound();
   const isBundle = p.kind === "BUNDLE";

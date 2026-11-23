@@ -13,17 +13,19 @@ import { t } from "@/i18n";
 import { mergeCells } from "@/lib/grid-cells";
 import { absoluteUrl } from "@/lib/site-url";
 import { COLLECTION_PAGE_SIZE } from "@/lib/catalog-constants";
+import { isPlaceholderSlug, staticSlugParams } from "@/server/static-params";
 import { collectionHref, getAllCollectionSlugs, getCollectionPage, type CollectionPageData } from "@/server/queries/catalog";
 import { getSetting } from "@/server/queries/settings";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string }> };
 
 export async function generateStaticParams() {
-  return (await getAllCollectionSlugs()).map((slug) => ({ slug }));
+  return staticSlugParams("/collections/[slug]", getAllCollectionSlugs);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  if (isPlaceholderSlug(slug)) return { title: t.notFound.title };
   const [c, brand] = await Promise.all([getCollectionPage(slug), getSetting("brand")]);
   if (!c) return { title: t.notFound.title };
   const site = brand?.siteName ?? "";
@@ -52,6 +54,7 @@ export default function CollectionPage(props: Props) {
 
 async function CollectionView({ params, searchParams }: Props) {
   const { slug } = await params;
+  if (isPlaceholderSlug(slug)) notFound();
   const c = await getCollectionPage(slug);
   if (!c) notFound();
 
