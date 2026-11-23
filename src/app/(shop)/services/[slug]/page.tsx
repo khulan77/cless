@@ -13,18 +13,18 @@ import { realImageSrc } from "@/lib/placeholder";
 import { absoluteUrl } from "@/lib/site-url";
 import { getPublicService, getPublicServiceSlugs } from "@/server/queries/catalog";
 import { getSalonInfo } from "@/server/queries/storefront";
+import { isPlaceholderSlug, staticSlugParams } from "@/server/static-params";
 
 const S = t.pages.services;
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateStaticParams() {
-  const slugs = await getPublicServiceSlugs();
-  // Cache Components needs at least one param to validate the route at build time
-  return (slugs.length ? slugs : ["_"]).map((slug) => ({ slug }));
+  return staticSlugParams("/services/[slug]", getPublicServiceSlugs);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  if (isPlaceholderSlug(slug)) return { title: S.title };
   const s = await getPublicService(slug);
   if (!s) return { title: S.title };
   const description = (s.shortDescription || s.description).slice(0, 160);
@@ -47,6 +47,7 @@ export default function ServicePage({ params }: Props) {
 
 async function ServiceView({ params }: Props) {
   const { slug } = await params;
+  if (isPlaceholderSlug(slug)) notFound();
   const [s, salon] = await Promise.all([getPublicService(slug), getSalonInfo()]);
   if (!s) notFound();
   const src = realImageSrc(s.image);
