@@ -15,6 +15,7 @@ const MATRIX: Row[] = [
   ["room:write", false, false, true],
   ["service-staff:write", false, false, true],
   ["customer:contact:read", false, true, true],
+  ["inquiry:manage", false, true, true],
   ["pos:use", false, true, true],
   ["sale:create", false, true, true],
   ["sale:read", false, true, true],

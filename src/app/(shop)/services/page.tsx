@@ -1,41 +1,53 @@
-import { Clock } from "lucide-react";
+import type { Metadata } from "next";
+import { BookingSheetButton } from "@/components/salon/BookingSheet";
+import { ServiceCard } from "@/components/services/ServiceCard";
 import { Container } from "@/components/ui/Container";
-import { Img } from "@/components/ui/Img";
-import { formatMNT } from "@/lib/money";
-import { getActiveServices } from "@/server/queries/catalog";
-import { getSetting } from "@/server/queries/settings";
 import { t } from "@/i18n";
+import { absoluteUrl } from "@/lib/site-url";
+import { getPublicServiceGroups } from "@/server/queries/catalog";
+import { getSetting } from "@/server/queries/settings";
+import { getSalonInfo } from "@/server/queries/storefront";
 
-export const metadata = { title: t.pages.services.title };
+const S = t.pages.services;
 
+export const metadata: Metadata = {
+  title: S.title,
+  description: S.description,
+  alternates: { canonical: absoluteUrl("/services") },
+  openGraph: { title: S.title, description: S.description, url: absoluteUrl("/services"), locale: "mn_MN", type: "website" },
+};
+
+/** From the Service table (active, bookable, public), grouped by category. Booking = call / DM, never online. */
 export default async function ServicesPage() {
-  const [services, banner] = await Promise.all([getActiveServices(), getSetting("servicesBanner")]);
+  const [groups, banner, salon] = await Promise.all([getPublicServiceGroups(), getSetting("servicesBanner"), getSalonInfo()]);
+  const single = groups.length === 1;
   return (
     <Container as="section" className="py-12 md:py-16">
-      <h1 className="text-section mb-8 text-center md:mb-10">{banner?.title ?? t.pages.services.title}</h1>
-      {banner?.text && <p className="-mt-4 mb-10 text-center text-muted">{banner.text}</p>}
-      <ul className="grid gap-1.5 md:grid-cols-2">
-        {services.map((s) => (
-          <li key={s.slug} className="flex flex-col bg-card sm:flex-row">
-            {s.image && (
-              <div className="relative aspect-[4/3] sm:aspect-auto sm:w-48 sm:shrink-0">
-                <Img src={s.image} alt="" fill sizes="(min-width: 640px) 192px, 100vw" className="object-cover" />
-              </div>
-            )}
-            <div className="flex flex-1 flex-col p-6">
-              <h2 className="text-product">{s.name}</h2>
-              <p className="mt-2 flex-1 text-[14px] text-muted">{s.description}</p>
-              <div className="mt-4 flex items-center justify-between text-[14px]">
-                <span className="flex items-center gap-1.5 text-muted">
-                  <Clock className="size-4" strokeWidth={1.25} aria-hidden /> {t.pages.services.minutes(s.durationMin)}
-                </span>
-                <span>{formatMNT(s.price)}</span>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-10 text-center text-[14px] text-muted">{t.pages.services.bookingNote}</p>
+      <header className="mx-auto max-w-[640px] text-center">
+        <h1 className="text-section">{banner?.title ?? S.title}</h1>
+        <p className="mt-4 text-muted">{banner?.text || S.description}</p>
+        <div className="mt-6">
+          <BookingSheetButton salon={salon} />
+        </div>
+      </header>
+
+      {groups.length === 0 ? (
+        <p className="mt-12 text-center text-muted">{S.empty}</p>
+      ) : (
+        groups.map((g, i) => (
+          <section key={g.category ?? "other"} aria-labelledby={`svc-group-${i}`} className="mt-12 md:mt-16">
+            <h2 id={`svc-group-${i}`} className={`text-micro mb-5 text-center ${single && !g.category ? "sr-only" : ""}`}>
+              {g.category ?? S.other}
+            </h2>
+            <ul className="grid gap-1.5 md:grid-cols-2">
+              {g.services.map((s) => (
+                <ServiceCard key={s.slug} service={s} />
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
+      <p className="mt-12 text-center text-[14px] text-muted">{S.bookingNote}</p>
     </Container>
   );
 }

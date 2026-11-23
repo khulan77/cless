@@ -29,7 +29,7 @@ export function ChangePasswordForm() {
       <Field label={a.confirm} htmlFor="pw-confirm" error={fe.confirm}>
         <Input id="pw-confirm" type="password" autoComplete="new-password" value={v.confirm} onChange={(e) => setV({ ...v, confirm: e.target.value })} />
       </Field>
-      <p className="text-[12px] text-navy/55">{a.afterChange}</p>
+      <p className="text-[13px] text-ink-soft">{a.afterChange}</p>
       <Button type="submit" disabled={act.pending || !v.current || !v.next || !v.confirm}>
         {a.submit}
       </Button>

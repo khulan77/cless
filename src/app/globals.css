@@ -12,6 +12,26 @@
   --color-muted: rgb(14 34 67 / 0.55);
 
   --font-sans: var(--font-brand), ui-sans-serif, system-ui, sans-serif;
+
+  /* ─── Admin (Удирдлага) — used only inside .admin-root ─── */
+  --color-canvas: #faf9f7;
+  --color-hairline: #eceae6;
+  --color-ink: #1c2230;
+  --color-ink-soft: #6b6f78;
+  --color-ink-faint: #9a9da4;
+  --color-champagne: #b89b72;
+  /* Champagne for small text (≥4.5:1 on the canvas) */
+  --color-champagne-ink: #8a6d43;
+  --color-danger: #9b3b3b;
+  --color-ok-bg: #e8f1ea;
+  --color-ok: #2e5b3a;
+  --color-warn-bg: #f7efdf;
+  --color-warn: #765717;
+  --color-err-bg: #f6e5e3;
+  --color-err: #8c3530;
+  --color-info-bg: #e7edf5;
+  --color-info: #2b4a6e;
+  --font-display: var(--font-admin-display), "Noto Serif Display", Georgia, serif;
   --font-serif: "Didot", "Bodoni 72", Georgia, "Times New Roman", serif;
 }
 
@@ -128,4 +148,46 @@ body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) .header
     currentColor calc(50% + 0.5px),
     transparent calc(50% + 0.5px)
   );
+}
+
+/* ─── Admin shell ─── */
+.admin-root {
+  /* Font variables are defined on this element (next/font), so resolve them here */
+  --font-sans: var(--font-admin-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-admin-display), "Noto Serif Display", Georgia, serif;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--color-ink);
+  background-color: var(--color-canvas);
+  min-height: 100dvh;
+}
+.admin-root :focus-visible {
+  outline: 2px solid var(--color-champagne);
+  outline-offset: 2px;
+}
+.admin-root .tabular-nums,
+.admin-root td {
+  font-variant-numeric: tabular-nums;
+}
+.admin-toast-success {
+  background: var(--color-ok-bg) !important;
+  color: var(--color-ok) !important;
+}
+.admin-toast-error {
+  background: var(--color-err-bg) !important;
+  color: var(--color-err) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-root *,
+  .admin-root *::before,
+  .admin-root *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+/* Lining figures for dates/times in the display face */
+.admin-root .font-display {
+  font-feature-settings: "lnum" 1;
 }

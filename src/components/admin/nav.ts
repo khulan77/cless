@@ -2,38 +2,99 @@ import { t } from "@/i18n";
 import type { Permission } from "@/server/auth/permissions";
 
 export type NavIcon =
-  | "dashboard" | "schedule" | "product" | "service" | "stock" | "collection" | "content" | "users"
-  | "calendar" | "pos" | "orders" | "customers" | "shift" | "report" | "payroll" | "staffSchedule" | "room" | "account" | "settings" | "system";
+  | "dashboard" | "calendar" | "schedule" | "account"
+  | "cash" | "pos" | "orders" | "shift"
+  | "people" | "customers" | "inquiries"
+  | "shop" | "product" | "stock" | "collection" | "content"
+  | "spa" | "service" | "staffSchedule" | "room"
+  | "settings" | "salon" | "storefront" | "discount" | "email" | "payments" | "users" | "system";
 
-export type AdminNavItem = {
+export type NavLeaf = {
   href: string;
   label: string;
   icon: NavIcon;
   permission: Permission;
-  soon?: boolean;
+  /** Hidden for roles that have this permission (STAFF-only items) */
+  hiddenWith?: Permission;
 };
+/** `collapsible` groups (only Тохиргоо) fold open/closed; the rest are flat sections with a small heading */
+export type NavGroup = { id: string; label: string; icon: NavIcon; children: NavLeaf[]; collapsible?: boolean };
+export type NavEntry = NavLeaf | NavGroup;
 
-// Filtered by permission in layout.tsx; every page re-checks its own permission.
-export const ADMIN_NAV: AdminNavItem[] = [
-  // Dashboard — MANAGER, ADMIN (STAFF is sent to their schedule)
-  { href: "/admin", label: t.admin.nav.dashboard, icon: "dashboard", permission: "schedule:all" },
-  { href: "/admin/calendar", label: t.admin.nav.calendar, icon: "calendar", permission: "appointment:read" },
-  { href: "/admin/schedule", label: t.admin.nav.schedule, icon: "schedule", permission: "schedule:own" },
-  { href: "/admin/pos", label: t.admin.nav.pos, icon: "pos", permission: "pos:use" },
-  { href: "/admin/sales", label: t.admin.nav.sales, icon: "orders", permission: "sale:read" },
-  { href: "/admin/customers", label: t.admin.nav.customers, icon: "customers", permission: "customer:read" },
-  { href: "/admin/shifts", label: t.admin.nav.shifts, icon: "shift", permission: "shift:own" },
-  { href: "/admin/products", label: t.admin.nav.products, icon: "product", permission: "product:write" },
-  { href: "/admin/services", label: t.admin.nav.services, icon: "service", permission: "service:write" },
-  { href: "/admin/inventory", label: t.admin.nav.inventory, icon: "stock", permission: "stock:read" },
-  { href: "/admin/collections", label: t.admin.nav.collections, icon: "collection", permission: "product:write" },
-  { href: "/admin/content", label: t.admin.nav.content, icon: "content", permission: "settings:write" },
-  { href: "/admin/staff-schedules", label: t.admin.nav.staffSchedules, icon: "staffSchedule", permission: "staff-schedule:write" },
-  { href: "/admin/rooms", label: t.admin.nav.rooms, icon: "room", permission: "room:write" },
-  { href: "/admin/users", label: t.admin.nav.users, icon: "users", permission: "user:write" },
-  { href: "/admin/settings", label: t.admin.nav.settings, icon: "settings", permission: "settings:write" },
-  { href: "/admin/system", label: t.admin.nav.system, icon: "system", permission: "settings:write" },
-  { href: "/admin/account", label: t.admin.nav.account, icon: "account", permission: "schedule:own" },
-  { href: "/admin/reports", label: t.admin.nav.reports, icon: "report", permission: "report:read", soon: true },
-  { href: "/admin/payroll", label: t.admin.nav.payroll, icon: "payroll", permission: "payroll:write", soon: true },
+export const isGroup = (e: NavEntry): e is NavGroup => "children" in e;
+
+const n = t.admin.nav;
+
+// Filtered by permission in layout.tsx (a group with no visible child disappears); every page re-checks its own permission.
+export const ADMIN_NAV: NavEntry[] = [
+  { href: "/admin", label: n.dashboard, icon: "dashboard", permission: "schedule:all" },
+  { href: "/admin/calendar", label: n.calendar, icon: "calendar", permission: "appointment:read" },
+  // STAFF: their own schedule + account (no groups)
+  { href: "/admin/schedule", label: n.schedule, icon: "schedule", permission: "schedule:own", hiddenWith: "schedule:all" },
+  { href: "/admin/account", label: n.account, icon: "account", permission: "schedule:own", hiddenWith: "schedule:all" },
+  {
+    id: "cash",
+    label: n.groups.cash,
+    icon: "cash",
+    children: [
+      { href: "/admin/pos", label: n.pos, icon: "pos", permission: "pos:use" },
+      { href: "/admin/sales", label: n.sales, icon: "orders", permission: "sale:read" },
+      { href: "/admin/shifts", label: n.shifts, icon: "shift", permission: "shift:own" },
+    ],
+  },
+  {
+    id: "people",
+    label: n.groups.people,
+    icon: "people",
+    children: [
+      { href: "/admin/customers", label: n.customers, icon: "customers", permission: "customer:read" },
+      { href: "/admin/inquiries", label: n.inquiries, icon: "inquiries", permission: "inquiry:manage" },
+    ],
+  },
+  {
+    id: "shop",
+    label: n.groups.shop,
+    icon: "shop",
+    children: [
+      { href: "/admin/products", label: n.products, icon: "product", permission: "product:write" },
+      { href: "/admin/inventory", label: n.inventory, icon: "stock", permission: "stock:read" },
+      { href: "/admin/collections", label: n.collections, icon: "collection", permission: "product:write" },
+      { href: "/admin/content", label: n.content, icon: "content", permission: "settings:write" },
+    ],
+  },
+  {
+    id: "spa",
+    label: n.groups.spa,
+    icon: "spa",
+    children: [
+      { href: "/admin/services", label: n.services, icon: "service", permission: "service:write" },
+      { href: "/admin/staff-schedules", label: n.staffSchedules, icon: "staffSchedule", permission: "staff-schedule:write" },
+      { href: "/admin/rooms", label: n.rooms, icon: "room", permission: "room:write" },
+    ],
+  },
+  {
+    id: "settings",
+    label: n.groups.settings,
+    icon: "settings",
+    collapsible: true,
+    children: [
+      { href: "/admin/settings/salon", label: n.settingsSalon, icon: "salon", permission: "settings:write" },
+      { href: "/admin/settings/shop", label: n.settingsShop, icon: "storefront", permission: "settings:write" },
+      { href: "/admin/settings/pos", label: n.settingsPos, icon: "discount", permission: "settings:write" },
+      { href: "/admin/settings/email", label: n.settingsEmail, icon: "email", permission: "settings:write" },
+      { href: "/admin/settings/payments", label: n.settingsPayments, icon: "payments", permission: "settings:write" },
+      { href: "/admin/users", label: n.users, icon: "users", permission: "user:write" },
+      { href: "/admin/system", label: n.system, icon: "system", permission: "settings:write" },
+    ],
+  },
 ];
+
+/** Entries a role may see (groups keep only permitted children; empty groups are dropped) */
+export function navFor(can: (p: Permission) => boolean): NavEntry[] {
+  const ok = (l: NavLeaf) => can(l.permission) && !(l.hiddenWith && can(l.hiddenWith));
+  return ADMIN_NAV.flatMap<NavEntry>((e) => {
+    if (!isGroup(e)) return ok(e) ? [e] : [];
+    const children = e.children.filter(ok);
+    return children.length ? [{ ...e, children }] : [];
+  });
+}

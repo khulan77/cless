@@ -32,6 +32,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: c.intro ?? c.seoText?.slice(0, 160) ?? undefined,
     alternates: { canonical: absoluteUrl(collectionHref(c.slug)) },
     openGraph: {
+      siteName: site,
+      locale: "mn_MN",
       url: absoluteUrl(collectionHref(c.slug)),
       title: c.heading,
       description: c.intro ?? undefined,

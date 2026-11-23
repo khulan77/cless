@@ -3,7 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Img } from "@/components/ui/Img";
+import { BrandFallback, Img } from "@/components/ui/Img";
 import { t } from "@/i18n";
 
 type Props = {
@@ -38,6 +38,11 @@ export function CardGallery({ href, name, images, sizes, priority }: Props) {
           }}
           className="no-scrollbar flex aspect-square snap-x snap-mandatory overflow-x-auto"
         >
+          {count === 0 && (
+            <div className="relative aspect-square w-full shrink-0">
+              <BrandFallback fill />
+            </div>
+          )}
           {images.map((img, i) => (
             <div key={img.src + i} className="relative aspect-square w-full shrink-0 snap-start">
               <Img

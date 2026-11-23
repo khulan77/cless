@@ -31,7 +31,7 @@ export default async function EditCollectionPage({ params }: { params: Promise<{
 
   return (
     <>
-      <PageHeader title={c.name} />
+      <PageHeader eyebrow="Ангилал" title={c.name} description="Нэр, баннер, бүтээгдэхүүний дараалал" />
       <CollectionForm
         blockers={c._count.products + c._count.children}
         parents={options.filter((o) => !descendants.has(o.id))}

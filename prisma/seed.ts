@@ -67,7 +67,7 @@ async function seedBranch() {
   // Нэр, хаяг, утсыг админ дараа нь засна — зөвхөн байхгүй үед үүсгэнэ
   const branch = await db.branch.upsert({
     where: { code: "CL" },
-    create: { code: "CL", name: "CLÉSS", address: "Улаанбаатар (хаяг тодорхойлогдоно)", phone: "+976 0000 0000" },
+    create: { code: "CL", name: "CLÉSS", address: "Улаанбаатар (хаяг тодорхойлогдоно)" },
     update: {},
   });
   BRANCH_ID = branch.id;
@@ -296,12 +296,16 @@ const services = [
     slug: "skin-diagnosis",
     name: "Арьсны оношлогоо ба зөвлөгөө",
     description: "Арьсны төлөв байдлыг тодорхойлж, хувийн арчилгааны протокол санал болгоно.",
+    category: "Оношлогоо",
+    suitableFor: "Biologique Recherche-ийн арчилгааг анх эхэлж буй, эсвэл арчилгаагаа шинэчлэх хүн бүрт.",
+    results: "Арьсны өнөөгийн төлөв (Skin Instant©), гэрийн арчилгааны хувийн протокол.",
     durationMin: 30,
     price: 50_000,
     consumables: [] as { sku: string; qty: number }[],
   },
   {
     slug: "facial-hydration-60",
+    category: "Нүүрний эмчилгээ",
     name: "Нүүрний эмчилгээ — Чийгшүүлэх",
     description: "Чийгшүүлэх, тайвшруулах 60 минутын нүүрний эмчилгээ.",
     durationMin: 60,
@@ -314,6 +318,7 @@ const services = [
   },
   {
     slug: "facial-anti-ageing-90",
+    category: "Нүүрний эмчилгээ",
     name: "Нүүрний эмчилгээ — Хөгшрөлтийн эсрэг",
     description: "Чангалах, дүүргэх үр дүнтэй 90 минутын бүрэн протокол.",
     durationMin: 90,
@@ -327,6 +332,7 @@ const services = [
   },
   {
     slug: "pigmentation-protocol-75",
+    category: "Нүүрний эмчилгээ",
     name: "Пигментацийн протокол",
     description: "Толбо, жигд бус өнгийг багасгах 75 минутын эмчилгээ.",
     durationMin: 75,
@@ -338,6 +344,7 @@ const services = [
   },
   {
     slug: "purifying-facial-60",
+    category: "Нүүрний эмчилгээ",
     name: "Цэвэршүүлэх нүүрний эмчилгээ",
     description: "Батга, нүх сүвний асуудалтай арьсанд зориулсан 60 минутын эмчилгээ.",
     durationMin: 60,
@@ -355,6 +362,11 @@ async function seedServices() {
     const data = {
       name: s.name,
       description: s.description,
+      category: s.category ?? null,
+      shortDescription: s.description,
+      suitableFor: "suitableFor" in s ? (s.suitableFor as string) : null,
+      results: "results" in s ? (s.results as string) : null,
+      isPublic: true,
       durationMin: s.durationMin,
       price: s.price,
       sortOrder: i,
@@ -402,9 +414,9 @@ const settings: SiteSettings = {
   announcement: {
     intervalMs: 5000,
     messages: [
-      "Захиалга бүрт 3 дээж бэлэг",
-      "Салон дээр арьсны үнэгүй оношлогоо — урьдчилан цаг аваарай",
-      "Biologique Recherche-ийн Монгол дахь албан ёсны дистрибьютер",
+      "Biologique Recherche-ийн Монгол дахь албан ёсны дистрибьютор",
+      "Салон дээр арьсны оношлогоо — утсаар цаг аваарай",
+      "Гоо сайханчийн зөвлөгөөтэйгөөр арчилгаагаа сонгоорой",
     ],
   },
   brand: {
@@ -477,10 +489,9 @@ const settings: SiteSettings = {
     cta: { label: "Бүгдийг харах", href: "/collections" },
   },
   salonBanner: {
-    eyebrow: "Шинэ",
     title: "Манай салон",
     text: "Улаанбаатарын төвд байрлах манай салонд брэндийн протоколоор мэргэшсэн гоо сайханчид үйлчилнэ.",
-    cta: { label: "Үйлчилгээ үзэх", href: "/services" },
+    cta: { label: "Салонтой танилцах", href: "/salon" },
     image: { src: "/placeholders/salon.svg", alt: "Салоны дотор орчин" },
   },
   concernGrid: { title: "Арьсны асуудлаар сонгох", labelPrefix: "Протокол" },
@@ -494,17 +505,18 @@ const settings: SiteSettings = {
   productBenefits: {
     // "Үнэгүй хүргэлт" нөхцөл тодорхой болмогц админаас нэмнэ (#13)
     items: [
-      { icon: "gift", label: "Захиалга бүрт 3 дээж бэлэг" },
-      { icon: "shield-check", label: "Аюулгүй төлбөр" },
+      { icon: "shield-check", label: "Албан ёсны дистрибьютор — жинхэнэ бүтээгдэхүүн" },
       { icon: "scan-face", label: "Салон дээр арьсны оношлогоо" },
+      { icon: "sparkles", label: "Гоо сайханчийн зөвлөгөө" },
+      { icon: "package", label: "Салонд ирж авах" },
     ],
   },
   benefits: {
     items: [
-      { icon: "gift", lines: ["Захиалга бүрт", "3 дээж бэлэг"] },
-      { icon: "package", lines: ["Бэлгийн хайрцаг", "үнэгүй"] },
+      { icon: "shield-check", lines: ["Албан ёсны дистрибьютор", "жинхэнэ бүтээгдэхүүн"] },
       { icon: "scan-face", lines: ["Салон дээр", "арьсны оношлогоо"] },
-      { icon: "shield-check", lines: ["QPay-ээр", "аюулгүй төлбөр"] },
+      { icon: "sparkles", lines: ["Гоо сайханчийн", "зөвлөгөө"] },
+      { icon: "package", lines: ["Салонд ирж", "авах"] },
     ],
   },
   footer: {
@@ -533,21 +545,19 @@ const settings: SiteSettings = {
     contact: {
       title: "Холбоо барих",
       address: "Улаанбаатар, Сүхбаатар дүүрэг (хаяг тодорхойлогдоно)",
-      phone: "+976 0000 0000",
-      email: "info@example.mn",
-      hours: ["Даваа–Баасан 10:00–20:00", "Бямба–Ням 11:00–18:00"],
+      // Утас, имэйл, сошиал — ADMIN → Тохиргоо → Салоны мэдээлэл. Ажлын цаг — салбарын цагийн хуваарь.
+      phone: "",
+      email: "",
+      hours: [],
     },
-    socials: [
-      { network: "instagram", href: "https://instagram.com/", label: "Instagram" },
-      { network: "facebook", href: "https://facebook.com/", label: "Facebook" },
-    ],
+    socials: [],
     newsletter: {
       title: "Мэдээлэл авах",
       text: "Шинэ бүтээгдэхүүн, урамшууллын мэдээг имэйлээр аваарай.",
       placeholder: "Имэйл хаяг",
       button: "Бүртгүүлэх",
     },
-    copyright: "Biologique Recherche Mongolia. Бүх эрх хуулиар хамгаалагдсан.",
+    copyright: "Бүх эрх хуулиар хамгаалагдсан.",
   },
 };
 

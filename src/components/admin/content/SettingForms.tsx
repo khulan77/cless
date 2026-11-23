@@ -1,5 +1,6 @@
 "use client";
 
+import NextLink from "next/link";
 import { Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -41,7 +42,7 @@ function Shell({ title, description, onSubmit, pending, children }: {
     <form onSubmit={onSubmit} noValidate>
       <Card title={title} description={description}>
         <div className="space-y-5">{children}</div>
-        <div className="mt-6 flex justify-end border-t border-line pt-4">
+        <div className="mt-6 flex justify-end border-t border-hairline pt-4">
           <Button type="submit" disabled={pending}>{pending ? t.admin.saving : t.admin.save}</Button>
         </div>
       </Card>
@@ -54,7 +55,7 @@ function ImageField({ value, onChange, prefix, err }: { value: Image; onChange: 
     <div className="grid gap-3 md:grid-cols-[auto_1fr]">
       <div>
         <SingleImageUploader value={value.src || null} onChange={(src) => onChange({ ...value, src: src ?? "" })} folder="content" />
-        {err(`${prefix}.src`) && <p className="mt-1 text-[12px] text-red-600">{err(`${prefix}.src`)![0]}</p>}
+        {err(`${prefix}.src`) && <p className="mt-1 text-[13px] text-danger">{err(`${prefix}.src`)![0]}</p>}
       </div>
       <Field label={t.admin.content.imageAlt} htmlFor={`${prefix}-alt`} hint={t.admin.content.imageAltHint}>
         <Input id={`${prefix}-alt`} value={value.alt} onChange={(e) => onChange({ ...value, alt: e.target.value })} />
@@ -91,7 +92,7 @@ export function AnnouncementForm({ initial }: { initial: SiteSettings["announcem
             </Button>
           </div>
         ))}
-        {err("messages") && <p className="text-[12px] text-red-600">{err("messages")![0]}</p>}
+        {err("messages") && <p className="text-[13px] text-danger">{err("messages")![0]}</p>}
         {value.messages.length < 6 && (
           <Button variant="secondary" size="sm" onClick={() => setValue({ ...value, messages: [...value.messages, ""] })}>
             <Plus className="size-4" /> {t.admin.addRow}
@@ -140,7 +141,7 @@ export function PromoTrioForm({ initial }: { initial: SiteSettings["promoTrio"] 
   return (
     <Shell title={t.admin.content.promoTrio} onSubmit={submit} pending={pending}>
       {value.items.map((it, i) => (
-        <fieldset key={i} className="space-y-3 rounded-md border border-line p-4">
+        <fieldset key={i} className="space-y-3 rounded-xl border border-hairline p-4">
           <legend className="px-1 text-[13px] font-medium">{t.admin.content.card(i + 1)}</legend>
           <ImageField value={it.image} onChange={(image) => setItem(i, { image })} prefix={`items.${i}.image`} err={err} />
           <Field label={t.admin.title} htmlFor={`p${i}-title`} error={err(`items.${i}.title`)}>
@@ -256,64 +257,23 @@ export function ProductBenefitsForm({ initial }: { initial: SiteSettings["produc
   );
 }
 
-/* ─────────────── Contact & footer ─────────────── */
-type Network = "instagram" | "facebook";
-const NETWORKS: Network[] = ["instagram", "facebook"];
+/* ─────────────── Footer bottom line ─────────────── */
 
-/** Edits contact details, social URLs and the bottom line; columns/newsletter pass through untouched */
+/**
+ * Only the copyright line lives here. Contact details, socials and hours have a single source:
+ * Settings → Salon info and the branch hours (staff schedules). The rest passes through untouched.
+ */
 export function ContactFooterForm({ initial }: { initial: SiteSettings["footer"] }) {
-  // Make sure both networks have a row so each gets its own field
-  const withNetworks: SiteSettings["footer"] = {
-    ...initial,
-    socials: NETWORKS.map(
-      (network) =>
-        initial.socials.find((s) => s.network === network) ?? {
-          network,
-          href: "",
-          label: network === "instagram" ? "Instagram" : "Facebook",
-        },
-    ),
-  };
-  const { value, setValue, submit, pending, err } = useSettingForm("footer", withNetworks);
+  const { value, setValue, submit, pending, err } = useSettingForm("footer", initial);
   const C = t.admin.content;
-  const setContact = (patch: Partial<SiteSettings["footer"]["contact"]>) => setValue({ ...value, contact: { ...value.contact, ...patch } });
-  const setSocial = (network: Network, href: string) =>
-    setValue({ ...value, socials: value.socials.map((s) => (s.network === network ? { ...s, href } : s)) });
-  const socialIndex = (network: Network) => value.socials.findIndex((s) => s.network === network);
-
   return (
     <Shell title={C.contactFooter} description={C.contactFooterHint} onSubmit={submit} pending={pending}>
-      <Field label={C.address} htmlFor="cf-address" error={err("contact.address")}>
-        <Textarea id="cf-address" rows={2} value={value.contact.address} onChange={(e) => setContact({ address: e.target.value })} />
-      </Field>
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field label={C.phone} htmlFor="cf-phone" error={err("contact.phone")} hint={C.phoneHint}>
-          <Input id="cf-phone" type="tel" inputMode="tel" value={value.contact.phone} onChange={(e) => setContact({ phone: e.target.value })} />
-        </Field>
-        <Field label={C.email} htmlFor="cf-email" error={err("contact.email")}>
-          <Input id="cf-email" type="email" value={value.contact.email} onChange={(e) => setContact({ email: e.target.value })} />
-        </Field>
-      </div>
-      <Field label={C.hours} htmlFor="cf-hours" error={err("contact.hours")} hint={C.hoursHint}>
-        <Textarea id="cf-hours" rows={3} value={value.contact.hours.join("\n")} onChange={(e) => setContact({ hours: e.target.value.split("\n") })} />
-      </Field>
-      <div className="grid gap-3 md:grid-cols-2">
-        {NETWORKS.map((network) => {
-          const i = socialIndex(network);
-          return (
-            <Field key={network} label={C[network]} htmlFor={`cf-${network}`} error={err(`socials.${i}.href`)} hint={C.socialHint}>
-              <Input
-                id={`cf-${network}`}
-                type="url"
-                inputMode="url"
-                placeholder={`https://${network}.com/…`}
-                value={value.socials[i]?.href ?? ""}
-                onChange={(e) => setSocial(network, e.target.value)}
-              />
-            </Field>
-          );
-        })}
-      </div>
+      <p className="text-[13px] text-ink-soft">
+        {C.contactMoved}{" "}
+        <NextLink href="/admin/settings/salon" className="underline">
+          {C.contactMovedLink}
+        </NextLink>
+      </p>
       <Field label={C.copyright} htmlFor="cf-copyright" error={err("copyright")} hint={C.copyrightHint}>
         <Input id="cf-copyright" value={value.copyright} onChange={(e) => setValue({ ...value, copyright: e.target.value })} />
       </Field>

@@ -21,7 +21,7 @@ export function IntroToggle({ text }: { text: string }) {
           aria-expanded={open}
           aria-controls={id}
           onClick={() => setOpen((v) => !v)}
-          className="on-dark link-underline whitespace-nowrap"
+          className="on-dark link-underline inline-flex min-h-11 items-center whitespace-nowrap md:min-h-0"
         >
           {open ? t.collection.readLess : t.collection.readMore}
         </button>

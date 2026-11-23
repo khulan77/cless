@@ -17,7 +17,7 @@ import { listConcerns } from "@/server/modules/visits/service";
 import { todayForPos } from "@/server/modules/appointments/queries";
 import { formatTime } from "@/lib/time";
 
-export const metadata = { title: "Касс / POS" };
+export const metadata = { title: "Төлбөр авах" };
 export const instant = false;
 
 type PosSale = NonNullable<Awaited<ReturnType<typeof getPosSale>>>;
@@ -108,7 +108,8 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
   return (
     <>
       <PageHeader
-        title="Касс / POS"
+        eyebrow="Касс"
+        title="Төлбөр авах"
         description={
           shift ? (
             <span className="inline-flex items-center gap-2">
@@ -129,13 +130,13 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
               <summary className={btnClass("secondary")}>
                 {t.admin.pos.openSales} ({pending.length})
               </summary>
-              <ul className="absolute right-0 z-10 mt-1 w-80 divide-y divide-line rounded-md border border-line bg-white text-[13px] shadow-lg">
+              <ul className="absolute right-0 z-10 mt-1 w-80 divide-y divide-hairline rounded-xl border border-hairline bg-white text-[13px] shadow-lg">
                 {pending.map((o) => (
                   <li key={o.id}>
-                    <Link href={`/admin/pos?sale=${o.id}`} className="flex justify-between gap-2 px-3 py-2 hover:bg-navy/[0.03]">
+                    <Link href={`/admin/pos?sale=${o.id}`} className="flex justify-between gap-2 px-3 py-2 hover:bg-canvas">
                       <span>
                         {o.number ?? t.admin.saleStatus.DRAFT} · {o.customer?.name ?? "—"}
-                        <span className="block text-[11px] text-navy/50">{t.admin.saleStatus[o.status]}</span>
+                        <span className="block text-[13px] text-ink-soft">{t.admin.saleStatus[o.status]}</span>
                       </span>
                       <span className="tabular-nums">{formatMNT(o.total - o.paidAmount)}</span>
                     </Link>

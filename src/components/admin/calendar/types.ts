@@ -1,7 +1,16 @@
 /** Serializable calendar data passed from the server page to client components (dates as ISO strings) */
 import type { ApptStatus } from "@/generated/prisma/enums";
 
-export type CalService = { id: string; name: string; durationMin: number; bufferMin: number; requiresRoom: boolean };
+export type CalService = {
+  id: string;
+  name: string;
+  durationMin: number;
+  bufferMin: number;
+  requiresRoom: boolean;
+  price: number;
+  priceFrom: boolean;
+  category: string | null;
+};
 
 export type CalAppt = {
   id: string;
@@ -14,6 +23,9 @@ export type CalAppt = {
   source: string;
   note: string | null;
   version: number;
+  /** Price at booking time and amount paid through POS (read-only stats) */
+  price: number;
+  paid: number;
   customer: { id: string; name: string; phone?: string; email?: string | null };
   service: { id: string; name: string; durationMin: number; bufferMin: number };
   room: { id: string; name: string } | null;

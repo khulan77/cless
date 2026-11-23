@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CustomerFormButton } from "@/components/admin/customers/CustomerForm";
 import { FilterBar } from "@/components/admin/FilterBar";
 import { Pagination, parsePage, str } from "@/components/admin/Pagination";
-import { EmptyState, PageHeader, Table, inputClass, tdClass, thClass } from "@/components/admin/ui";
+import { Avatar, EmptyState, PageHeader, Table, inputClass, tdClass, thClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
@@ -20,14 +20,16 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader
+        eyebrow="Үйлчлүүлэгч"
         title="Үйлчлүүлэгчид"
+        description={`Салонд ирсэн, худалдан авалт хийсэн үйлчлүүлэгчид · нийт ${count}`}
         actions={can(user.role, "customer:write") && <CustomerFormButton label={t.admin.customers.create} />}
       />
       <FilterBar action="/admin/customers" resetHref={q ? "/admin/customers" : undefined}>
-        <input name="q" defaultValue={q} placeholder="Нэр, утас, имэйл" aria-label="Хайх" className={`${inputClass} w-64`} />
+        <input name="q" defaultValue={q} placeholder="Нэр, утас, имэйлээр хайх" aria-label="Хайх" className={`${inputClass} w-80`} />
       </FilterBar>
       {rows.length === 0 ? (
-        <EmptyState title="Үйлчлүүлэгч олдсонгүй" />
+        <EmptyState title={q ? "Хайлтад тохирох үйлчлүүлэгч алга" : "Одоогоор үйлчлүүлэгч алга"}>Цаг захиалах эсвэл касс дээр шинэ үйлчлүүлэгч нэмэгдэнэ.</EmptyState>
       ) : (
         <Table>
           <thead>
@@ -35,16 +37,17 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
               <th className={thClass}>Нэр</th>
               <th className={thClass}>Утас</th>
               <th className={thClass}>Имэйл</th>
-              <th className={thClass}>Арьс</th>
+              <th className={thClass}>Арьсны төрөл</th>
               <th className={`${thClass} text-right`}>Айлчлал</th>
               <th className={`${thClass} text-right`}>Борлуулалт</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((c) => (
-              <tr key={c.id} className="hover:bg-navy/[0.02]">
+              <tr key={c.id} className="hover:bg-canvas">
                 <td className={tdClass}>
-                  <Link href={`/admin/customers/${c.id}`} className="hover:underline">
+                  <Link href={`/admin/customers/${c.id}`} className="flex items-center gap-3 font-medium hover:underline">
+                    <Avatar name={c.name} id={c.id} size={32} />
                     {c.name}
                   </Link>
                 </td>

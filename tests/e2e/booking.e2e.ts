@@ -56,10 +56,10 @@ test("calendar → overlap refused → same-day POS → paid → DONE", async ({
   await expect(page.getByText("Гоо сайханч Сараа").first()).toBeVisible();
   await page.getByRole("button", { name: `Гоо сайханч Сараа, ${hm(T)} — шинэ цаг` }).click();
   const dlg = page.locator("dialog[open]");
-  await expect(dlg.locator("h2").first()).toHaveText("Шинэ цаг");
+  await expect(dlg.locator("h2").first()).toHaveText("Цаг захиалах");
   await dlg.getByPlaceholder("Утас эсвэл нэрээр хайх…").fill("99110002");
   await dlg.getByRole("button", { name: /Туршилт Болор/ }).click();
-  await dlg.locator("#ad-service").selectOption({ label: "Нүүрний эмчилгээ — Чийгшүүлэх · 60′" });
+  await dlg.getByRole("radio", { name: /^Нүүрний эмчилгээ — Чийгшүүлэх/ }).click();
   await expect(dlg.getByRole("option", { name: hm(T), selected: true })).toBeVisible();
   await waitAction(page, () => dlg.getByRole("button", { name: "Хадгалах" }).click());
   await expect(page.locator("dialog[open]")).toHaveCount(0);
@@ -67,9 +67,9 @@ test("calendar → overlap refused → same-day POS → paid → DONE", async ({
   await expect(card).toBeVisible();
 
   // ── 2. Overlap: T+30 and T+60 (inside the 10-min buffer) are not offered for Сараа ──
-  await page.getByRole("button", { name: "Шинэ цаг", exact: true }).click();
+  await page.getByRole("button", { name: "Цаг захиалах", exact: true }).click();
   const dlg2 = page.locator("dialog[open]");
-  await dlg2.locator("#ad-service").selectOption({ label: "Нүүрний эмчилгээ — Чийгшүүлэх · 60′" });
+  await dlg2.getByRole("radio", { name: /^Нүүрний эмчилгээ — Чийгшүүлэх/ }).click();
   await dlg2.locator("#ad-date").fill(TODAY);
   await expect(dlg2.locator("#ad-staff option", { hasText: "Гоо сайханч Сараа" })).toHaveCount(1);
   await dlg2.locator("#ad-staff").selectOption({ label: "Гоо сайханч Сараа" });
@@ -85,7 +85,7 @@ test("calendar → overlap refused → same-day POS → paid → DONE", async ({
   const dlg3 = page.locator("dialog[open]");
   await dlg3.getByPlaceholder("Утас эсвэл нэрээр хайх…").fill("99110003");
   await dlg3.getByRole("button", { name: /Туршилт Номин/ }).click();
-  await dlg3.locator("#ad-service").selectOption({ label: "Арьсны оношлогоо ба зөвлөгөө · 30′" });
+  await dlg3.getByRole("radio", { name: /^Арьсны оношлогоо ба зөвлөгөө/ }).click();
   await expect(dlg3.getByRole("option", { name: "10:00", selected: true })).toBeVisible();
   await waitAction(page, () => dlg3.getByRole("button", { name: "Хадгалах" }).click());
   await page.getByRole("button", { name: /10:00–10:30\s*Туршилт Номин/ }).click();
@@ -118,8 +118,8 @@ test("calendar → overlap refused → same-day POS → paid → DONE", async ({
   await expect(panel).toContainText("Ирсэн цагийн цаг, ажилтныг POS-оос засна");
   await panel.getByLabel("Тэмдэглэл").fill("Арьс мэдрэг");
   await waitAction(page, () => panel.getByRole("button", { name: "Тэмдэглэл хадгалах" }).click());
-  await expect(panel.getByRole("link", { name: "Ноорог", exact: true })).toBeVisible();
-  await expect(panel).not.toContainText("Ноорог · Ноорог");
+  await expect(panel.getByRole("link", { name: "Хадгалсан (төлөгдөөгүй)", exact: true })).toBeVisible();
+  await expect(panel).not.toContainText("Хадгалсан (төлөгдөөгүй) · Хадгалсан (төлөгдөөгүй)");
   await panel.getByRole("button", { name: "POS-д үргэлжлүүлэх" }).click();
   await page.waitForURL(posUrl);
 

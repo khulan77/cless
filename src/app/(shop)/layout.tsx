@@ -1,9 +1,12 @@
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
+import { StorefrontProvider } from "@/components/salon/StorefrontContext";
 import { cacheLife, cacheTag } from "next/cache";
 import { resolveFooterColumns, resolveNavigation } from "@/server/queries/catalog";
 import { getSetting } from "@/server/queries/settings";
+import { getSalonInfo } from "@/server/queries/storefront";
+import { isCheckoutOnlyHref } from "@/lib/shop-mode";
 import { t } from "@/i18n";
 
 /**
@@ -34,12 +37,14 @@ async function getShellData() {
 }
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const { announcement, brand, footer, nav, footerColumns } = await getShellData();
+  const [{ announcement, brand, footer, nav: rawNav, footerColumns }, salon] = await Promise.all([getShellData(), getSalonInfo()]);
   const wordmark = brand?.wordmark ?? [];
-  const siteName = brand?.siteName ?? "";
+  const siteName = salon.siteName;
+  const nav = salon.shopMode === "CATALOG" ? rawNav.filter((i) => !isCheckoutOnlyHref(i.href)) : rawNav;
+  const contact = { phone: salon.phone, instagram: salon.instagram, messenger: salon.messenger, address: salon.address, mapsUrl: salon.mapsUrl, hoursLines: salon.hoursLines };
 
   return (
-    <>
+    <StorefrontProvider value={{ mode: salon.shopMode, salon: contact }}>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:bg-white focus:px-4 focus:py-2"
@@ -47,11 +52,11 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         {t.common.skipToContent}
       </a>
       {announcement && <AnnouncementBar messages={announcement.messages} intervalMs={announcement.intervalMs} />}
-      <Header wordmark={wordmark} siteName={siteName} nav={nav} />
+      <Header wordmark={wordmark} siteName={siteName} nav={nav} salon={contact} shopMode={salon.shopMode} />
       <main id="main" className="flex-1">
         {children}
       </main>
-      {footer && <Footer footer={footer} columns={footerColumns} wordmark={wordmark} siteName={siteName} />}
-    </>
+      {footer && <Footer footer={footer} columns={footerColumns} wordmark={wordmark} salon={salon} />}
+    </StorefrontProvider>
   );
 }

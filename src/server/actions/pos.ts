@@ -61,7 +61,7 @@ export async function posDiscardDraft(saleId: string) {
   return runAction(async () => {
     await requirePermission("sale:create");
     return { result: await discardDraft(saleId) };
-  }, "Ноорог устгагдлаа.");
+  }, "Хадгалсан сагс устгагдлаа.");
 }
 
 // ─────────────── Борлуулалт ───────────────

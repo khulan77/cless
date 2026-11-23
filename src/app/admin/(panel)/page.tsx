@@ -1,35 +1,33 @@
+import { AlertTriangle, Boxes, CalendarCheck, Inbox, UserCheck, Wallet } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Badge, Card, PageHeader, tdClass, thClass } from "@/components/admin/ui";
-import { db } from "@/server/db";
-import { can } from "@/server/auth/permissions";
-import { requireUser } from "@/server/auth/session";
+import { LaunchButton } from "@/components/admin/system/LaunchButton";
+import { Avatar, Badge, Card, PageHeader, StatCard } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
-import { todaySummary } from "@/server/modules/sales/queries";
-import { todayAppointmentStats } from "@/server/modules/appointments/queries";
 import { formatDateTime, formatTime } from "@/lib/time";
+import { can } from "@/server/auth/permissions";
+import { requireUser } from "@/server/auth/session";
+import { db } from "@/server/db";
+import { todayAppointmentStats } from "@/server/modules/appointments/queries";
+import { countNewInquiries } from "@/server/modules/inquiries/service";
 import { workerStatus } from "@/server/modules/outbox/heartbeat";
 import { failedEmailCount } from "@/server/modules/outbox/monitor";
+import { todaySummary } from "@/server/modules/sales/queries";
 import { readiness } from "@/server/modules/system/readiness";
-import { LaunchButton } from "@/components/admin/system/LaunchButton";
 
 export const metadata = { title: "Хянах самбар" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
 export const instant = false;
 
+const D = t.admin.dashboard;
 
 export default async function DashboardPage() {
   const user = await requireUser();
   if (!can(user.role, "schedule:all")) redirect("/admin/schedule");
 
   const lowStockWhere = { isActive: true, stock: { lte: db.variant.fields.lowStockAt } };
-
-  const today$ = can(user.role, "sale:read") ? todaySummary() : Promise.resolve(null);
-  const appts$ = can(user.role, "appointment:read") ? todayAppointmentStats() : Promise.resolve(null);
-  const [published, drafts, lowCount, lowList, services, users] = await Promise.all([
-    db.product.count({ where: { isPublished: true } }),
-    db.product.count({ where: { isPublished: false } }),
+  const [lowCount, lowList, sales, appts, worker, failedEmails, ready, newInquiries] = await Promise.all([
     db.variant.count({ where: lowStockWhere }),
     db.variant.findMany({
       where: lowStockWhere,
@@ -37,186 +35,169 @@ export default async function DashboardPage() {
       take: 6,
       select: { id: true, sku: true, size: true, stock: true, lowStockAt: true, product: { select: { name: true } } },
     }),
-    db.service.count({ where: { isActive: true } }),
-    can(user.role, "user:write") ? db.user.count({ where: { isActive: true } }) : Promise.resolve(null),
+    can(user.role, "sale:read") ? todaySummary() : null,
+    can(user.role, "appointment:read") ? todayAppointmentStats() : null,
+    workerStatus(),
+    failedEmailCount(),
+    can(user.role, "settings:write") ? readiness() : null,
+    can(user.role, "inquiry:manage") ? countNewInquiries() : null,
   ]);
-  const ready$ = can(user.role, "settings:write") ? readiness() : Promise.resolve(null);
-  const [sales, worker, appts, failedEmails, ready] = await Promise.all([today$, workerStatus(), appts$, failedEmailCount(), ready$]);
-
-  const stats = [
-    { label: "Нийтлэгдсэн бүтээгдэхүүн", value: published, hint: `${drafts} ноорог`, href: can(user.role, "product:write") ? "/admin/products" : undefined },
-    { label: "Бага үлдэгдэлтэй хувилбар", value: lowCount, hint: "босгоос доош", href: "/admin/inventory?low=1", alert: lowCount > 0 },
-    { label: "Идэвхтэй үйлчилгээ", value: services, href: can(user.role, "service:write") ? "/admin/services" : undefined },
-    ...(appts
-      ? [{ label: "Өнөөдрийн цаг", value: appts.total, hint: appts.noShow ? `${appts.noShow} ирээгүй` : "Календарь", href: "/admin/calendar", alert: appts.noShow > 0 }]
-      : []),
-    ...(users !== null ? [{ label: "Идэвхтэй хэрэглэгч", value: users, href: "/admin/users" }] : []),
-  ];
+  const allReady = ready?.ready ?? false;
 
   return (
     <>
-      <PageHeader title={`Сайн байна уу, ${user.name}`} description="Өнөөдрийн товч мэдээлэл" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {stats.map((s) => {
-          const body = (
-            <>
-              <p className="text-[12px] text-navy/55">{s.label}</p>
-              <p className={`mt-2 text-[28px] font-light tabular-nums ${"alert" in s && s.alert ? "text-red-700" : ""}`}>{s.value}</p>
-              {s.hint && <p className="mt-0.5 text-[12px] text-navy/45">{s.hint}</p>}
-            </>
-          );
-          return s.href ? (
-            <Link key={s.label} href={s.href} className="rounded-lg border border-line bg-white p-4 hover:border-navy/40">
-              {body}
+      <PageHeader
+        eyebrow="Тойм"
+        title={D.greeting(user.name)}
+        description={D.subtitle}
+        actions={
+          newInquiries !== null && (
+            <Link
+              href="/admin/inquiries?status=NEW"
+              className={`inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-[15px] font-medium transition-colors ${newInquiries > 0 ? "border-champagne/50 bg-champagne/15 text-[#6f5733] hover:bg-champagne/25" : "border-hairline bg-white text-ink-soft hover:text-ink"}`}
+            >
+              <Inbox className="size-[18px]" strokeWidth={1.75} aria-hidden />
+              {t.admin.inquiries.newCard(newInquiries)}
             </Link>
-          ) : (
-            <div key={s.label} className="rounded-lg border border-line bg-white p-4">
-              {body}
-            </div>
-          );
-        })}
+          )
+        }
+      />
+
+      {/* One-line notices — only when something needs attention */}
+      <div className="mb-6 space-y-2 empty:hidden">
+        {failedEmails > 0 && (
+          <p role="alert" className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-err-bg px-4 py-3 text-[15px] text-err">
+            <AlertTriangle className="size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+            {D.failedEmails(failedEmails)}
+            {can(user.role, "settings:write") ? (
+              <Link href="/admin/system" className="font-medium underline underline-offset-4">
+                {D.retryEmails}
+              </Link>
+            ) : (
+              D.tellAdmin
+            )}
+          </p>
+        )}
+        {worker.stale && (
+          <p role="alert" className="flex items-center gap-2 rounded-xl bg-warn-bg px-4 py-3 text-[15px] text-warn">
+            <AlertTriangle className="size-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+            {worker.minutesAgo === null ? D.senderNever : D.senderStale(worker.minutesAgo)}
+          </p>
+        )}
       </div>
 
-      {ready && (!ready.ready || !ready.launchedAt) && (
-        <Card title={t.admin.readiness.title} description={t.admin.readiness.hint} className="mt-6" actions={ready.ready && !ready.launchedAt ? <LaunchButton /> : undefined}>
-          <ul className="-my-1 divide-y divide-line text-[14px]" data-testid="readiness">
-            {ready.items.map((i) => (
-              <li key={i.key} className="flex items-start justify-between gap-3 py-2">
-                <span className="flex items-start gap-2">
-                  <span aria-hidden className={i.ok ? "text-emerald-600" : "text-red-600"}>
-                    {i.ok ? "✓" : "✕"}
-                  </span>
-                  <span>
-                    <Link href={i.href} className="hover:underline">
-                      {i.label}
-                    </Link>
-                    {i.detail && <span className={`block text-[12px] ${i.ok ? "text-navy/50" : "text-red-700"}`}>{i.detail}</span>}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {sales && <StatCard tone="dark" icon={Wallet} label={D.revenue} value={formatMNT(sales.revenue)} hint={D.salesHint(sales.salesCount)} href="/admin/sales" />}
+        {appts && (
+          <StatCard
+            icon={CalendarCheck}
+            label={D.appointments}
+            value={appts.total}
+            hint={appts.noShow ? D.noShow(appts.noShow) : D.openCalendar}
+            href="/admin/calendar"
+            tone={appts.noShow > 0 ? "alert" : "default"}
+          />
+        )}
+        {sales && <StatCard icon={UserCheck} label={D.visits} value={sales.visits} hint={D.visitsHint} />}
+        <StatCard icon={Boxes} label={D.lowStock} value={lowCount} hint={D.lowStockHint} href="/admin/inventory?low=1" tone={lowCount > 0 ? "alert" : "default"} />
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        {appts && (
+          <Card title={D.nextTitle} actions={<Link href="/admin/calendar" className="text-[14px] font-medium text-ink-soft underline-offset-4 hover:text-ink hover:underline">{D.openCalendar}</Link>}>
+            {appts.next.length === 0 ? (
+              <p className="py-4 text-[15px] text-ink-soft">{D.noNext}</p>
+            ) : (
+              <ol className="divide-y divide-hairline">
+                {appts.next.map((a) => (
+                  <li key={a.id} className="flex items-center gap-4 py-3">
+                    <span className="w-14 font-display text-[22px] font-semibold tabular-nums">{formatTime(a.startsAt)}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[15px] font-medium">{a.customer.name}</p>
+                      <p className="truncate text-[14px] text-ink-soft">{a.service.name}</p>
+                    </div>
+                    <span className="hidden items-center gap-2 text-[14px] text-ink-soft sm:flex">
+                      <Avatar name={a.staff.name} size={28} />
+                      {a.staff.name}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+        )}
+
+        {sales && (
+          <Card title={D.topTitle} actions={<Link href="/admin/sales" className="text-[14px] font-medium text-ink-soft underline-offset-4 hover:text-ink hover:underline">{D.allSales}</Link>}>
+            <p className="mb-3 text-[14px] text-ink-soft">{sales.byMethod.map((m) => `${t.admin.payMethod[m.method]}: ${formatMNT(m.amount)}`).join(" · ") || D.noPayments}</p>
+            {sales.top.length === 0 ? (
+              <p className="py-2 text-[15px] text-ink-soft">{D.noSales}</p>
+            ) : (
+              <ol className="divide-y divide-hairline">
+                {sales.top.map((x, i) => (
+                  <li key={x.name} className="flex justify-between gap-3 py-2.5 text-[15px]">
+                    <span className="min-w-0 truncate">
+                      <span className="text-ink-faint">{i + 1}.</span> {x.name} <span className="text-ink-soft">× {x.qty}</span>
+                    </span>
+                    <span className="tabular-nums">{formatMNT(x.amount)}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+        )}
+      </div>
+
+      {lowList.length > 0 && (
+        <Card title={D.lowTitle} className="mt-6" actions={<Link href="/admin/inventory?low=1" className="text-[14px] font-medium text-ink-soft underline-offset-4 hover:text-ink hover:underline">{D.allStock}</Link>}>
+          <ul className="divide-y divide-hairline">
+            {lowList.map((v) => (
+              <li key={v.id} className="flex items-center justify-between gap-3 py-3 text-[15px]">
+                <span className="min-w-0">
+                  <Link href={`/admin/inventory/${v.id}`} className="font-medium hover:underline">
+                    {v.product.name}
+                  </Link>{" "}
+                  <span className="text-ink-soft">· {v.size}</span>
+                  <span className="block text-[13px] text-ink-faint">
+                    {t.admin.productCode}: {v.sku}
                   </span>
                 </span>
-                <Badge tone={i.ok ? "green" : "red"}>{i.ok ? "OK" : "Дутуу"}</Badge>
+                <Badge tone="red">{D.leftOf(v.stock, v.lowStockAt)}</Badge>
               </li>
             ))}
           </ul>
         </Card>
       )}
-      {ready?.launchedAt && ready.ready === false && (
-        <p className="mt-2 text-[12px] text-navy/50">{t.admin.readiness.launched(formatDateTime(new Date(ready.launchedAt)))}</p>
-      )}
-      {failedEmails > 0 && (
-        <p role="alert" className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">
-          {failedEmails} имэйл (айлчлал/цагийн мэдэгдэл) илгээгдэж чадсангүй.{" "}
-          {can(user.role, "settings:write") ? (
-            <Link href="/admin/system" className="underline underline-offset-4">
-              Систем → Дахин оролдох
-            </Link>
-          ) : (
-            "Админд мэдэгдэнэ үү."
-          )}
-        </p>
-      )}
-      <p
-        role={worker.stale ? "alert" : "status"}
-        className={`mt-4 inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] ${worker.stale ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}
-      >
-        <span className={`size-2 rounded-full ${worker.stale ? "bg-red-600" : "bg-emerald-600"}`} aria-hidden />
-        {worker.minutesAgo === null
-          ? "Worker хэзээ ч ажиллаагүй — имэйл, QPay шалгалт явахгүй байна (bun run worker)."
-          : worker.minutesAgo === 0
-            ? "Worker сүүлд ажилласан: дөнгөж сая"
-            : `Worker сүүлд ажилласан: ${worker.minutesAgo} минутын өмнө${worker.stale ? " — имэйл, QPay шалгалт зогссон байж болзошгүй" : ""}`}
-      </p>
 
-      {appts && (
-        <Card title="Өнөөдрийн цаг" className="mt-6" actions={<Link href="/admin/calendar" className="text-[13px] underline underline-offset-4">Календарь</Link>}>
-          <div className="flex flex-wrap gap-6">
-            <div>
-              <p className="text-[32px] font-light tabular-nums">{appts.total}</p>
-              <p className="text-[13px] text-navy/60">идэвхтэй цаг{appts.noShow ? ` · ${appts.noShow} ирээгүй` : ""}</p>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="mb-1.5 text-[12px] font-medium uppercase tracking-[0.4px] text-navy/55">Дараагийн 3</p>
-              {appts.next.length === 0 ? (
-                <p className="text-[14px] text-navy/55">Өнөөдөр цаашид цаг алга.</p>
-              ) : (
-                <ol className="divide-y divide-line text-[13.5px]">
-                  {appts.next.map((a) => (
-                    <li key={a.id} className="flex flex-wrap justify-between gap-2 py-1.5">
-                      <span>
-                        <span className="tabular-nums font-medium">{formatTime(a.startsAt)}</span> · {a.customer.name}
-                      </span>
-                      <span className="text-navy/60">
-                        {a.service.name} · {a.staff.name}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-          </div>
-        </Card>
+      {/* Launch readiness — ADMIN only; folds away once everything is done */}
+      {ready && !ready.launchedAt && (
+        <details open={!allReady} className="group mt-6 rounded-2xl border border-hairline bg-white">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
+            <span>
+              <span className="block font-display text-[22px] font-semibold">{t.admin.readiness.title}</span>
+              <span className="block text-[14px] text-ink-soft">
+                {allReady ? D.readyAll : D.readyLeft(ready.items.filter((i) => !i.ok).length)}
+              </span>
+            </span>
+            {allReady && <LaunchButton />}
+          </summary>
+          <ul className="divide-y divide-hairline border-t border-hairline px-6" data-testid="readiness">
+            {ready.items.map((i) => (
+              <li key={i.key} className="flex items-start justify-between gap-3 py-3">
+                <span className="min-w-0 text-[15px]">
+                  <Link href={i.href} className="hover:underline">
+                    {i.label}
+                  </Link>
+                  {i.detail && <span className={`block text-[13px] ${i.ok ? "text-ink-soft" : "text-danger"}`}>{i.detail}</span>}
+                </span>
+                <Badge tone={i.ok ? "green" : "red"}>{i.ok ? D.done : D.missing}</Badge>
+              </li>
+            ))}
+          </ul>
+          <p className="border-t border-hairline px-6 py-3 text-[13px] text-ink-soft">{t.admin.readiness.hint}</p>
+        </details>
       )}
-
-      {sales && (
-        <Card title="Өнөөдрийн борлуулалт" className="mt-6" actions={<Link href="/admin/sales" className="text-[13px] underline underline-offset-4">Бүгдийг харах</Link>}>
-          <div className="grid gap-5 md:grid-cols-[260px_minmax(0,1fr)]">
-            <div className="space-y-2">
-              <p className="text-[32px] font-light tabular-nums">{formatMNT(sales.revenue)}</p>
-              <p className="text-[13px] text-navy/60">
-                {sales.salesCount} борлуулалт · {sales.visits} айлчлал
-              </p>
-              <p className="text-[13px] text-navy/60">{sales.byMethod.map((m) => `${t.admin.payMethod[m.method]}: ${formatMNT(m.amount)}`).join(" · ") || "Төлбөр алга"}</p>
-            </div>
-            <div>
-              <p className="mb-1.5 text-[12px] font-medium uppercase tracking-[0.4px] text-navy/55">Шилдэг 5</p>
-              {sales.top.length === 0 ? (
-                <p className="text-[14px] text-navy/55">Өнөөдөр борлуулалт хийгдээгүй.</p>
-              ) : (
-                <ol className="divide-y divide-line text-[13.5px]">
-                  {sales.top.map((x, i) => (
-                    <li key={x.name} className="flex justify-between gap-2 py-1.5">
-                      <span>
-                        {i + 1}. {x.name} <span className="text-navy/50">× {x.qty}</span>
-                      </span>
-                      <span className="tabular-nums">{formatMNT(x.amount)}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-          </div>
-        </Card>
-      )}
-
-      <Card title="Бага үлдэгдэл" className="mt-6" actions={<Link href="/admin/inventory?low=1" className="text-[13px] underline underline-offset-4">Бүгдийг харах</Link>}>
-        {lowList.length === 0 ? (
-          <p className="text-[14px] text-navy/60">Бүх хувилбарын үлдэгдэл хангалттай байна.</p>
-        ) : (
-          <table className="-mx-5 -my-5 w-[calc(100%+40px)] text-[13.5px]">
-            <thead>
-              <tr>
-                <th className={thClass}>Бүтээгдэхүүн</th>
-                <th className={thClass}>SKU</th>
-                <th className={`${thClass} text-right`}>Үлдэгдэл</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lowList.map((v) => (
-                <tr key={v.id}>
-                  <td className={tdClass}>
-                    {v.product.name} <span className="text-navy/50">· {v.size}</span>
-                  </td>
-                  <td className={`${tdClass} font-mono text-[12px]`}>{v.sku}</td>
-                  <td className={`${tdClass} text-right`}>
-                    <Badge tone="red">
-                      {v.stock} / {v.lowStockAt}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+      {ready?.launchedAt && <p className="mt-6 text-[13px] text-ink-faint">{t.admin.readiness.launched(formatDateTime(new Date(ready.launchedAt)))}</p>}
     </>
   );
 }

@@ -126,10 +126,10 @@ export function PaymentPanel({
   if (paid) {
     return (
       <div className="space-y-4 text-center">
-        <CheckCircle2 className="mx-auto size-12 text-emerald-600" aria-hidden />
+        <CheckCircle2 className="mx-auto size-12 text-ok" aria-hidden />
         <p className="text-[18px] font-medium">{p.success}</p>
         <p className="text-[28px] font-light tabular-nums">{formatMNT(sale.total)}</p>
-        {lastChange !== null && lastChange > 0 && <p className="text-[16px] text-emerald-700">{p.changeDue(formatMNT(lastChange))}</p>}
+        {lastChange !== null && lastChange > 0 && <p className="text-[16px] text-ok">{p.changeDue(formatMNT(lastChange))}</p>}
         <EmailStatus saleId={sale.id} />
         <div className="flex flex-wrap justify-center gap-2 pt-2">
           <Link href={`/admin/sales/${sale.id}/receipt`} target="_blank" className={btnClass("secondary")}>
@@ -158,8 +158,8 @@ export function PaymentPanel({
           [p.paid, sale.paidAmount],
           [p.remaining, sale.total - sale.paidAmount],
         ].map(([label, v]) => (
-          <div key={label as string} className="rounded-md bg-navy/[0.04] px-2 py-2">
-            <dt className="text-[12px] text-navy/55">{label}</dt>
+          <div key={label as string} className="rounded-xl bg-ink/[0.04] px-2 py-2">
+            <dt className="text-[13px] text-ink-soft">{label}</dt>
             <dd className="text-[16px] font-medium tabular-nums">{formatMNT(v as number)}</dd>
           </div>
         ))}
@@ -171,14 +171,14 @@ export function PaymentPanel({
             // eslint-disable-next-line @next/next/no-img-element -- QPay base64 PNG
             <img src={`data:image/png;base64,${qr.qrImage}`} alt="QPay QR" className="mx-auto size-56" />
           ) : (
-            <p className="break-all font-mono text-[11px]">{qr.qrText}</p>
+            <p className="break-all font-mono text-[13px]">{qr.qrText}</p>
           )}
           <p className="text-[14px]">{p.waiting}</p>
-          <p className="text-[12px] text-navy/55">{p.expiresAt(new Date(qr.expiresAt).toLocaleTimeString("en-GB", { timeZone: "Asia/Ulaanbaatar", hour: "2-digit", minute: "2-digit" }))}</p>
+          <p className="text-[13px] text-ink-soft">{p.expiresAt(new Date(qr.expiresAt).toLocaleTimeString("en-GB", { timeZone: "Asia/Ulaanbaatar", hour: "2-digit", minute: "2-digit" }))}</p>
           {qr.deeplinks.length > 0 && (
             <div className="flex flex-wrap justify-center gap-1.5">
               {qr.deeplinks.slice(0, 8).map((d) => (
-                <a key={d.link} href={d.link} className="rounded border border-line px-2 py-1 text-[12px]">
+                <a key={d.link} href={d.link} className="rounded border border-hairline px-2 py-1 text-[13px]">
                   {d.name}
                 </a>
               ))}
@@ -205,7 +205,7 @@ export function PaymentPanel({
           }}
           className="space-y-4"
         >
-          <div role="tablist" className={`grid gap-1 rounded-md bg-navy/[0.04] p-1 ${methods.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
+          <div role="tablist" className={`grid gap-1 rounded-xl bg-ink/[0.04] p-1 ${methods.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
             {methods.map((m) => (
               <button
                 key={m}
@@ -213,7 +213,7 @@ export function PaymentPanel({
                 role="tab"
                 aria-selected={method === m}
                 onClick={() => setMethod(m)}
-                className={`h-9 rounded text-[14px] ${method === m ? "bg-white font-medium shadow-sm" : "text-navy/60"}`}
+                className={`h-9 rounded text-[14px] ${method === m ? "bg-white font-medium shadow-sm" : "text-ink-soft"}`}
               >
                 {t.admin.payMethod[m]}
               </button>
@@ -221,7 +221,7 @@ export function PaymentPanel({
           </div>
 
           {method === "CASH" && !shiftOpen && (
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
+            <p className="rounded-xl bg-warn-bg px-3 py-2 text-[13px] text-warn">
               {t.admin.pos.shiftClosed}{" "}
               <Link href="/admin/shifts" className="underline">
                 {t.admin.pos.openShift}
@@ -249,7 +249,7 @@ export function PaymentPanel({
                   ))}
               </div>
               {changePreview !== null && (
-                <p className={`text-[16px] ${changePreview < 0 ? "text-red-700" : "text-emerald-700"}`}>
+                <p className={`text-[16px] ${changePreview < 0 ? "text-danger" : "text-ok"}`}>
                   {p.change}: <span className="tabular-nums">{formatMNT(Math.max(0, changePreview))}</span>
                 </p>
               )}
@@ -284,8 +284,8 @@ export function PaymentPanel({
 
       {payments.length > 0 && (
         <div>
-          <p className="mb-1.5 text-[12px] font-medium uppercase tracking-[0.4px] text-navy/55">{p.history}</p>
-          <ul className="divide-y divide-line rounded-md border border-line text-[13px]">
+          <p className="mb-1.5 text-[13px] font-medium uppercase tracking-[0.4px] text-ink-soft">{p.history}</p>
+          <ul className="divide-y divide-hairline rounded-xl border border-hairline text-[13px]">
             {payments.map((x) => (
               <li key={x.id} className="flex items-center justify-between gap-2 px-3 py-2">
                 <span>{t.admin.payMethod[x.method as keyof typeof t.admin.payMethod] ?? x.method}</span>
@@ -303,7 +303,7 @@ export function PaymentPanel({
       )}
 
       {sale.paidAmount === 0 && !qr && (
-        <div className="flex flex-wrap justify-between gap-2 border-t border-line pt-4">
+        <div className="flex flex-wrap justify-between gap-2 border-t border-hairline pt-4">
           <Button variant="ghost" size="sm" disabled={unlock.pending} onClick={() => unlock.run(sale.id, { onSuccess: onUnlocked })}>
             {p.unlock}
           </Button>
@@ -359,10 +359,10 @@ function EmailStatus({ saleId }: { saleId: string }) {
   }, [saleId]);
 
   if (!info) return null;
-  const box = "mx-auto flex max-w-sm items-start gap-2 rounded-md px-3 py-2 text-left text-[13px]";
+  const box = "mx-auto flex max-w-sm items-start gap-2 rounded-xl px-3 py-2 text-left text-[13px]";
   if (!info.email) {
     return (
-      <p className={`${box} bg-amber-50 text-amber-800`} role="status">
+      <p className={`${box} bg-warn-bg text-warn`} role="status">
         <Mail className="mt-0.5 size-4 shrink-0" aria-hidden />
         <span>
           {p.noEmail}{" "}
@@ -375,11 +375,11 @@ function EmailStatus({ saleId }: { saleId: string }) {
       </p>
     );
   }
-  if (!info.visitId) return <p className={`${box} bg-navy/[0.04] text-navy/70`} role="status">{p.noVisit}</p>;
-  if (info.emailStatus === "SENT") return <p className={`${box} bg-emerald-50 text-emerald-800`} role="status">{p.emailSent(info.email)}</p>;
-  if (info.emailStatus === "FAILED") return <p className={`${box} bg-red-50 text-red-700`} role="status">{p.emailFailed}</p>;
+  if (!info.visitId) return <p className={`${box} bg-ink/[0.04] text-ink-soft`} role="status">{p.noVisit}</p>;
+  if (info.emailStatus === "SENT") return <p className={`${box} bg-ok-bg text-ok`} role="status">{p.emailSent(info.email)}</p>;
+  if (info.emailStatus === "FAILED") return <p className={`${box} bg-err-bg text-danger`} role="status">{p.emailFailed}</p>;
   return (
-    <p className={`${box} bg-navy/[0.04] text-navy/70`} role="status">
+    <p className={`${box} bg-ink/[0.04] text-ink-soft`} role="status">
       <Mail className="mt-0.5 size-4 shrink-0" aria-hidden />
       <span>{slow ? p.emailQueuedLong : p.emailSending(info.email)}</span>
     </p>

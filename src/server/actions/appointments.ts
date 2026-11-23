@@ -4,7 +4,7 @@
  * Цаг захиалгын нимгэн server action-ууд: эрх → module → кэш шинэчлэх.
  * STAFF (appointment:read эрхгүй) зөвхөн өөрийн цагийг, үйлчлүүлэгчийн утас/имэйлгүйгээр уншина.
  */
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { can } from "@/server/auth/permissions";
 import { requireAnyPermission, requirePermission } from "@/server/auth/session";
 import { ForbiddenError, UserError } from "@/server/errors";
@@ -165,6 +165,8 @@ export async function saveBookingHoursAction(input: Parameters<typeof saveBookin
   return runAction(async () => {
     const user = await requirePermission("staff-schedule:write");
     await saveBookingHours(input, user.id);
+    // Сайтын footer, салоны хуудасны ажлын цаг салбарын цагаас үүсдэг
+    updateTag("settings");
     revalidatePath("/admin/staff-schedules");
     refreshCalendar();
   }, "Салбарын ажлын цаг хадгалагдлаа.");

@@ -2,7 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { FilterBar } from "@/components/admin/FilterBar";
 import { Pagination, parsePage, str } from "@/components/admin/Pagination";
-import { Badge, EmptyState, PageHeader, Table, btnClass, inputClass, tdClass, thClass } from "@/components/admin/ui";
+import { Package, Plus } from "lucide-react";
+import { Badge, ButtonLink, EmptyState, PageHeader, SegmentedTabs, Table, inputClass, tdClass, thClass } from "@/components/admin/ui";
 import type { Prisma } from "@/generated/prisma/client";
 import { formatMNT } from "@/lib/money";
 import { BADGE_LABELS } from "@/lib/validation/product";
@@ -59,19 +60,36 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
     db.collection.findMany({ orderBy: [{ kind: "asc" }, { sortOrder: "asc" }], select: { id: true, name: true, kind: true } }),
   ]);
 
+  const tabHref = (st?: string) => {
+    const p = new URLSearchParams({ ...(q && { q }), ...(collection && { collection }), ...(st && { status: st }) }).toString();
+    return p ? `/admin/products?${p}` : "/admin/products";
+  };
+
   return (
     <>
       <PageHeader
+        eyebrow="Дэлгүүр"
         title="Бүтээгдэхүүн"
-        description="Дэлгүүрт харагдах бүтээгдэхүүн, хувилбар, үнэ"
+        description={`Дэлгүүрт харагдах бүтээгдэхүүн, хэмжээ, үнэ · нийт ${total}`}
         actions={
-          <Link href="/admin/products/new" className={btnClass("primary")}>
-            + Шинэ бүтээгдэхүүн
-          </Link>
+          <ButtonLink href="/admin/products/new">
+            <Plus className="size-[18px]" strokeWidth={2} /> Бүтээгдэхүүн нэмэх
+          </ButtonLink>
         }
       />
-      <FilterBar action="/admin/products" resetHref={q || collection || status ? "/admin/products" : undefined}>
-        <input name="q" defaultValue={q} placeholder="Нэр, slug, SKU-ээр хайх" aria-label="Хайх" className={`${inputClass} w-64`} />
+      <SegmentedTabs
+        className="mb-4"
+        label="Төлөв"
+        value={status ?? "all"}
+        items={[
+          { value: "all", label: "Бүгд", href: tabHref() },
+          { value: "published", label: "Сайтад харагдаж буй", href: tabHref("published") },
+          { value: "draft", label: "Нийтлээгүй", href: tabHref("draft") },
+        ]}
+      />
+      <FilterBar action="/admin/products" resetHref={q || collection ? tabHref(status) : undefined}>
+        {status && <input type="hidden" name="status" value={status} />}
+        <input name="q" defaultValue={q} placeholder="Нэр эсвэл барааны кодоор хайх" aria-label="Хайх" className={`${inputClass} w-72`} />
         <select name="collection" defaultValue={collection ?? ""} aria-label="Ангилал" className={`${inputClass} w-52`}>
           <option value="">Бүх ангилал</option>
           <optgroup label="Ангилал">
@@ -85,25 +103,20 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
             ))}
           </optgroup>
         </select>
-        <select name="status" defaultValue={status ?? ""} aria-label="Төлөв" className={`${inputClass} w-40`}>
-          <option value="">Бүх төлөв</option>
-          <option value="published">Нийтлэгдсэн</option>
-          <option value="draft">Ноорог / архив</option>
-        </select>
       </FilterBar>
 
       {products.length === 0 ? (
-        <EmptyState title="Бүтээгдэхүүн олдсонгүй">Шүүлтүүрээ өөрчилж үзнэ үү.</EmptyState>
+        <EmptyState icon={Package} title="Бүтээгдэхүүн олдсонгүй">Хайлт, шүүлтүүрээ өөрчилж үзнэ үү.</EmptyState>
       ) : (
         <Table>
           <thead>
             <tr>
               <th className={`${thClass} w-14`}><span className="sr-only">Зураг</span></th>
               <th className={thClass}>Нэр</th>
-              <th className={`${thClass} text-right`}>Хувилбар</th>
+              <th className={`${thClass} text-right`}>Хэмжээ</th>
               <th className={`${thClass} text-right`}>Үнэ</th>
               <th className={`${thClass} text-right`}>Үлдэгдэл</th>
-              <th className={thClass}>Badge</th>
+              <th className={thClass}>Тэмдэг</th>
               <th className={thClass}>Төлөв</th>
             </tr>
           </thead>
@@ -116,27 +129,27 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
               const stock = active.reduce((s, v) => s + v.stock, 0);
               const img = p.images[0];
               return (
-                <tr key={p.id} className="hover:bg-navy/[0.02]">
+                <tr key={p.id} className="hover:bg-canvas">
                   <td className={tdClass}>
-                    <div className="relative size-10 overflow-hidden rounded bg-card">
-                      {img && <Image src={img.url} alt={img.alt} fill sizes="40px" unoptimized={img.url.endsWith(".svg")} className="object-contain" />}
+                    <div className="relative size-12 overflow-hidden rounded-xl bg-canvas">
+                      {img && <Image src={img.url} alt={img.alt} fill sizes="48px" unoptimized={img.url.endsWith(".svg")} className="object-contain" />}
                     </div>
                   </td>
                   <td className={tdClass}>
                     <Link href={`/admin/products/${p.id}`} className="font-medium hover:underline">{p.name}</Link>
-                    {p.kind === "BUNDLE" && <span className="ml-2"><Badge tone="navy">BUNDLE</Badge></span>}
-                    <p className="text-[12px] text-navy/50">{p.tagline ?? p.benefits.join(" / ")}</p>
+                    {p.kind === "BUNDLE" && <span className="ml-2"><Badge tone="champagne">Багц</Badge></span>}
+                    <p className="text-[13px] text-ink-soft">{p.tagline ?? p.benefits.join(" / ")}</p>
                   </td>
                   <td className={`${tdClass} text-right tabular-nums`}>
                     {active.length}
-                    {p.variants.length > active.length && <span className="text-navy/40"> (+{p.variants.length - active.length})</span>}
+                    {p.variants.length > active.length && <span className="text-ink-faint"> (+{p.variants.length - active.length})</span>}
                   </td>
                   <td className={`${tdClass} text-right tabular-nums`}>
                     {prices.length === 0 ? "—" : min === max ? formatMNT(min) : `${formatMNT(min)} – ${formatMNT(max)}`}
                   </td>
-                  <td className={`${tdClass} text-right tabular-nums ${stock === 0 ? "text-red-700" : ""}`}>{stock}</td>
-                  <td className={tdClass}>{p.badge ? <Badge>{BADGE_LABELS[p.badge]}</Badge> : <span className="text-navy/30">—</span>}</td>
-                  <td className={tdClass}>{p.isPublished ? <Badge tone="green">Нийтлэгдсэн</Badge> : <Badge>Ноорог</Badge>}</td>
+                  <td className={`${tdClass} text-right tabular-nums ${stock === 0 ? "text-danger" : ""}`}>{stock}</td>
+                  <td className={tdClass}>{p.badge ? <Badge>{BADGE_LABELS[p.badge]}</Badge> : <span className="text-ink-faint">—</span>}</td>
+                  <td className={tdClass}>{p.isPublished ? <Badge tone="green">Сайтад</Badge> : <Badge>Нийтлээгүй</Badge>}</td>
                 </tr>
               );
             })}

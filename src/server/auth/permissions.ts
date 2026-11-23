@@ -19,6 +19,8 @@ export const PERMISSIONS = [
   "service-staff:write",
   // Үйлчлүүлэгчийн утас, имэйл (STAFF-д харагдахгүй)
   "customer:contact:read",
+  // Сайтаас ирсэн "Салонд захиалах" хүсэлт
+  "inquiry:manage",
   // POS / борлуулалт
   "pos:use",
   "sale:create",
@@ -61,6 +63,7 @@ const MANAGER: readonly Permission[] = [
   "appointment:write",
   "appointment:status",
   "customer:contact:read",
+  "inquiry:manage",
   "pos:use",
   "sale:create",
   "sale:read",
@@ -90,8 +93,8 @@ export function can(role: Role | null | undefined, permission: Permission): bool
 
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "Админ",
-  MANAGER: "Менежер",
-  STAFF: "Ажилтан",
+  MANAGER: "Ресепшн (менежер)",
+  STAFF: "Гоо сайханч",
 };
 
 /** Нэвтэрсний дараа очих анхны хуудас */

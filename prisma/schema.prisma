@@ -202,6 +202,16 @@ enum JobType {
   APPT_EMAIL
   /// Эхлэхээс 24 цагийн өмнөх сануулга
   APPT_REMINDER
+  /// Сайтаас ирсэн нөөцлүүлэх хүсэлт → ресепшнд имэйл
+  INQUIRY_EMAIL
+}
+
+/// Сайтын "Салонд захиалах" → нөөцлүүлэх хүсэлтийн төлөв
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  DONE
+  CANCELLED
 }
 
 enum EbarimtType {
@@ -254,6 +264,7 @@ model User {
   timeOffs            StaffTimeOff[]   @relation("StaffTimeOffs")
   createdTimeOffs     StaffTimeOff[]   @relation("TimeOffCreatedBy")
   services            ServiceStaff[]   @relation("ServiceStaff")
+  handledInquiries    ProductInquiry[] @relation("InquiryHandledBy")
 
   @@index([role, isActive])
 }
@@ -485,23 +496,35 @@ model CollectionTile {
 // ─────────────────────────── Үйлчилгээ ───────────────────────────
 
 model Service {
-  id           String   @id @default(cuid())
-  slug         String   @unique
-  name         String
-  description  String
-  durationMin  Int
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  name             String
+  description      String
+  durationMin      Int
   /// Цэвэрлэгээ/бэлтгэлийн хугацаа — дараагийн цаг эхлэх хүртэл
-  bufferMin    Int      @default(0)
-  requiresRoom Boolean  @default(false)
+  bufferMin        Int      @default(0)
+  requiresRoom     Boolean  @default(false)
   /// Цагийн календарьт захиалж болох эсэх
-  bookable     Boolean  @default(true)
-  price        Int
-  costNote     String?
-  image        String?
-  isActive     Boolean  @default(true)
-  sortOrder    Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  bookable         Boolean  @default(true)
+  /// Сайтад харагдах эсэх (дотоод үйлчилгээ = false)
+  isPublic         Boolean  @default(true)
+  /// Сайтын ангилал (бүлэглэхэд): "Нүүрний эмчилгээ", "Оношлогоо" …
+  category         String?
+  /// Картанд харагдах товч тайлбар
+  shortDescription String?
+  /// Хэнд тохиромжтой
+  suitableFor      String?
+  /// Үр дүн
+  results          String?
+  /// Үнийг "…₮-өөс" гэж харуулах (хувилбар/нэмэлтээс хамааран өсөх)
+  priceFrom        Boolean  @default(false)
+  price            Int
+  costNote         String?
+  image            String?
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   consumables     ServiceConsumable[]
   appointments    Appointment[]
@@ -1166,4 +1189,27 @@ model WorkerHeartbeat {
   lastRunAt DateTime
   info      Json?
   updatedAt DateTime @updatedAt
+}
+
+/// Сайтаас ирсэн "Салонд захиалах" нөөцлүүлэх хүсэлт. Үлдэгдэл түгжихгүй — ресепшн холбогдоно.
+model ProductInquiry {
+  id          String        @id @default(cuid())
+  name        String
+  /// 8 оронтой Монгол дугаар (хэвийн болгосон)
+  phone       String
+  /// [{ variantId, productName, size, qty, price }]
+  items       Json
+  note        String?
+  status      InquiryStatus @default(NEW)
+  /// Spam хамгаалалт (10 минутад 3)
+  ip          String?
+  handledById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  handledBy User? @relation("InquiryHandledBy", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([phone, createdAt])
+  @@index([ip, createdAt])
 }

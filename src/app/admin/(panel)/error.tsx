@@ -7,12 +7,12 @@ import { t } from "@/i18n";
 /** Admin error boundary — shows the error ID that is also in the server log */
 export default function AdminError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div role="alert" className="mx-auto mt-16 max-w-lg rounded-lg border border-red-200 bg-white p-6">
-      <p className="text-[12px] font-medium uppercase tracking-[0.4px] text-red-700">{t.serverError.code}</p>
+    <div role="alert" className="mx-auto mt-16 max-w-lg rounded-2xl border border-err/30 bg-white p-6">
+      <p className="text-[13px] font-medium uppercase tracking-[0.4px] text-danger">{t.serverError.code}</p>
       <h1 className="mt-1 text-[18px] font-medium">{t.serverError.title}</h1>
-      <p className="mt-2 text-[14px] text-navy/70">{t.serverError.adminText}</p>
+      <p className="mt-2 text-[14px] text-ink-soft">{t.serverError.adminText}</p>
       {error.digest && (
-        <p className="mt-3 rounded bg-navy/[0.04] px-3 py-2 font-mono text-[13px]" data-testid="error-id">
+        <p className="mt-3 rounded bg-ink/[0.04] px-3 py-2 font-mono text-[13px]" data-testid="error-id">
           {t.serverError.errorId(error.digest)}
         </p>
       )}

@@ -1,18 +1,20 @@
 import { CalendarBoard } from "@/components/admin/calendar/CalendarBoard";
 import type { CalAppt, CalColumn } from "@/components/admin/calendar/types";
-import { PageHeader } from "@/components/admin/ui";
-import { formatDateLabel, isDateKey, ubDateKey, ubWeekday, addDays } from "@/lib/time";
+import { formatDateLabel, isDateKey, ubDateKey, ubDayRange, ubWeekday, addDays } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { dayView, weekView, type CalendarAppt } from "@/server/modules/appointments/queries";
 import { bookableStaff } from "@/server/modules/appointments/repo";
+import { calendarMoney } from "@/server/modules/appointments/calendar-stats";
 
 export const metadata = { title: "Календарь" };
 export const instant = false;
 
-const serialize = (a: CalendarAppt): CalAppt => ({
+const serialize = (a: CalendarAppt, money: Record<string, { price: number; paid: number }>): CalAppt => ({
   ...a,
+  price: money[a.id]?.price ?? 0,
+  paid: money[a.id]?.paid ?? 0,
   startsAt: a.startsAt.toISOString(),
   endsAt: a.endsAt.toISOString(),
   blockedUntil: a.blockedUntil.toISOString(),
@@ -31,7 +33,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     db.service.findMany({
       where: { isActive: true, bookable: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, durationMin: true, bufferMin: true, requiresRoom: true },
+      select: { id: true, name: true, durationMin: true, bufferMin: true, requiresRoom: true, price: true, priceFrom: true, category: true },
     }),
     bookableStaff(),
   ]);
@@ -43,6 +45,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   let slotMinutes: number;
   let cancelReasons: string[];
   let weekStaffId: string | null = null;
+  let cancelled = 0;
 
   if (view === "week") {
     weekStaffId = typeof sp.staff === "string" && staff.some((s) => s.id === sp.staff) ? sp.staff : (staff[0]?.id ?? null);
@@ -60,14 +63,17 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           timeOff: iso(d.timeOff),
         }))
       : [];
-    appointments = (data?.appointments ?? []).map(serialize);
+    const stats = await calendarMoney({ start: ubDayRange(weekStart).start, end: ubDayRange(addDays(weekStart, 6)).end }, weekStaffId);
+    cancelled = stats.cancelled;
+    appointments = (data?.appointments ?? []).map((a) => serialize(a, stats.money));
     axis = data?.axis ?? day.axis;
     slotMinutes = data?.slotMinutes ?? day.slotMinutes;
     cancelReasons = day.cancelReasons;
   } else {
-    const data = await dayView(date, { canContact });
+    const [data, stats] = await Promise.all([dayView(date, { canContact }), calendarMoney(ubDayRange(date))]);
+    cancelled = stats.cancelled;
     columns = data.staff.map((s) => ({ key: s.id, label: s.name, date, staffId: s.id, working: iso(s.working), timeOff: iso(s.timeOff) }));
-    appointments = data.appointments.map(serialize);
+    appointments = data.appointments.map((a) => serialize(a, stats.money));
     axis = data.axis;
     slotMinutes = data.slotMinutes;
     cancelReasons = data.cancelReasons;
@@ -75,8 +81,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="Календарь" description={formatDateLabel(date)} />
+      <h1 className="sr-only">Календарь</h1>
       <CalendarBoard
+        cancelled={cancelled}
         view={view}
         date={date}
         weekStaffId={weekStaffId}

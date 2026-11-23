@@ -16,6 +16,7 @@ import { t } from "@/i18n";
 import { absoluteUrl } from "@/lib/site-url";
 import { getAllProductSlugs, getProductPage, productHref, type ProductPageData } from "@/server/queries/catalog";
 import { getSetting } from "@/server/queries/settings";
+import { getSalonInfo } from "@/server/queries/storefront";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -35,6 +36,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     alternates: { canonical: absoluteUrl(productHref(p.slug)) },
     openGraph: {
+      siteName: site,
+      locale: "mn_MN",
       type: "website",
       url: absoluteUrl(productHref(p.slug)),
       title: p.seoTitle ?? `${p.name} — ${p.tagline ?? site}`,
@@ -52,7 +55,7 @@ export default function ProductPage({ params }: Props) {
   );
 }
 
-function productJsonLd(p: ProductPageData) {
+function productJsonLd(p: ProductPageData, catalog: boolean, sellerName: string) {
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -67,7 +70,9 @@ function productJsonLd(p: ProductPageData) {
       name: `${p.name} ${v.size}`,
       price: v.price,
       priceCurrency: "MNT",
-      availability: v.available ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      // CATALOG: no online checkout — the product is reserved and picked up at the salon
+      availability: !v.available ? "https://schema.org/OutOfStock" : catalog ? "https://schema.org/InStoreOnly" : "https://schema.org/InStock",
+      ...(sellerName ? { seller: { "@type": "Organization", name: sellerName } } : {}),
       url: absoluteUrl(`${productHref(p.slug)}?variant=${v.id}`),
     })),
   };
@@ -75,7 +80,7 @@ function productJsonLd(p: ProductPageData) {
 
 async function ProductView({ params }: Props) {
   const { slug } = await params;
-  const [p, benefits] = await Promise.all([getProductPage(slug), getSetting("productBenefits")]);
+  const [p, benefits, salon] = await Promise.all([getProductPage(slug), getSetting("productBenefits"), getSalonInfo()]);
   if (!p) notFound();
   const isBundle = p.kind === "BUNDLE";
 
@@ -122,8 +127,8 @@ async function ProductView({ params }: Props) {
   const accordion = accordionCandidates.filter((x): x is AccordionItem => Boolean(x));
 
   return (
-    <PurchaseProvider variants={p.variants} isBundle={isBundle}>
-      <JsonLd data={productJsonLd(p)} />
+    <PurchaseProvider productName={p.name} variants={p.variants} isBundle={isBundle}>
+      <JsonLd data={productJsonLd(p, salon.shopMode === "CATALOG", salon.siteName)} />
       <Container className="pb-8 pt-6 md:pt-10">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)] lg:gap-14">
           {/* Desktop: gallery наалддаг, мэдээллийн багана энгийн scroll — зүүн тал хоосрохгүй */}

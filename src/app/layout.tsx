@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter_Tight } from "next/font/google";
 import { SITE_URL } from "@/lib/site-url";
 import { getSetting } from "@/server/queries/settings";
+import { getSalonInfo } from "@/server/queries/storefront";
 import "./globals.css";
 
 // Söhne-тэй ойролцоо үнэгүй sans-serif. Лицензтэй font ирэхэд энд солино
@@ -15,12 +16,13 @@ const brandFont = Inter_Tight({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const brand = await getSetting("brand");
-  const siteName = brand?.siteName ?? "Biologique Recherche";
+  // Сайтын нэр — Сайтын контент → Брэнд ("Сайтын нэр"), title template, OG, copyright нэг эх сурвалж
+  const [brand, { siteName }] = await Promise.all([getSetting("brand"), getSalonInfo()]);
   return {
     metadataBase: new URL(SITE_URL),
     title: { default: siteName, template: `%s · ${siteName}` },
     description: brand?.description,
+    openGraph: { type: "website", siteName, locale: "mn_MN", title: siteName, description: brand?.description },
   };
 }
 

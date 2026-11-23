@@ -9,7 +9,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
     <form action={action} className="space-y-5" noValidate={false}>
       <input type="hidden" name="callbackUrl" value={callbackUrl ?? ""} />
       <div className="space-y-1.5">
-        <label htmlFor="email" className="text-micro block">
+        <label htmlFor="email" className="block text-[14px] font-medium text-ink">
           Имэйл
         </label>
         <input
@@ -19,11 +19,11 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
           required
           autoComplete="username"
           defaultValue={state.email}
-          className="h-11 w-full border-b border-navy/30 bg-transparent text-[15px] focus:border-navy focus:outline-none"
+          className="h-12 w-full rounded-xl border border-hairline bg-white px-4 text-[16px] text-ink transition-colors hover:border-ink/20 focus:border-navy focus:outline-none focus:ring-2 focus:ring-champagne/30"
         />
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="password" className="text-micro block">
+        <label htmlFor="password" className="block text-[14px] font-medium text-ink">
           Нууц үг
         </label>
         <input
@@ -32,18 +32,18 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
           type="password"
           required
           autoComplete="current-password"
-          className="h-11 w-full border-b border-navy/30 bg-transparent text-[15px] focus:border-navy focus:outline-none"
+          className="h-12 w-full rounded-xl border border-hairline bg-white px-4 text-[16px] text-ink transition-colors hover:border-ink/20 focus:border-navy focus:outline-none focus:ring-2 focus:ring-champagne/30"
         />
       </div>
       {state.error && (
-        <p role="alert" className="text-[13px] text-red-700">
+        <p role="alert" className="rounded-xl bg-err-bg px-4 py-3 text-[14px] text-err">
           {state.error}
         </p>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="h-11 w-full rounded-full bg-navy text-[14px] tracking-[0.3px] text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="h-12 w-full rounded-xl bg-navy text-[16px] font-medium text-white transition-colors hover:bg-[#1a3260] disabled:opacity-60"
       >
         {pending ? "Шалгаж байна…" : "Нэвтрэх"}
       </button>

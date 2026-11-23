@@ -1,6 +1,10 @@
 import { Sidebar } from "@/components/admin/Sidebar";
-import { ADMIN_NAV } from "@/components/admin/nav";
-import { can, ROLE_LABELS } from "@/server/auth/permissions";
+import { Topbar } from "@/components/admin/Topbar";
+import { navFor } from "@/components/admin/nav";
+import { getSalonInfo } from "@/server/queries/storefront";
+import { countNewInquiries } from "@/server/modules/inquiries/service";
+import { failedEmailCount } from "@/server/modules/outbox/monitor";
+import { can } from "@/server/auth/permissions";
 import { requireUser } from "@/server/auth/session";
 import { logout } from "@/server/actions/auth";
 import { ChangePasswordForm } from "@/components/admin/account/ChangePasswordForm";
@@ -14,13 +18,13 @@ export default async function AdminPanelLayout({ children }: { children: React.R
   // Түр нууц үгтэй: бусад хуудсыг харуулахгүй, эхлээд нууц үгээ солиулна (action-ууд ч хориотой — session.ts)
   if (user.mustChangePassword) {
     return (
-      <div className="grid min-h-dvh place-items-center bg-[#f7f7f6] px-4">
-        <div className="w-full max-w-md rounded-lg border border-line bg-white p-6">
-          <h1 className="text-[18px] font-medium">{t.admin.account.forcedTitle}</h1>
-          <p className="mb-5 mt-1 text-[13px] text-navy/60">{t.admin.account.forcedHint}</p>
+      <div className="grid min-h-dvh place-items-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-hairline bg-white p-8">
+          <h1 className="font-display text-[28px] font-semibold">{t.admin.account.forcedTitle}</h1>
+          <p className="mb-6 mt-1 text-[15px] text-ink-soft">{t.admin.account.forcedHint}</p>
           <ChangePasswordForm />
           <form action={logout} className="mt-4">
-            <button type="submit" className="text-[13px] underline underline-offset-4">
+            <button type="submit" className="min-h-11 text-[14px] underline underline-offset-4">
               {t.admin.logout}
             </button>
           </form>
@@ -28,14 +32,29 @@ export default async function AdminPanelLayout({ children }: { children: React.R
       </div>
     );
   }
-  const items = ADMIN_NAV.filter((i) => can(user.role, i.permission));
+  const entries = navFor((p) => can(user.role, p));
+  const [salon, newInquiries, failedEmails] = await Promise.all([
+    getSalonInfo(),
+    can(user.role, "inquiry:manage") ? countNewInquiries() : null,
+    can(user.role, "settings:write") ? failedEmailCount() : null,
+  ]);
+  // Bell: only what already exists — new "Салонд захиалах" requests and unsent e-mails (ADMIN)
+  const notices = [
+    ...(newInquiries !== null ? [{ key: "inquiries", label: t.admin.bell.inquiries(newInquiries), count: newInquiries, href: "/admin/inquiries?status=NEW" }] : []),
+    ...(failedEmails !== null ? [{ key: "emails", label: t.admin.bell.emails(failedEmails), count: failedEmails, href: "/admin/system" }] : []),
+  ];
+  const me = { name: user.name, id: user.id, role: t.admin.nav.roles[user.role] ?? user.role };
 
   return (
-    <div className="min-h-dvh bg-[#f7f7f6] lg:flex">
-      <Sidebar items={items} user={{ name: user.name, email: user.email, roleLabel: ROLE_LABELS[user.role] }} logout={logout} />
-      <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-        <div className="mx-auto max-w-[1200px]">{children}</div>
-      </main>
+    <div className="min-h-dvh lg:flex">
+      <Sidebar entries={entries} brand={salon.name || salon.siteName} user={me} logout={logout} />
+      {/* Full width to the right of the sidebar, 40px padding */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar entries={entries} user={me} notices={notices} />
+        <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8 lg:p-10">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

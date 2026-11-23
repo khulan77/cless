@@ -85,12 +85,12 @@ export function GalleryUploader({
               if (dragFrom.current !== null) move(dragFrom.current, i);
               dragFrom.current = null;
             }}
-            className="group rounded-md border border-line bg-white p-2"
+            className="group rounded-xl border border-hairline bg-white p-2"
           >
             <div className="relative aspect-square cursor-grab overflow-hidden rounded bg-card active:cursor-grabbing">
               <Thumb url={img.url} alt={img.alt} />
               {i === 0 && (
-                <span className="absolute left-1 top-1 rounded bg-navy px-1.5 text-[10px] text-white">{t.admin.upload.primary}</span>
+                <span className="absolute left-1 top-1 rounded bg-navy px-1.5 text-[13px] text-white">{t.admin.upload.primary}</span>
               )}
               <button
                 type="button"
@@ -106,13 +106,13 @@ export function GalleryUploader({
               onChange={(e) => onChange(value.map((v, j) => (j === i ? { ...v, alt: e.target.value } : v)))}
               placeholder={t.admin.upload.altPlaceholder}
               aria-label={t.admin.upload.altFor(i + 1)}
-              className="mt-2 h-7 w-full rounded border border-line px-2 text-[12px]"
+              className="mt-2 h-7 w-full rounded border border-hairline px-2 text-[13px]"
             />
             <div className="mt-1 flex justify-between">
-              <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} aria-label={t.admin.upload.moveLeft} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+              <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} aria-label={t.admin.upload.moveLeft} className="rounded p-1 hover:bg-ink/[0.05] disabled:opacity-30">
                 <ChevronLeft className="size-4" />
               </button>
-              <button type="button" onClick={() => move(i, i + 1)} disabled={i === value.length - 1} aria-label={t.admin.upload.moveRight} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+              <button type="button" onClick={() => move(i, i + 1)} disabled={i === value.length - 1} aria-label={t.admin.upload.moveRight} className="rounded p-1 hover:bg-ink/[0.05] disabled:opacity-30">
                 <ChevronRight className="size-4" />
               </button>
             </div>
@@ -121,7 +121,7 @@ export function GalleryUploader({
         <li>
           <label
             htmlFor={inputId}
-            className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-line text-[13px] text-navy/60 hover:bg-navy/[0.03]"
+            className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-hairline text-[13px] text-ink-soft hover:bg-canvas"
           >
             {busy ? <Loader2 className="size-5 animate-spin" /> : <ImagePlus className="size-5" strokeWidth={1.25} />}
             {busy ? t.admin.upload.uploading : t.admin.upload.addImage}
@@ -140,7 +140,7 @@ export function GalleryUploader({
           />
         </li>
       </ul>
-      <p className="mt-2 text-[12px] text-navy/50">{t.admin.upload.hint}</p>
+      <p className="mt-2 text-[13px] text-ink-soft">{t.admin.upload.hint}</p>
     </div>
   );
 }
@@ -161,11 +161,11 @@ export function SingleImageUploader({
   const [busy, setBusy] = useState(false);
   return (
     <div className="flex items-start gap-3">
-      <div className="relative size-24 shrink-0 overflow-hidden rounded-md border border-line bg-card">
+      <div className="relative size-24 shrink-0 overflow-hidden rounded-xl border border-hairline bg-card">
         {value ? <Thumb url={value} alt={label} /> : null}
       </div>
       <div className="flex flex-col gap-2">
-        <label htmlFor={inputId} className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-line px-2.5 text-[13px] hover:bg-navy/5">
+        <label htmlFor={inputId} className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-xl border border-hairline px-2.5 text-[13px] hover:bg-ink/[0.05]">
           {busy ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" strokeWidth={1.25} />}
           {value ? t.admin.upload.replace : t.admin.upload.upload}
         </label>
@@ -186,7 +186,7 @@ export function SingleImageUploader({
           }}
         />
         {value && (
-          <button type="button" onClick={() => onChange(null)} className="text-left text-[12px] text-red-700 hover:underline">
+          <button type="button" onClick={() => onChange(null)} className="text-left text-[13px] text-danger hover:underline">
             {t.admin.remove}
           </button>
         )}

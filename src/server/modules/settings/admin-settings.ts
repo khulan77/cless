@@ -11,7 +11,7 @@ import { db } from "@/server/db";
 import { UserError } from "@/server/errors";
 import { getCurrentBranch } from "@/server/modules/branches/service";
 import { qpayEnvConfigured } from "@/server/modules/payments/providers/qpay";
-import { emailSettingsSchema, posSettingsSchema } from "./schema";
+import { CHECKOUT_AVAILABLE, SHOP_MODES, emailSettingsSchema, posSettingsSchema, shopSettingsSchema, type ShopMode } from "./schema";
 
 const optionalHttps = (host: RegExp, message: string) =>
   z
@@ -33,10 +33,6 @@ export const salonSchema = z.object({
   address: z.string().trim().min(5, "Хаягаа оруулна уу.").max(300),
   phone: phoneSchema,
   email: z.string().trim().pipe(z.email("Имэйл хаяг буруу байна.")),
-  hours: z
-    .array(z.string().trim())
-    .transform((rows) => rows.filter(Boolean))
-    .pipe(z.array(z.string().max(80)).min(1, "Дор хаяж нэг мөр ажлын цаг оруулна уу.").max(7)),
   instagram: optionalHttps(/(^|\.)instagram\.com$/, "https://instagram.com/… хэлбэрээр."),
   facebook: optionalHttps(/(^|\.)facebook\.com$|(^|\.)fb\.com$/, "https://facebook.com/… хэлбэрээр."),
   mapsUrl: mapsUrlSchema,
@@ -60,7 +56,6 @@ export async function getSalonSettings() {
     address: footer.contact?.address || branch.address || "",
     phone: footer.contact?.phone || branch.phone || "",
     email: footer.contact?.email ?? "",
-    hours: footer.contact?.hours ?? [],
     instagram: social("instagram"),
     facebook: social("facebook"),
     mapsUrl: footer.contact?.mapsUrl ?? "",
@@ -79,7 +74,7 @@ export async function saveSalonSettings(raw: SalonInput, actorId: string) {
       .filter((s) => s.href);
     const next: FooterSetting = {
       ...footer,
-      contact: { ...footer.contact, address: d.address, phone: d.phone, email: d.email, hours: d.hours, mapsUrl: d.mapsUrl },
+      contact: { ...footer.contact, address: d.address, phone: d.phone, email: d.email, mapsUrl: d.mapsUrl },
       socials,
     };
     await tx.branch.update({ where: { id: branch.id }, data: { name: d.name, address: d.address, phone: d.phone } });
@@ -130,4 +125,16 @@ export async function saveQPayMode(mode: "manual" | "api", actorId: string) {
     throw new UserError("QPay API-ийн түлхүүрүүд (QPAY_*) серверт тохируулагдаагүй тул API горимыг сонгох боломжгүй.");
   }
   await saveJsonSetting("qpay", { mode: m }, actorId, "settings.qpay");
+}
+
+export async function getShopMode(): Promise<ShopMode> {
+  const row = await db.siteSetting.findUnique({ where: { key: "shop" } });
+  return shopSettingsSchema.parse(row?.value ?? {}).mode;
+}
+
+/** Дэлгүүрийн горим. CHECKOUT (онлайн төлбөр, хүргэлт) одоогоор бэлэн биш — сонгох боломжгүй. */
+export async function saveShopMode(mode: ShopMode, actorId: string) {
+  const m = z.enum(SHOP_MODES).parse(mode);
+  if (m === "CHECKOUT" && !CHECKOUT_AVAILABLE) throw new UserError("Онлайн худалдааны горим удахгүй нээгдэнэ.");
+  await saveJsonSetting("shop", { mode: m }, actorId, "settings.shop");
 }

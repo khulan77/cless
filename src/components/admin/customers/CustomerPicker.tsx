@@ -14,7 +14,18 @@ const s = t.admin.pos;
 export type PickedCustomer = { id: string; name: string; phone: string; email: string | null };
 
 /** Customer search + inline create — shared by POS and the appointment dialog */
-export function CustomerPicker({ customer, onChange, extra }: { customer: PickedCustomer | null; onChange: (c: PickedCustomer | null) => void; extra?: ReactNode }) {
+export function CustomerPicker({
+  customer,
+  onChange,
+  extra,
+  plain,
+}: {
+  customer: PickedCustomer | null;
+  onChange: (c: PickedCustomer | null) => void;
+  extra?: ReactNode;
+  /** No card frame (inside a dialog) */
+  plain?: boolean;
+}) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<PickedCustomer[]>([]);
   const [creating, setCreating] = useState(false);
@@ -34,16 +45,36 @@ export function CustomerPicker({ customer, onChange, extra }: { customer: Picked
     };
   }, [q]);
 
-  return (
-    <Card title={s.customer} actions={customer && <Button size="sm" variant="ghost" onClick={() => onChange(null)}>{s.change}</Button>}>
+  // Plain function (not a component) so the search input keeps focus between renders
+  const frame = (children: ReactNode) =>
+    plain ? (
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-[14px] font-medium text-ink">{s.customer}</h3>
+          {customer && (
+            <Button size="sm" variant="ghost" onClick={() => onChange(null)}>
+              {s.change}
+            </Button>
+          )}
+        </div>
+        {children}
+      </section>
+    ) : (
+      <Card title={s.customer} actions={customer && <Button size="sm" variant="ghost" onClick={() => onChange(null)}>{s.change}</Button>}>
+        {children}
+      </Card>
+    );
+
+  return frame(
+    <>
       {customer ? (
-        <div className="flex items-center gap-3">
-          <UserRound className="size-8 rounded-full bg-navy/5 p-1.5 text-navy/60" aria-hidden />
-          <div className="min-w-0 text-[14px]">
+        <div className="flex items-center gap-3 rounded-xl border border-hairline bg-canvas/60 px-4 py-3">
+          <UserRound className="size-9 rounded-full bg-white p-2 text-ink-soft" aria-hidden />
+          <div className="min-w-0 text-[15px]">
             <Link href={`/admin/customers/${customer.id}`} target="_blank" className="block truncate font-medium hover:underline">
               {customer.name}
             </Link>
-            <p className="text-[12px] text-navy/55">
+            <p className="text-[14px] text-ink-soft">
               {customer.phone}
               {customer.email ? ` · ${customer.email}` : ""}
             </p>
@@ -53,11 +84,11 @@ export function CustomerPicker({ customer, onChange, extra }: { customer: Picked
         <div className="space-y-2">
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.customerSearch} aria-label={s.customerSearch} />
           {q.trim().length >= 2 && results.length > 0 && (
-            <ul className="divide-y divide-line rounded-md border border-line">
+            <ul className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline">
               {results.map((c) => (
                 <li key={c.id}>
-                  <button type="button" className="w-full px-3 py-2 text-left text-[13.5px] hover:bg-navy/[0.03]" onClick={() => (onChange(c), setQ(""), setResults([]))}>
-                    {c.name} <span className="text-navy/50">· {c.phone}</span>
+                  <button type="button" className="min-h-11 w-full px-4 py-2.5 text-left text-[15px] hover:bg-canvas" onClick={() => (onChange(c), setQ(""), setResults([]))}>
+                    {c.name} <span className="text-ink-soft">· {c.phone}</span>
                   </button>
                 </li>
               ))}
@@ -65,7 +96,7 @@ export function CustomerPicker({ customer, onChange, extra }: { customer: Picked
           )}
           {extra}
           <div className="flex items-center justify-between">
-            <span className="text-[12px] text-navy/50">{s.walkIn}</span>
+            <span className="text-[13px] text-ink-soft">{s.walkIn}</span>
             <Button size="sm" variant="secondary" onClick={() => (setCreating(true), setForm((f) => ({ ...f, phone: /^\d/.test(q) ? q : f.phone, name: /^\d/.test(q) ? f.name : q })))}>
               <Plus className="size-3.5" /> {s.newCustomer}
             </Button>
@@ -102,6 +133,6 @@ export function CustomerPicker({ customer, onChange, extra }: { customer: Picked
           </Button>
         </form>
       </Dialog>
-    </Card>
+    </>,
   );
 }

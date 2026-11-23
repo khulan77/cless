@@ -54,17 +54,18 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader
+        eyebrow="Дэлгүүр"
         title="Сайтын контент"
         description="Нүүр хуудасны текст, зураг. Хадгалмагц сайтад шууд харагдана."
         actions={<Link href="/" target="_blank" className={btnClass("secondary")}>Сайт харах ↗</Link>}
       />
-      <nav className="mb-5 flex flex-wrap gap-1 border-b border-line" aria-label="Контентын хэсгүүд">
+      <nav className="mb-5 flex flex-wrap gap-1 border-b border-hairline" aria-label="Контентын хэсгүүд">
         {TABS.map((t) => (
           <Link
             key={t.key}
             href={`/admin/content?tab=${t.key}`}
             aria-current={t.key === tab ? "page" : undefined}
-            className={`-mb-px border-b-2 px-3 py-2 text-[13.5px] ${t.key === tab ? "border-navy font-medium" : "border-transparent text-navy/60 hover:text-navy"}`}
+            className={`-mb-px border-b-2 px-3 py-2 text-[14px] ${t.key === tab ? "border-navy font-medium" : "border-transparent text-ink-soft hover:text-navy"}`}
           >
             {t.label}
           </Link>

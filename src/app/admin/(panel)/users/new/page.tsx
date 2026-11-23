@@ -10,8 +10,10 @@ export default async function NewUserPage() {
   await requirePagePermission("user:write");
   return (
     <>
-      <PageHeader title="Хэрэглэгч нэмэх" />
-      <CreateUserForm />
+      <PageHeader eyebrow="Хэрэглэгч ба эрх" title="Хэрэглэгч нэмэх" description="Түр нууц үг өгнө — анх нэвтрэхэд өөрөө солино." />
+      <div className="max-w-[760px]">
+        <CreateUserForm />
+      </div>
     </>
   );
 }

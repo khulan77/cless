@@ -53,7 +53,7 @@ export function CreateUserForm() {
             <Input id="password" type="password" autoComplete="new-password" value={form.password} onChange={(e) => set("password", e.target.value)} />
           </Field>
         </div>
-        <div className="mt-6 flex justify-end gap-2 border-t border-line pt-4">
+        <div className="mt-6 flex justify-end gap-2 border-t border-hairline pt-4">
           <Button variant="secondary" onClick={() => router.push("/admin/users")}>{t.admin.cancel}</Button>
           <Button type="submit" disabled={pending}>{pending ? t.admin.saving : t.admin.users.addUser}</Button>
         </div>
@@ -91,10 +91,10 @@ export function EditUserForm({ initial, email, isSelf }: { initial: UpdateUserIn
           </Field>
           <div className="md:col-span-2">
             <Checkbox label={t.admin.users.activeLogin} checked={form.isActive} disabled={isSelf} onChange={(e) => set("isActive", e.target.checked)} />
-            {fieldErrors.isActive && <p className="mt-1 text-[12px] text-red-600">{fieldErrors.isActive[0]}</p>}
+            {fieldErrors.isActive && <p className="mt-1 text-[13px] text-danger">{fieldErrors.isActive[0]}</p>}
           </div>
         </div>
-        <div className="mt-6 flex justify-end border-t border-line pt-4">
+        <div className="mt-6 flex justify-end border-t border-hairline pt-4">
           <Button type="submit" disabled={pending}>{pending ? t.admin.saving : t.admin.save}</Button>
         </div>
       </Card>

@@ -1,20 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MoneyInput } from "@/components/admin/MoneyInput";
 import { useServerAction } from "@/components/admin/use-action";
 import { Button, Field, Input, Textarea } from "@/components/admin/ui";
 import { t } from "@/i18n";
-import { saveEmailSettingsAction, savePosSettingsAction, saveQPayModeAction, saveSalonAction } from "@/server/actions/settings";
+import { saveEmailSettingsAction, savePosSettingsAction, saveQPayModeAction, saveSalonAction, saveShopModeAction } from "@/server/actions/settings";
 
 const s = t.admin.settingsPage;
 
-export type SalonValue = { name: string; address: string; phone: string; email: string; hours: string[]; instagram: string; facebook: string; mapsUrl: string };
+export type SalonValue = { name: string; address: string; phone: string; email: string; instagram: string; facebook: string; mapsUrl: string };
 
 export function SalonForm({ initial }: { initial: SalonValue }) {
   const router = useRouter();
-  const [v, setV] = useState({ ...initial, hoursText: initial.hours.join("\n") });
+  const [v, setV] = useState(initial);
   const a = useServerAction(saveSalonAction);
   const fe = a.fieldErrors;
   return (
@@ -22,8 +23,7 @@ export function SalonForm({ initial }: { initial: SalonValue }) {
       className="grid gap-4 md:grid-cols-2"
       onSubmit={(e) => {
         e.preventDefault();
-        const { hoursText, ...rest } = v;
-        void a.run({ ...rest, hours: hoursText.split("\n") }, { onSuccess: () => router.refresh() });
+        void a.run(v, { onSuccess: () => router.refresh() });
       }}
     >
       <Field label={s.name} htmlFor="st-name" hint={s.nameHint} error={fe.name}>
@@ -47,9 +47,12 @@ export function SalonForm({ initial }: { initial: SalonValue }) {
       <Field label={s.facebook} htmlFor="st-fb" error={fe.facebook}>
         <Input id="st-fb" value={v.facebook} onChange={(e) => setV({ ...v, facebook: e.target.value })} placeholder="https://facebook.com/…" />
       </Field>
-      <Field label={s.hours} htmlFor="st-hours" hint={s.hoursHint} error={fe.hours} className="md:col-span-2">
-        <Textarea id="st-hours" className="min-h-20" value={v.hoursText} onChange={(e) => setV({ ...v, hoursText: e.target.value })} />
-      </Field>
+      <p className="text-[13px] text-ink-soft md:col-span-2">
+        {s.hoursNote}{" "}
+        <Link href="/admin/staff-schedules" className="underline">
+          {s.hoursLink}
+        </Link>
+      </p>
       <div className="md:col-span-2">
         <Button type="submit" disabled={a.pending}>
           {s.save}
@@ -134,16 +137,50 @@ export function QPayModeForm({ mode, apiAvailable }: { mode: "manual" | "api"; a
       }}
     >
       <fieldset className="space-y-2">
-        <legend className="mb-1 text-[13px] font-medium text-navy/80">{s.qpayMode}</legend>
+        <legend className="mb-1 text-[13px] font-medium text-ink">{s.qpayMode}</legend>
         {(["manual", "api"] as const).map((m) => (
-          <label key={m} className={`flex items-start gap-2 text-[14px] ${m === "api" && !apiAvailable ? "text-navy/45" : ""}`}>
+          <label key={m} className={`flex items-start gap-2 text-[14px] ${m === "api" && !apiAvailable ? "text-ink-faint" : ""}`}>
             <input type="radio" name="qpay-mode" value={m} checked={v === m} disabled={m === "api" && !apiAvailable} onChange={() => setV(m)} className="mt-1 accent-navy" />
             <span>{m === "manual" ? s.qpayManual : s.qpayApi}</span>
           </label>
         ))}
-        {!apiAvailable && <p className="text-[12px] text-amber-800">{s.qpayApiDisabled}</p>}
+        {!apiAvailable && <p className="text-[13px] text-warn">{s.qpayApiDisabled}</p>}
       </fieldset>
       <Button type="submit" disabled={a.pending || v === mode}>
+        {s.save}
+      </Button>
+    </form>
+  );
+}
+
+export function ShopModeForm({ mode, checkoutAvailable }: { mode: "CATALOG" | "CHECKOUT"; checkoutAvailable: boolean }) {
+  const router = useRouter();
+  const [v, setV] = useState(mode);
+  const a = useServerAction(saveShopModeAction);
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void a.run(v, { onSuccess: () => router.refresh() });
+      }}
+    >
+      <fieldset className="space-y-2">
+        <legend className="mb-1 text-[13px] font-medium text-ink">{s.shopMode}</legend>
+        {(["CATALOG", "CHECKOUT"] as const).map((m) => {
+          const disabled = m === "CHECKOUT" && !checkoutAvailable;
+          return (
+            <label key={m} className={`flex items-start gap-2 text-[14px] ${disabled ? "text-ink-faint" : ""}`}>
+              <input type="radio" name="shop-mode" value={m} checked={v === m} disabled={disabled} onChange={() => setV(m)} className="mt-1 accent-navy" />
+              <span>
+                {s.shopModes[m]}
+                {disabled && <span className="ml-2 rounded bg-ink/[0.07] px-1.5 py-0.5 text-[13px]">{s.soon}</span>}
+              </span>
+            </label>
+          );
+        })}
+      </fieldset>
+      <Button type="submit" disabled={a.pending}>
         {s.save}
       </Button>
     </form>

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { ServiceForm } from "@/components/admin/services/ServiceForm";
 import { PageHeader } from "@/components/admin/ui";
 import { db } from "@/server/db";
+import { serviceCategories } from "@/server/modules/services/categories";
 import { requirePagePermission } from "@/server/auth/session";
 
 export const metadata = { title: "Үйлчилгээ засах" };
@@ -11,7 +12,7 @@ export const instant = false;
 export default async function EditServicePage({ params }: { params: Promise<{ id: string }> }) {
   await requirePagePermission("service:write");
   const { id } = await params;
-  const service = await db.service.findUnique({
+  const [service, categories] = await Promise.all([db.service.findUnique({
     where: { id },
     include: {
       consumables: {
@@ -19,13 +20,14 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
         include: { variant: { select: { sku: true, size: true, product: { select: { name: true } } } } },
       },
     },
-  });
+  }), serviceCategories()]);
   if (!service) notFound();
 
   return (
     <>
       <PageHeader title={service.name} description={service.isActive ? "Идэвхтэй" : "Архив"} />
       <ServiceForm
+        categories={categories}
         variantLabels={Object.fromEntries(
           service.consumables.map((c) => [c.variantId, `${c.variant.product.name} · ${c.variant.size} (${c.variant.sku})`]),
         )}
@@ -38,6 +40,12 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
           bufferMin: service.bufferMin,
           requiresRoom: service.requiresRoom,
           bookable: service.bookable,
+          isPublic: service.isPublic,
+          category: service.category ?? "",
+          shortDescription: service.shortDescription ?? "",
+          suitableFor: service.suitableFor ?? "",
+          results: service.results ?? "",
+          priceFrom: service.priceFrom,
           price: service.price,
           costNote: service.costNote ?? "",
           image: service.image,

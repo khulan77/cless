@@ -43,9 +43,9 @@ export function ProductCard({ product, size = "md", priority, step, quickView = 
       {/* Name/benefits flex; price and cart button stick to the card bottom */}
       <div className="flex flex-1 flex-col">
         <Link href={href} className="mt-4 block">
-          <h3 className={`text-product ${large ? "md:text-[21px]" : ""}`}>{product.name}</h3>
+          <h3 className={`text-product line-clamp-2 break-words ${large ? "md:text-[21px]" : ""}`}>{product.name}</h3>
         </Link>
-        {product.benefits.length > 0 && <p className="text-micro mt-1.5 text-muted">{product.benefits.join(" / ")}</p>}
+        {product.benefits.length > 0 && <p className="text-micro mt-1.5 line-clamp-2 text-muted">{product.benefits.join(" / ")}</p>}
         {isBundle && product.bundleSummary && (
           <p className="mt-2 text-[12px] leading-snug text-muted">{product.bundleSummary}</p>
         )}

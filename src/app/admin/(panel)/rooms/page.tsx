@@ -11,8 +11,10 @@ export default async function RoomsPage() {
   const rooms = await db.room.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], select: { id: true, name: true, isActive: true, sortOrder: true } });
   return (
     <>
-      <PageHeader title="Эмчилгээний өрөө" />
-      <RoomsEditor rooms={rooms} />
+      <PageHeader eyebrow="СПА" title="Эмчилгээний өрөө" description="Өрөө шаарддаг үйлчилгээний цагийг давхцуулахгүй." />
+      <div className="max-w-[760px]">
+        <RoomsEditor rooms={rooms} />
+      </div>
     </>
   );
 }

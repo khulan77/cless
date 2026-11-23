@@ -75,7 +75,7 @@ export function FreeSlotSearch({
 
       {result && (
         <div className="mt-4 max-h-[55dvh] space-y-3 overflow-y-auto">
-          {result.days.every((d) => d.slots.length === 0) && <p className="text-[14px] text-navy/60">{c.free.none}</p>}
+          {result.days.every((d) => d.slots.length === 0) && <p className="text-[14px] text-ink-soft">{c.free.none}</p>}
           {result.days
             .filter((d) => d.slots.length > 0)
             .map((d) => {
@@ -90,10 +90,10 @@ export function FreeSlotSearch({
                         key={`${s.startsAt}|${s.staffId}`}
                         type="button"
                         onClick={() => onPick({ serviceId, staffId: s.staffId, date: d.date, time: formatTime(new Date(s.startsAt)) })}
-                        className="rounded-md border border-line bg-white px-2.5 py-1 text-[13px] tabular-nums hover:border-navy/40"
+                        className="rounded-xl border border-hairline bg-white px-2.5 py-1 text-[13px] tabular-nums hover:border-navy/40"
                       >
                         {formatTime(new Date(s.startsAt))}
-                        {!staffId && <span className="text-navy/45"> · {name(s.staffId)}</span>}
+                        {!staffId && <span className="text-ink-faint"> · {name(s.staffId)}</span>}
                       </button>
                     ))}
                     {all.length > shown.length && (

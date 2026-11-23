@@ -25,7 +25,7 @@ export async function problemJobs(now = new Date()) {
 
 /** Хянах самбар (MANAGER-т ч): имэйл илгээж чадаагүй ажлын тоо */
 export async function failedEmailCount() {
-  return db.outboxJob.count({ where: { status: "FAILED", type: { in: ["VISIT_EMAIL", "APPT_EMAIL", "APPT_REMINDER", "EMAIL"] as JobType[] } } });
+  return db.outboxJob.count({ where: { status: "FAILED", type: { in: ["VISIT_EMAIL", "APPT_EMAIL", "APPT_REMINDER", "EMAIL", "INQUIRY_EMAIL"] as JobType[] } } });
 }
 
 /** Амжилтгүй / гацсан ажлыг дахин дараалалд оруулна (attempts 0) */

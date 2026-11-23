@@ -24,7 +24,7 @@ export function Pagination({ page, pageSize, total, basePath, params }: Props) {
   const to = Math.min(page * pageSize, total);
 
   return (
-    <nav aria-label={t.admin.pagination.label} className="mt-4 flex items-center justify-between text-[13px] text-navy/60">
+    <nav aria-label={t.admin.pagination.label} className="mt-5 flex items-center justify-between text-[14px] text-ink-soft">
       <p>
         {t.admin.pagination.range(from, to, total)}
       </p>

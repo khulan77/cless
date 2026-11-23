@@ -45,7 +45,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     <>
       <PageHeader
         title={product.name}
-        description={product.isPublished ? "Нийтлэгдсэн" : "Ноорог / архив"}
+        eyebrow="Бүтээгдэхүүн"
+        description={product.isPublished ? "Сайтад харагдаж байна" : "Нийтлээгүй — сайтад харагдахгүй"}
         actions={
           product.isPublished ? (
             <Link href={`/products/${product.slug}`} target="_blank" className={btnClass("secondary")}>
@@ -103,14 +104,14 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
       <Card title="Үнийн түүх" description="Сүүлийн 10 өөрчлөлт" className="mt-5 lg:mr-[340px]">
         {history.length === 0 ? (
-          <p className="text-[14px] text-navy/60">Өөрчлөлт алга.</p>
+          <p className="text-[14px] text-ink-soft">Өөрчлөлт алга.</p>
         ) : (
           <div className="-m-5 overflow-x-auto">
             <table className="w-full min-w-[600px] text-[13px]">
               <thead>
                 <tr>
                   <th className={thClass}>Огноо</th>
-                  <th className={thClass}>SKU</th>
+                  <th className={thClass}>Барааны код</th>
                   <th className={`${thClass} text-right`}>Үнэ</th>
                   <th className={`${thClass} text-right`}>Өртөг</th>
                   <th className={thClass}>Хэн</th>
@@ -120,7 +121,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
                 {history.map((h) => (
                   <tr key={h.id}>
                     <td className={tdClass}>{dt.format(h.createdAt)}</td>
-                    <td className={`${tdClass} font-mono text-[12px]`}>{h.variant.sku}</td>
+                    <td className={`${tdClass} font-mono text-[13px]`}>{h.variant.sku}</td>
                     <td className={`${tdClass} text-right tabular-nums`}>{formatMNT(h.oldPrice)} → {formatMNT(h.newPrice)}</td>
                     <td className={`${tdClass} text-right tabular-nums`}>{formatMNT(h.oldCost)} → {formatMNT(h.newCost)}</td>
                     <td className={tdClass}>{h.changedBy?.name ?? "—"}</td>

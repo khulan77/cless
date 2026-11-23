@@ -230,7 +230,7 @@ export async function setProductPublished(input: { id: string; isPublished: bool
       });
     });
     refreshStorefront();
-  }, input.isPublished ? "Нийтэллээ." : "Архивлалаа (ноорог болголоо).");
+  }, input.isPublished ? "Нийтэллээ." : "Сайтаас нууллаа.");
 }
 
 function snapshot(p: {

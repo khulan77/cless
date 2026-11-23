@@ -145,9 +145,9 @@ export function CollectionForm({ initial, parents, products, blockers = 0 }: Pro
 
           <Card title={F.productOrder} description={F.productOrderHint}>
             {order.length === 0 ? (
-              <p className="text-[14px] text-navy/60">{F.noProducts}</p>
+              <p className="text-[14px] text-ink-soft">{F.noProducts}</p>
             ) : (
-              <ol className="divide-y divide-line/60 rounded-md border border-line">
+              <ol className="divide-y divide-hairline rounded-xl border border-hairline">
                 {order.map((id, i) => (
                   <li
                     key={id}
@@ -158,15 +158,15 @@ export function CollectionForm({ initial, parents, products, blockers = 0 }: Pro
                       if (dragFrom.current !== null) move(dragFrom.current, i);
                       dragFrom.current = null;
                     }}
-                    className="flex cursor-grab items-center gap-2 bg-white px-3 py-2 text-[13.5px] active:cursor-grabbing"
+                    className="flex cursor-grab items-center gap-2 bg-white px-3 py-2 text-[14px] active:cursor-grabbing"
                   >
                     <GripVertical className="size-4 text-navy/30" aria-hidden />
-                    <span className="w-6 text-[12px] tabular-nums text-navy/45">{i + 1}.</span>
+                    <span className="w-6 text-[13px] tabular-nums text-ink-faint">{i + 1}.</span>
                     <span className="flex-1">{names.get(id) ?? id}</span>
-                    <button type="button" aria-label={t.admin.productForm.moveUp} disabled={i === 0} onClick={() => move(i, i - 1)} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+                    <button type="button" aria-label={t.admin.productForm.moveUp} disabled={i === 0} onClick={() => move(i, i - 1)} className="rounded p-1 hover:bg-ink/[0.05] disabled:opacity-30">
                       <ArrowUp className="size-4" />
                     </button>
-                    <button type="button" aria-label={t.admin.productForm.moveDown} disabled={i === order.length - 1} onClick={() => move(i, i + 1)} className="rounded p-1 hover:bg-navy/5 disabled:opacity-30">
+                    <button type="button" aria-label={t.admin.productForm.moveDown} disabled={i === order.length - 1} onClick={() => move(i, i + 1)} className="rounded p-1 hover:bg-ink/[0.05] disabled:opacity-30">
                       <ArrowDown className="size-4" />
                     </button>
                   </li>
@@ -186,10 +186,10 @@ export function CollectionForm({ initial, parents, products, blockers = 0 }: Pro
           >
             <div className="space-y-4">
               {form.tiles.map((tile, i) => (
-                <fieldset key={tile.id ?? `new-${i}`} className="grid gap-3 rounded-md border border-line p-4 md:grid-cols-[auto_1fr]">
+                <fieldset key={tile.id ?? `new-${i}`} className="grid gap-3 rounded-xl border border-hairline p-4 md:grid-cols-[auto_1fr]">
                   <div>
                     <SingleImageUploader value={tile.image || null} onChange={(v) => setTile(i, { image: v ?? "" })} folder="collections" />
-                    {err(`tiles.${i}.image`) && <p className="mt-1 text-[12px] text-red-600">{err(`tiles.${i}.image`)![0]}</p>}
+                    {err(`tiles.${i}.image`) && <p className="mt-1 text-[13px] text-danger">{err(`tiles.${i}.image`)![0]}</p>}
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field label={F.tilePosition} htmlFor={`tile-${i}-pos`} error={err(`tiles.${i}.position`)}>
@@ -238,7 +238,7 @@ export function CollectionForm({ initial, parents, products, blockers = 0 }: Pro
           <Card title={F.tile}>
             <SingleImageUploader value={form.tileImage} onChange={(v) => set("tileImage", v)} folder="collections" label={F.tile} />
           </Card>
-          <div className="flex gap-2 rounded-lg border border-line bg-white p-3">
+          <div className="flex gap-2 rounded-2xl border border-hairline bg-white p-3">
             <Button type="submit" disabled={save.pending} className="flex-1">
               {save.pending ? t.admin.saving : t.admin.save}
             </Button>
