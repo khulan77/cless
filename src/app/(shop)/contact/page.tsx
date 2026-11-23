@@ -4,6 +4,8 @@ import { Container } from "@/components/ui/Container";
 import { t } from "@/i18n";
 import { BookingSheetButton } from "@/components/salon/BookingSheet";
 import { getSalonInfo } from "@/server/queries/storefront";
+import { getSetting } from "@/server/queries/settings";
+import { isMapEmbedUrl } from "@/lib/validation/content-pages";
 
 export const metadata = { title: t.pages.contact.title };
 
@@ -18,6 +20,9 @@ export default async function ContactPage() {
     salon.instagram ? { network: "instagram" as const, href: salon.instagram, label: "Instagram" } : null,
     salon.facebook ? { network: "facebook" as const, href: salon.facebook, label: "Facebook" } : null,
   ].filter((x) => x !== null);
+  // Газрын зураг: SiteSetting "contactPage" (Админ → Сайтын контент → Холбоо барих хуудас)
+  const contactPage = await getSetting("contactPage");
+  const mapEmbedUrl = contactPage?.mapEmbedUrl && isMapEmbedUrl(contactPage.mapEmbedUrl) ? contactPage.mapEmbedUrl : null;
 
   const rows = [
     contact.address && {
@@ -87,6 +92,18 @@ export default async function ContactPage() {
         ))}
       </dl>
 
+      {mapEmbedUrl && (
+        <div className="mx-auto mt-12 max-w-[880px]">
+          <iframe
+            src={mapEmbedUrl}
+            title={`${C.address}: ${salon.address}`}
+            className="aspect-[4/3] w-full border-0 sm:aspect-[16/9]"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
+        </div>
+      )}
       <div className="mt-10 text-center">
         <BookingSheetButton salon={salon} />
       </div>

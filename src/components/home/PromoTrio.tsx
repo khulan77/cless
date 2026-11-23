@@ -19,7 +19,7 @@ export function PromoTrio({ promo }: { promo: PromoTrioSetting }) {
               </div>
             )}
             <div className={`flex flex-1 flex-col items-center px-4 text-center ${src ? "pt-6" : "justify-center"}`}>
-              <h3 className="text-product">{item.title}</h3>
+              <h2 className="text-product">{item.title}</h2>
               <p className="mt-2 max-w-[34ch] text-[14px] text-muted">{item.text}</p>
               <PillLink href={item.cta.href} className="mt-5">
                 {item.cta.label}

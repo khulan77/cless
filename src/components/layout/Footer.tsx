@@ -45,13 +45,13 @@ export function Footer({
       <Container className="pb-8 pt-16 md:pt-20">
         <div className="grid gap-12 lg:grid-cols-[1.1fr_2fr]">
           <div className="max-w-sm">
-            <Link href="/" aria-label={t.layout.homeLink(siteName)} className="inline-flex flex-col font-serif leading-none">
+            <Link href="/" aria-label={t.layout.homeLink(wordmark.join(" "))} className="inline-flex flex-col font-serif leading-none">
               {wordmark.map((line, i) => (
                 <span
                   key={line}
                   className={i === wordmark.length - 1 ? "mt-1 text-[9px] tracking-[0.5em]" : "text-[18px] tracking-[0.32em]"}
                 >
-                  {line}
+                  {line}{" "}
                 </span>
               ))}
             </Link>

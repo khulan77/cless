@@ -9,7 +9,7 @@
   --color-card: #efeeec;
   --color-promo: #eeebe6;
   --color-line: rgb(14 34 67 / 0.2);
-  --color-muted: rgb(14 34 67 / 0.55);
+  --color-muted: rgb(14 34 67 / 0.64); /* ≥4.5:1 цагаан/#eeebe6/#efeeec дээр (WCAG AA) */
 
   --font-sans: var(--font-brand), ui-sans-serif, system-ui, sans-serif;
 
@@ -63,15 +63,15 @@
   background-color: #fff;
   color: var(--color-navy);
 }
-body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) {
+body:has([data-header-overlay]:not([style*="none"])) .site-header:not([data-scrolled="true"]) {
   border-color: transparent;
   background-color: transparent;
   color: #fff;
 }
-body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) :focus-visible {
+body:has([data-header-overlay]:not([style*="none"])) .site-header:not([data-scrolled="true"]) :focus-visible {
   outline-color: #fff;
 }
-body:has([data-header-overlay]) .site-header:not([data-scrolled="true"]) .header-cart-count {
+body:has([data-header-overlay]:not([style*="none"])) .site-header:not([data-scrolled="true"]) .header-cart-count {
   background-color: #fff;
   color: var(--color-navy);
 }

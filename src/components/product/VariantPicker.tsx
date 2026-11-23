@@ -43,7 +43,7 @@ export function SizeOptions({
           <label
             key={v.id}
             title={soldOut ? t.product.variantSoldOut : undefined}
-            className={`text-micro relative inline-flex items-center gap-1.5 ${soldOut ? "cursor-not-allowed text-muted" : "cursor-pointer"} ${
+            className={`text-micro relative inline-flex items-center gap-1.5 before:absolute before:inset-x-0 before:content-[''] ${pill ? "before:-inset-y-1.5" : "before:-inset-y-4"} ${soldOut ? "cursor-not-allowed text-muted" : "cursor-pointer"} ${
               pill
                 ? `h-9 rounded-full border px-4 ${checked ? "border-navy" : "border-line"} ${soldOut ? "size-soldout" : ""}`
                 : ""
@@ -67,7 +67,7 @@ export function SizeOptions({
                 <span className="size-2 rounded-full" />
               </span>
             )}
-            <span className={soldOut && !pill ? "size-soldout px-0.5" : ""}>{v.size}</span>
+            <span className={`relative ${soldOut && !pill ? "size-soldout px-0.5" : ""}`}>{v.size}</span>
             {soldOut && (
               <span id={`${name}-${v.id}-so`} className="sr-only">
                 {t.product.variantSoldOut}

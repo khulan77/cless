@@ -1,0 +1,14 @@
+# CLÉSS өдөр тутмын backup (DB + зураг → ./backups → S3/B2).
+# Суулгах: deploy/README.md §9.2
+[Unit]
+Description=CLÉSS backup (pg_dump + uploads → offsite)
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+WorkingDirectory=/opt/cless
+# Алдаа гарвал (DB, гадагш хуулах) non-zero → `systemctl status`, journal-д харагдана
+ExecStart=/usr/bin/docker compose --env-file .env.production -f docker-compose.prod.yml exec -T backup /scripts/backup.sh
+TimeoutStartSec=1h

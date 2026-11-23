@@ -4,7 +4,7 @@ import type { ComponentPropsWithoutRef } from "react";
 type Tone = "navy" | "white";
 
 const base =
-  "inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-[14px] leading-none tracking-[0.2px] transition-colors duration-200";
+  "relative inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-[14px] leading-none tracking-[0.2px] transition-colors duration-200 before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']"; // дарах талбай ≥44px
 const tones: Record<Tone, string> = {
   navy: "border-navy text-navy hover:bg-navy hover:text-white",
   white: "on-dark border-white text-white hover:bg-white hover:text-navy",
@@ -35,5 +35,5 @@ export function PillButton({
 
 /** Underlined text link */
 export function TextLink({ className = "", ...props }: ComponentPropsWithoutRef<typeof Link>) {
-  return <Link className={`link-underline text-[14px] ${className}`} {...props} />;
+  return <Link className={`link-underline relative text-[14px] before:absolute before:-inset-y-3 before:inset-x-0 before:content-[''] ${className}`} {...props} />;
 }

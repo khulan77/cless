@@ -83,6 +83,19 @@ export type FooterSetting = {
   copyright: string;
 };
 
+/** /about — гарчиг, удиртгал, 2–3 хэсэг (гарчиг + текст + зураг) */
+export type AboutPageSetting = {
+  title: string;
+  intro: string;
+  sections: { title: string; text: string; image: Image }[];
+};
+
+/** /privacy — энгийн markdown (SafeMarkdown-оор render, HTML зөвшөөрөхгүй) */
+export type PrivacyPageSetting = { title: string; body: string };
+
+/** /contact — холбоо барих мэдээлэл нь footer-оос; энд зөвхөн нэмэлт */
+export type ContactPageSetting = { mapEmbedUrl: string };
+
 export type SiteSettings = {
   announcement: AnnouncementSetting;
   brand: BrandSetting;
@@ -99,6 +112,10 @@ export type SiteSettings = {
   benefits: BenefitsSetting;
   productBenefits: ProductBenefitsSetting;
   footer: FooterSetting;
+  // Контент хуудсууд — заавал биш (seed-д байхгүй; байхгүй бол placeholder харагдана)
+  aboutPage?: AboutPageSetting;
+  privacyPage?: PrivacyPageSetting;
+  contactPage?: ContactPageSetting;
 };
 
 export type SiteSettingKey = keyof SiteSettings;

@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default function CollectionPage(props: Props) {
   return (
-    <Suspense fallback={<div className="min-h-[70vh]" />}>
+    <Suspense fallback={<div className="min-h-svh" />}>
       <CollectionView {...props} />
     </Suspense>
   );
@@ -71,7 +71,9 @@ async function CollectionView({ params, searchParams }: Props) {
             <PillLink href="/collections">{t.common.viewAllProducts}</PillLink>
           </div>
         ) : (
-          <section aria-label={t.collection.productsHeading(c.name)} className="pt-6">
+          <section aria-labelledby="collection-products" className="pt-6">
+            {/* h1 → h3 (картын нэр) үсрэхгүйн тулд */}
+            <h2 id="collection-products" className="sr-only">{t.collection.productsHeading(c.name)}</h2>
             {/* Page 1 is part of the static shell; ?page=n streams in the first n pages */}
             <Suspense fallback={<CollectionGrid c={c} pages={1} />}>
               <GridFromSearch c={c} searchParams={searchParams} />
@@ -121,7 +123,7 @@ function CollectionGrid({ c, pages }: { c: CollectionPageData; pages: number }) 
               <ProductCard
                 product={c.products[cell.index]!}
                 step={stepped ? cell.index + 1 : undefined}
-                priority={cell.index < 4}
+                priority={cell.index < 2}
               />
             </li>
           ),

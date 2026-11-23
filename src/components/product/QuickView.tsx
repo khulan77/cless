@@ -76,7 +76,7 @@ export function QuickView({ product, href }: { product: ProductCardData; href: s
               {product.benefits.length > 0 && <p className="text-micro mt-3 text-muted">{product.benefits.join(" / ")}</p>}
               {product.bundleSummary && <p className="mt-3 text-[13px] text-muted">{product.bundleSummary}</p>}
               <VariantPicker variants={product.variants} hideSizes={product.kind === "BUNDLE"} large />
-              <Link href={href} className="link-underline mt-6 self-start text-[14px]">
+              <Link href={href} className="link-underline mt-6 self-start text-[14px] relative before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']">
                 {t.product.viewDetails} →
               </Link>
             </div>

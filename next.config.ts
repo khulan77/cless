@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Docker image-д л (Dockerfile: NEXT_OUTPUT=standalone). Локал `next start` (E2E) standalone-той ажилладаггүй.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   // Dev-ийг http://127.0.0.1:20267-оор нээдэг (localhost-ийн бусад төслийн cookie-оос
   // болж 431 гардаг). Үүнгүй бол /_next/hmr, chunk-ууд блоклогдож hydration болохгүй.
   allowedDevOrigins: ["127.0.0.1"],

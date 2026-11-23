@@ -1,41 +1,145 @@
-# Production: app (Next) + worker (outbox, QPay шалгалт, ноорог цэвэрлэх).
-# Worker нь Vercel serverless дээр ажиллахгүй — урт хугацааны тусдаа процесс.
-#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
-# Migration: docker compose -f docker-compose.prod.yml run --rm app bun run db:deploy
+# CLÉSS production stack. Бүх команд:
+#   docker compose --env-file .env.production -f docker-compose.prod.yml <команд>
+# (deploy/README.md-д `dc` alias-ыг үз)
+#
+# Локал Postgres (`db`) нь `localdb` profile-д. Гадны DB (Supabase г.м.) ашиглахад
+# .env.production-оос COMPOSE_PROFILES=localdb-г хасаад DATABASE_URL-ийг солино.
+
+name: cless
+
 x-app-env: &app-env
-  DATABASE_URL: ${DATABASE_URL}
-  DIRECT_URL: ${DIRECT_URL}
-  AUTH_SECRET: ${AUTH_SECRET}
-  AUTH_TRUST_HOST: "true"
-  NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
-  QPAY_BASE_URL: ${QPAY_BASE_URL:-}
-  QPAY_USERNAME: ${QPAY_USERNAME:-}
-  QPAY_PASSWORD: ${QPAY_PASSWORD:-}
-  QPAY_INVOICE_CODE: ${QPAY_INVOICE_CODE:-}
-  QPAY_INVOICE_RECEIVER_CODE: ${QPAY_INVOICE_RECEIVER_CODE:-}
-  QPAY_CALLBACK_SECRET: ${QPAY_CALLBACK_SECRET:-}
-  RESEND_API_KEY: ${RESEND_API_KEY:-}
-  EMAIL_FROM: ${EMAIL_FROM:-}
+  env_file: .env.production
+  environment:
+    NODE_ENV: production
+    TZ: Asia/Ulaanbaatar
+    AUTH_TRUST_HOST: "true"
 
 services:
   app:
+    <<: *app-env
+    image: cless-app:${IMAGE_TAG:-latest}
     build:
       context: .
+      target: runner
       args:
-        DATABASE_URL: ${DATABASE_URL}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
-    image: cless-app
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL тохируулна уу}
+      # Build үед prerender хийхэд DB хэрэгтэй. Build-ийг СЕРВЕР ДЭЭР хийнэ: BuildKit нь compose-ийн
+      # дотоод сүлжээг дэмждэггүй тул host сүлжээгээр 127.0.0.1:${DB_HOST_PORT}-д (db-ийн publish) хүрнэ.
+      # URL нь BuildKit secret — image layer, `docker history`-д үлдэхгүй.
+      network: host
+      secrets: [database_url]
     restart: unless-stopped
-    environment: *app-env
-    ports:
-      - "20267:20267"
+    depends_on:
+      db: { condition: service_healthy, required: false }
+    volumes:
+      - uploads:/app/public/uploads
+      - emails:/app/.emails
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health?scope=app').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   worker:
-    image: cless-app
-    depends_on:
-      - app
-    command: ["bun", "run", "worker"]
+    <<: *app-env
+    image: cless-app:${IMAGE_TAG:-latest}
+    # package.json-ийн `bun run worker`-тэй ижил код, image дотор bundle хийгдсэн (scripts/build-worker.ts)
+    command: ["bun", "worker/index.js"]
     restart: unless-stopped
-    environment: *app-env
-    # Нэг л worker хангалттай; олон ажиллуулсан ч FOR UPDATE SKIP LOCKED давхардуулахгүй
+    depends_on:
+      app: { condition: service_started }
+      db: { condition: service_healthy, required: false }
+    volumes:
+      - emails:/app/.emails
+    networks: [internal]
     stop_grace_period: 15s
+
+  # migrate deploy, create-admin: `dc run --rm tools …`
+  tools:
+    <<: *app-env
+    image: cless-tools:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      target: tools
+    profiles: [tools]
+    depends_on:
+      db: { condition: service_healthy, required: false }
+    networks: [internal]
+
+  db:
+    image: postgres:16
+    profiles: [localdb]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cless}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD тохируулна уу}
+      POSTGRES_DB: ${POSTGRES_DB:-cless}
+    # DB-ийн цаг ЗААВАЛ UTC: баганууд TIMESTAMP(3) (timezone-гүй) + DEFAULT CURRENT_TIMESTAMP, апп UTC гэж
+    # уншдаг. TZ=Asia/Ulaanbaatar тавибал DB-ийн default утгууд +8 цаг болж outbox ажил 8 цаг хоцорно
+    # (локал тестээр баталгаажсан). Supabase, dev DB мөн UTC.
+    command: ["postgres", "-c", "timezone=UTC", "-c", "log_timezone=UTC"]
+    # Зөвхөн 127.0.0.1-д publish (серверийн build-д). Гадагш (0.0.0.0) НЭЭХГҮЙ.
+    ports:
+      - "127.0.0.1:${DB_HOST_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    depends_on:
+      app: { condition: service_started }
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?SITE_DOMAIN тохируулна уу}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - uploads:/srv/uploads:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [internal]
+
+  backup:
+    build: ./deploy/backup
+    image: cless-backup:latest
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      TZ: Asia/Ulaanbaatar
+      BACKUP_DIR: /backups
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_AT: ${BACKUP_AT:-03:00}
+    depends_on:
+      db: { condition: service_healthy, required: false }
+    volumes:
+      - ./backups:/backups
+      - ./scripts:/scripts:ro
+      - uploads:/uploads
+    networks: [internal]
+
+secrets:
+  # App build-ийн prerender-д: localdb үед postgresql://…@127.0.0.1:5432/… (host сүлжээ), гадны DB үед DATABASE_URL-тэй ижил
+  database_url:
+    environment: BUILD_DATABASE_URL
+
+networks:
+  internal:
+    name: cless_internal
+
+volumes:
+  pgdata:
+  uploads:
+  emails:
+  caddy_data:
+  caddy_config:

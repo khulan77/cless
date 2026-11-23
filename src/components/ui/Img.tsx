@@ -5,11 +5,23 @@ import { SHOW_PLACEHOLDERS, isPlaceholderSrc } from "@/lib/placeholder";
  * next/image wrapper. Local SVG placeholders skip the optimizer.
  * Production: dev placeholders are swapped for one quiet brand fallback (no labels).
  * When moving to Cloudinary/S3, add the domain to images.remotePatterns in next.config.
+ *
+ * `priority` is deprecated in Next 16 and no longer marks the image as eager/high priority —
+ * translate it to `loading="eager"` + `fetchPriority="high"` (LCP images: hero, banner, first cards).
  */
-export function Img({ src, alt, unoptimized, ...props }: ImageProps) {
+export function Img({ src, alt, unoptimized, priority, loading, fetchPriority, ...props }: ImageProps) {
   if (!SHOW_PLACEHOLDERS && isPlaceholderSrc(src)) return <BrandFallback fill={!!props.fill} className={props.className} width={props.width} height={props.height} />;
   const isSvg = typeof src === "string" && src.endsWith(".svg");
-  return <Image src={src} alt={alt} unoptimized={unoptimized ?? isSvg} {...props} />;
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      unoptimized={unoptimized ?? isSvg}
+      loading={loading ?? (priority ? "eager" : undefined)}
+      fetchPriority={fetchPriority ?? (priority ? "high" : undefined)}
+      {...props}
+    />
+  );
 }
 
 /** Soft beige gradient with a thin line mark — used wherever an image is missing */

@@ -20,7 +20,8 @@ type Props = {
 
 const iconCls = "size-[22px]";
 
-export function Header({ wordmark, siteName, nav, salon, shopMode, cartCount = 0 }: Props) {
+// siteName: лого линкийн нэр харагдах wordmark-аар эхэлнэ (WCAG 2.5.3); prop нь нийцтэй байдлын үүднээс үлдэв
+export function Header({ wordmark, nav, salon, shopMode, cartCount = 0 }: Props) {
   return (
     <HeaderShell>
       <div className="mx-auto grid h-16 max-w-[1376px] grid-cols-[1fr_auto_1fr] items-center px-2 md:h-[76px] md:px-10">
@@ -32,7 +33,7 @@ export function Header({ wordmark, siteName, nav, salon, shopMode, cartCount = 0
         </div>
 
         {/* TODO: replace with the official SVG logo */}
-        <Link href="/" aria-label={t.layout.homeLink(siteName)} className="flex flex-col items-center font-serif leading-none">
+        <Link href="/" aria-label={t.layout.homeLink(wordmark.join(" "))} className="flex min-h-11 flex-col items-center justify-center font-serif leading-none">
           {wordmark.map((line, i) => (
             <span
               key={line}
@@ -42,7 +43,7 @@ export function Header({ wordmark, siteName, nav, salon, shopMode, cartCount = 0
                   : "text-[14px] tracking-[0.32em] md:text-[17px]"
               }
             >
-              {line}
+              {line}{" "}
             </span>
           ))}
         </Link>
