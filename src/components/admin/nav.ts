@@ -7,7 +7,7 @@ export type NavIcon =
   | "people" | "customers" | "inquiries"
   | "shop" | "product" | "stock" | "collection" | "content"
   | "spa" | "service" | "staffSchedule" | "room"
-  | "settings" | "salon" | "storefront" | "discount" | "email" | "payments" | "users" | "system";
+  | "settings" | "salon" | "storefront" | "discount" | "email" | "accountant" | "payments" | "users" | "system";
 
 export type NavLeaf = {
   href: string;
@@ -84,6 +84,7 @@ export const ADMIN_NAV: NavEntry[] = [
       { href: "/admin/settings/pos", label: n.settingsPos, icon: "discount", permission: "settings:write" },
       { href: "/admin/rooms", label: n.rooms, icon: "room", permission: "room:write" },
       { href: "/admin/settings/email", label: n.settingsEmail, icon: "email", permission: "settings:write" },
+      { href: "/admin/settings/accountant", label: n.settingsAccountant, icon: "accountant", permission: "report:send" },
       { href: "/admin/settings/payments", label: n.settingsPayments, icon: "payments", permission: "integration:write" },
       { href: "/admin/users", label: n.users, icon: "users", permission: "user:write" },
       { href: "/admin/system", label: n.system, icon: "system", permission: "settings:write" },

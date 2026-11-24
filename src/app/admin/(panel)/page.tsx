@@ -6,11 +6,12 @@ import { CsvButton } from "@/components/admin/reports/CsvButton";
 import { DailyChart } from "@/components/admin/reports/DailyChart";
 import { RangePicker } from "@/components/admin/reports/RangePicker";
 import { ReportTabs } from "@/components/admin/reports/ReportTabs";
+import { SendToAccountant } from "@/components/admin/accountant/SendToAccountant";
 import { LaunchButton } from "@/components/admin/system/LaunchButton";
 import { Badge, ButtonLink, Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
-import { formatTime } from "@/lib/time";
+import { formatTime, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requireUser } from "@/server/auth/session";
 import { db } from "@/server/db";
@@ -57,6 +58,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
   const missing = ready && !ready.launchedAt ? ready.items.filter((i) => !i.ok) : [];
   const payTotal = report.payments.reduce((s, x) => s + x.amount, 0);
   const presets = { today: presetRange("today"), week: presetRange("week"), month: presetRange("month"), lastMonth: presetRange("lastMonth") };
+  const today = ubDateKey();
 
   return (
     <>
@@ -109,7 +111,12 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
       <PageHeader
         eyebrow={R.eyebrow}
         title={R.title}
-        actions={<RangePicker from={range.from} to={range.to} preset={preset} presets={presets} />}
+        actions={
+          <div className="flex flex-wrap items-end gap-2">
+            <RangePicker from={range.from} to={range.to} preset={preset} presets={presets} />
+            {can(user.role, "report:send") && <SendToAccountant defaultDay={range.to > today ? today : range.to} maxDay={today} />}
+          </div>
+        }
       />
 
       {/* KPI row 1 — the money */}

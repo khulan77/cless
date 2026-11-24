@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { EmailSettingsForm, PosSettingsForm, QPayModeForm, SalonForm, ShopModeForm } from "@/components/admin/settings/SettingsForms";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { AccountantEmailsForm } from "@/components/admin/accountant/AccountantEmailsForm";
+import { Badge, Card, PageHeader, Table, tdClass, thClass } from "@/components/admin/ui";
+import { formatMNT } from "@/lib/money";
+import { getAccountantEmails, listDispatches, type DailySummary } from "@/server/modules/reports/accountant";
 import { t } from "@/i18n";
 import { formatDateTime } from "@/lib/time";
 import { requirePagePermission } from "@/server/auth/session";
@@ -14,7 +17,7 @@ export const instant = false;
 
 const s = t.admin.settingsPage;
 /** URL segment → settings topic */
-const SECTIONS = { salon: "salon", shop: "shop", pos: "pos", email: "email", payments: "qpay" } as const;
+const SECTIONS = { salon: "salon", shop: "shop", pos: "pos", email: "email", payments: "qpay", accountant: "accountant" } as const;
 type Topic = (typeof SECTIONS)[keyof typeof SECTIONS];
 
 export async function generateMetadata({ params }: { params: Promise<{ section: string }> }) {
@@ -27,8 +30,8 @@ export default async function SettingsSectionPage({ params }: { params: Promise<
   const { section } = await params;
   const topic: Topic | undefined = SECTIONS[section as keyof typeof SECTIONS];
   if (!topic) notFound();
-  // Төлбөрийн интеграц (QPay) — зөвхөн ADMIN; бусад тохиргоо — ADMIN, MANAGER
-  await requirePagePermission(topic === "qpay" ? "integration:write" : "settings:write");
+  // Төлбөрийн интеграц (QPay) — зөвхөн ADMIN; нягтлан — report:send; бусад тохиргоо — ADMIN, MANAGER
+  await requirePagePermission(topic === "qpay" ? "integration:write" : topic === "accountant" ? "report:send" : "settings:write");
 
   let body: React.ReactNode;
   if (topic === "salon") {
@@ -40,6 +43,51 @@ export default async function SettingsSectionPage({ params }: { params: Promise<
     body = <PosSettingsForm initial={{ maxManagerDiscountPercent: pos.maxManagerDiscountPercent, shiftDifferenceThreshold: pos.shiftDifferenceThreshold, staleLockMinutes: pos.staleLockMinutes }} />;
   } else if (topic === "email") {
     body = <EmailSettingsForm initial={await getEmailSettings()} envFrom={process.env.EMAIL_FROM ?? ""} />;
+  } else if (topic === "accountant") {
+    const [emails, history] = await Promise.all([getAccountantEmails(), listDispatches({ take: 30 })]);
+    const A = t.admin.accountant;
+    return (
+      <div className="max-w-[960px]">
+        <PageHeader eyebrow={t.admin.nav.settings} title={s.tabs[topic]} description={s.intro[topic]} />
+        <div className="max-w-[760px]">
+          <Card>
+            <AccountantEmailsForm initial={emails} />
+          </Card>
+        </div>
+        <h2 className="mb-3 mt-8 font-display text-[22px] font-semibold">{A.history}</h2>
+        {history.length === 0 ? (
+          <p className="text-[14px] text-ink-soft">{A.historyEmpty}</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <th className={thClass}>{A.day}</th>
+                <th className={`${thClass} text-right`}>{A.total}</th>
+                <th className={thClass}>{A.recipients}</th>
+                <th className={thClass}>{A.sentBy}</th>
+                <th className={thClass}>{A.when}</th>
+                <th className={thClass}>{A.status}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((h) => (
+                <tr key={h.id}>
+                  <td className={`${tdClass} tabular-nums`}>{h.day}</td>
+                  <td className={`${tdClass} text-right tabular-nums`}>{formatMNT((h.summary as unknown as DailySummary).total ?? 0)}</td>
+                  <td className={`${tdClass} text-[13px]`}>{h.recipients.join(", ")}</td>
+                  <td className={tdClass}>{h.sentBy?.name ?? "—"}</td>
+                  <td className={`${tdClass} tabular-nums`}>{formatDateTime(h.sentAt ?? h.createdAt)}</td>
+                  <td className={tdClass}>
+                    <Badge tone={h.status === "SENT" ? "green" : h.status === "FAILED" ? "red" : "neutral"}>{A.statusLabel[h.status]}</Badge>
+                    {h.error && h.status !== "SENT" && <span className="mt-1 block max-w-[260px] truncate text-[12px] text-danger" title={h.error}>{h.error}</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </div>
+    );
   } else {
     const [q, token] = await Promise.all([getQPaySettings(), db.workerHeartbeat.findUnique({ where: { id: QPAY_TOKEN_HEARTBEAT } })]);
     body = (

@@ -204,6 +204,14 @@ enum JobType {
   APPT_REMINDER
   /// Сайтаас ирсэн нөөцлүүлэх хүсэлт → ресепшнд имэйл
   INQUIRY_EMAIL
+  /// Өдрийн тайлан → нягтлан (Excel хавсралттай)
+  ACCOUNTANT_REPORT
+}
+
+enum DispatchStatus {
+  PENDING
+  SENT
+  FAILED
 }
 
 /// Сайтын "Салонд захиалах" → нөөцлүүлэх хүсэлтийн төлөв
@@ -241,33 +249,34 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  staffAppointments   Appointment[]    @relation("ApptStaff")
-  createdAppointments Appointment[]    @relation("ApptCreatedBy")
-  cancelledAppointments Appointment[] @relation("ApptCancelledBy")
-  customerNotes         CustomerNote[] @relation("CustomerNoteAuthor")
-  visitPhotos           VisitPhoto[]   @relation("VisitPhotoCreatedBy")
-  conductedVisits     Visit[]
-  createdSales        Sale[]           @relation("SaleCreatedBy")
-  closedSales         Sale[]           @relation("SaleClosedBy")
-  discountApprovals   Sale[]           @relation("SaleDiscountApprovedBy")
-  saleItems           SaleItem[]
-  createdPayments     Payment[]        @relation("PaymentCreatedBy")
-  confirmedPayments   Payment[]        @relation("PaymentConfirmedBy")
-  cashMovements       CashMovement[]
-  requestedRefunds    Refund[]         @relation("RefundRequestedBy")
-  approvedRefunds     Refund[]         @relation("RefundApprovedBy")
-  priceChanges        PriceHistory[]
-  stockMovements      StockMovement[]
-  openedShifts        CashShift[]      @relation("ShiftOpenedBy")
-  closedShifts        CashShift[]      @relation("ShiftClosedBy")
-  commissionRules     CommissionRule[]
-  payrollLines        PayrollLine[]
-  auditLogs           AuditLog[]
-  schedules           StaffSchedule[]  @relation("StaffSchedules")
-  timeOffs            StaffTimeOff[]   @relation("StaffTimeOffs")
-  createdTimeOffs     StaffTimeOff[]   @relation("TimeOffCreatedBy")
-  services            ServiceStaff[]   @relation("ServiceStaff")
-  handledInquiries    ProductInquiry[] @relation("InquiryHandledBy")
+  staffAppointments     Appointment[]    @relation("ApptStaff")
+  createdAppointments   Appointment[]    @relation("ApptCreatedBy")
+  cancelledAppointments Appointment[]    @relation("ApptCancelledBy")
+  customerNotes         CustomerNote[]   @relation("CustomerNoteAuthor")
+  visitPhotos           VisitPhoto[]     @relation("VisitPhotoCreatedBy")
+  reportDispatches      ReportDispatch[] @relation("ReportDispatchSentBy")
+  conductedVisits       Visit[]
+  createdSales          Sale[]           @relation("SaleCreatedBy")
+  closedSales           Sale[]           @relation("SaleClosedBy")
+  discountApprovals     Sale[]           @relation("SaleDiscountApprovedBy")
+  saleItems             SaleItem[]
+  createdPayments       Payment[]        @relation("PaymentCreatedBy")
+  confirmedPayments     Payment[]        @relation("PaymentConfirmedBy")
+  cashMovements         CashMovement[]
+  requestedRefunds      Refund[]         @relation("RefundRequestedBy")
+  approvedRefunds       Refund[]         @relation("RefundApprovedBy")
+  priceChanges          PriceHistory[]
+  stockMovements        StockMovement[]
+  openedShifts          CashShift[]      @relation("ShiftOpenedBy")
+  closedShifts          CashShift[]      @relation("ShiftClosedBy")
+  commissionRules       CommissionRule[]
+  payrollLines          PayrollLine[]
+  auditLogs             AuditLog[]
+  schedules             StaffSchedule[]  @relation("StaffSchedules")
+  timeOffs              StaffTimeOff[]   @relation("StaffTimeOffs")
+  createdTimeOffs       StaffTimeOff[]   @relation("TimeOffCreatedBy")
+  services              ServiceStaff[]   @relation("ServiceStaff")
+  handledInquiries      ProductInquiry[] @relation("InquiryHandledBy")
 
   @@index([role, isActive])
 }
@@ -597,46 +606,46 @@ model Customer {
 ///   WHERE status NOT IN ('CANCELLED','NO_SHOW')
 /// POS-тэй холбоо: Sale.appointmentId (идэвхтэй нэг л Sale — partial unique index), Visit.appointmentId.
 model Appointment {
-  id            String     @id @default(cuid())
-  branchId      String
-  customerId    String
+  id             String     @id @default(cuid())
+  branchId       String
+  customerId     String
   /// Үйлчилгээ хийх хүн (STAFF/MANAGER/ADMIN — isBookable)
-  staffId       String
-  serviceId     String
-  roomId        String?
-  startsAt      DateTime   @db.Timestamptz(3)
+  staffId        String
+  serviceId      String
+  roomId         String?
+  startsAt       DateTime   @db.Timestamptz(3)
   /// startsAt + service.durationMin (buffer ОРОХГҮЙ)
-  endsAt        DateTime   @db.Timestamptz(3)
+  endsAt         DateTime   @db.Timestamptz(3)
   /// endsAt + service.bufferMin + extraMin — давхцлын constraint үүн дээр
-  blockedUntil  DateTime   @db.Timestamptz(3)
+  blockedUntil   DateTime   @db.Timestamptz(3)
   /// "Нэмэлт цаг": өрөө бэлдэх, цэвэрлэх (0 / 10 / 15 / 30 мин) — buffer-ээс гадна
-  extraMin      Int        @default(0)
-  status        ApptStatus @default(BOOKED)
-  source        ApptSource @default(PHONE)
-  note          String?
-  cancelReason  String?
+  extraMin       Int        @default(0)
+  status         ApptStatus @default(BOOKED)
+  source         ApptSource @default(PHONE)
+  note           String?
+  cancelReason   String?
   /// Цуцалсан ангилал (CANCEL_CATEGORIES — appointments/cancel.ts); cancelReason нь тайлбар
   cancelCategory String?
   /// Хэн, хэзээ цуцалсан
-  cancelledById String?
-  cancelledAt   DateTime?  @db.Timestamptz(3)
+  cancelledById  String?
+  cancelledAt    DateTime?  @db.Timestamptz(3)
   /// Захиалах үеийн үнэ (мэдээлэл) — POS дээр үнэ дахин тооцогдоно
-  priceSnapshot Int        @default(0)
-  createdById   String?
-  version       Int        @default(0)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  priceSnapshot  Int        @default(0)
+  createdById    String?
+  version        Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  staff     User     @relation("ApptStaff", fields: [staffId], references: [id], onDelete: Restrict)
-  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  room      Room?    @relation(fields: [roomId], references: [id], onDelete: Restrict)
-  createdBy User?    @relation("ApptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  cancelledBy User?  @relation("ApptCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
-  visit     Visit?
-  sales     Sale[]
-  photos    VisitPhoto[]
+  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  staff       User         @relation("ApptStaff", fields: [staffId], references: [id], onDelete: Restrict)
+  service     Service      @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  room        Room?        @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  createdBy   User?        @relation("ApptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  cancelledBy User?        @relation("ApptCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  visit       Visit?
+  sales       Sale[]
+  photos      VisitPhoto[]
 
   @@index([branchId, startsAt])
   @@index([staffId, startsAt])
@@ -1289,4 +1298,24 @@ model ProductInquiry {
   @@index([status, createdAt])
   @@index([phone, createdAt])
   @@index([ip, createdAt])
+}
+
+/// Нягтланд илгээсэн өдрийн тайлан (A11): нэг мөр = нэг илгээлт (дахин илгээвэл шинэ мөр)
+model ReportDispatch {
+  id         String         @id @default(cuid())
+  /// УБ өдөр "YYYY-MM-DD"
+  day        String
+  recipients String[]
+  status     DispatchStatus @default(PENDING)
+  sentById   String?
+  /// Илгээх үеийн дүн (түүхэнд харуулах)
+  summary    Json
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  sentBy User? @relation("ReportDispatchSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+
+  @@index([day, createdAt])
 }

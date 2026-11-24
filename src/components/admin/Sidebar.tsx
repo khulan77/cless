@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Activity, BadgePercent, BarChart3, Banknote, Boxes, CalendarDays, CalendarRange, ChevronDown, ChevronsLeft, ChevronsRight, Contact, CreditCard,
+  Activity, BadgePercent, BarChart3, Banknote, Boxes, Calculator, CalendarDays, CalendarRange, ChevronDown, ChevronsLeft, ChevronsRight, Contact, CreditCard,
   DoorOpen, FileText, Flower2, FolderTree, Inbox, LayoutDashboard, LogOut, Mail, Menu, Package, Receipt, Settings, ShoppingBag,
   Sparkles, Store, UserCog, UserRound, Users, Wallet, X, type LucideIcon,
 } from "lucide-react";
@@ -39,6 +39,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   storefront: ShoppingBag,
   discount: BadgePercent,
   email: Mail,
+  accountant: Calculator,
   payments: CreditCard,
   users: UserCog,
   system: Activity,
