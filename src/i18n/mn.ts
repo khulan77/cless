@@ -924,6 +924,12 @@ export const mn = {
       none: "—",
     },
     customers: {
+      duplicatePhone: (name: string) => `Энэ дугаартай үйлчлүүлэгч бүртгэлтэй: ${name}`,
+      duplicateAsk: "Сонгох уу?",
+      duplicateSelect: "Сонгох",
+      duplicateOpen: "Профайлыг нээх",
+      searchHint: "3-аас дээш тэмдэгт бичнэ үү",
+      noResults: "Олдсонгүй — шинээр бүртгэнэ үү",
       name: "Нэр",
       phone: "Утас",
       email: "Имэйл",
