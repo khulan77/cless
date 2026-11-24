@@ -12,22 +12,29 @@ import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { customerHistory } from "@/server/modules/customers/history";
 import { noteViews } from "@/server/modules/customers/notes";
+import { photoPanel } from "@/server/modules/visits/photos";
 import { customerProfile } from "@/server/modules/customers/service";
 import { concernNames } from "@/server/modules/visits/service";
+import { VisitPhotos } from "@/components/admin/visits/VisitPhotos";
 import { VisitSummary } from "@/components/admin/visits/VisitSummary";
 
 export const metadata = { title: "Үйлчлүүлэгч" };
 export const instant = false;
 
 const H = t.admin.customers.history;
-const TABS = ["services", "products", "visits", "notes", "sales"] as const;
+const TABS = ["services", "products", "visits", "photos", "notes", "sales"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function CustomerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const user = await requirePagePermission("customer:read");
   const { id } = await params;
   const tab: Tab = (TABS as readonly string[]).includes((await searchParams).tab ?? "") ? ((await searchParams).tab as Tab) : "services";
-  const [profile, history, notes] = await Promise.all([customerProfile(id), customerHistory(id), tab === "notes" ? noteViews(id, user) : null]);
+  const [profile, history, notes, photos] = await Promise.all([
+    customerProfile(id),
+    customerHistory(id),
+    tab === "notes" ? noteViews(id, user) : null,
+    tab === "photos" && can(user.role, "visit-photo:read") ? photoPanel(id, user) : null,
+  ]);
   if (!profile) notFound();
   const { customer: c, visits, sales } = profile;
   const slugs = [...new Set(visits.flatMap((v) => v.concerns))];
@@ -197,6 +204,16 @@ export default async function CustomerPage({ params, searchParams }: { params: P
             </ul>
           )}
         </Card>
+      )}
+
+      {tab === "photos" && photos && (
+        <VisitPhotos
+          customerId={c.id}
+          consented={photos.consented}
+          groups={photos.groups}
+          targets={photos.targets.map((x) => ({ appointmentId: x.appointmentId, label: `${formatDateLabel(x.startsAt)} ${formatTime(x.startsAt)} · ${x.service}` }))}
+          canWrite={can(user.role, "visit-photo:write")}
+        />
       )}
 
       {tab === "notes" && notes && (

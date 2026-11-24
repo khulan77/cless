@@ -245,6 +245,7 @@ model User {
   createdAppointments Appointment[]    @relation("ApptCreatedBy")
   cancelledAppointments Appointment[] @relation("ApptCancelledBy")
   customerNotes         CustomerNote[] @relation("CustomerNoteAuthor")
+  visitPhotos           VisitPhoto[]   @relation("VisitPhotoCreatedBy")
   conductedVisits     Visit[]
   createdSales        Sale[]           @relation("SaleCreatedBy")
   closedSales         Sale[]           @relation("SaleClosedBy")
@@ -570,6 +571,8 @@ model Customer {
   notes            String?
   /// Маркетингийн имэйл (айлчлалын үйлчилгээний имэйлд хамаарахгүй)
   marketingConsent Boolean   @default(false)
+  /// Өмнө/дараах зураг авахыг зөвшөөрсөн огноо (A9) — null бол зураг авахгүй
+  photoConsentAt   DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -579,6 +582,7 @@ model Customer {
   giftCards    GiftCard[]
   wallet       Wallet?
   notesLog     CustomerNote[]
+  photos       VisitPhoto[]
 
   @@index([email])
   @@index([name])
@@ -632,6 +636,7 @@ model Appointment {
   cancelledBy User?  @relation("ApptCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
   visit     Visit?
   sales     Sale[]
+  photos    VisitPhoto[]
 
   @@index([branchId, startsAt])
   @@index([staffId, startsAt])
@@ -718,6 +723,38 @@ model CustomerNote {
   @@index([customerId, createdAt])
 }
 
+enum PhotoKind {
+  BEFORE
+  AFTER
+}
+
+/// Айлчлалын өмнө/дараах зураг (A9). Файл нь public/-д БИШ — хувийн хавтас (STORAGE_PRIVATE_DIR),
+/// зөвхөн /api/media/visit/[id]-аар эрхтэй хэрэглэгчид. EXIF устгасан, 2048px webp.
+model VisitPhoto {
+  id            String    @id @default(cuid())
+  customerId    String
+  appointmentId String?
+  visitId       String?
+  kind          PhotoKind
+  /// Хувийн хавтас дахь түлхүүр (visit-photos/2026/12/<uuid>.webp)
+  storageKey    String    @unique
+  width         Int
+  height        Int
+  bytes         Int
+  note          String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  visit       Visit?       @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  createdBy   User         @relation("VisitPhotoCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+  @@index([appointmentId])
+  @@index([visitId])
+}
+
 model Visit {
   id             String      @id @default(cuid())
   branchId       String
@@ -744,6 +781,7 @@ model Visit {
   sale            Sale?                 @relation(fields: [saleId], references: [id], onDelete: SetNull)
   recommendations VisitRecommendation[]
   customerNotes   CustomerNote[]
+  photos          VisitPhoto[]
 
   @@index([customerId, createdAt])
   @@index([branchId, createdAt])

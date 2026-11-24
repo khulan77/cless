@@ -62,3 +62,5 @@ next-env.d.ts
 
 # Default image sources from the team (processed by scripts/build-default-images.ts; never committed)
 assets-incoming/
+# Айлчлалын хувийн зураг (STORAGE_PRIVATE_DIR-ийн локал анхдагч)
+.private-storage/

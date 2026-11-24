@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CustomerNotes } from "@/components/admin/customers/CustomerNotes";
 import { MeTabs } from "@/components/admin/me/MeTabs";
+import { VisitPhotos } from "@/components/admin/visits/VisitPhotos";
 import { VisitSummary } from "@/components/admin/visits/VisitSummary";
 import { Badge, Card, PageHeader } from "@/components/admin/ui";
 import { statusTone } from "@/components/admin/calendar/status";
@@ -12,6 +13,7 @@ import { requirePagePermission } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { canSeeCustomer } from "@/server/modules/customers/access";
 import { noteViews } from "@/server/modules/customers/notes";
+import { photoPanel } from "@/server/modules/visits/photos";
 import { concernNames } from "@/server/modules/visits/service";
 
 export const metadata = { title: "Үйлчлүүлэгч" };
@@ -43,6 +45,7 @@ export default async function MyCustomerPage({ params }: { params: Promise<{ id:
     }),
     noteViews(id, user),
   ]);
+  const photos = can(user.role, "visit-photo:read") ? await photoPanel(id, user) : null;
   if (!customer) notFound();
   const slugs = [...new Set(visits.flatMap((v) => v.concerns))];
   const concernName = new Map((await concernNames(slugs)).map((name, i) => [slugs[i]!, name]));
@@ -56,7 +59,7 @@ export default async function MyCustomerPage({ params }: { params: Promise<{ id:
         ← {M.back}
       </Link>
       <PageHeader title={customer.name} description={[customer.skinType ? t.admin.skinTypes[customer.skinType] : null, M.readOnly].filter(Boolean).join(" · ")} />
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card title={t.admin.notes.title} description={t.admin.notes.rule}>
           <CustomerNotes customerId={customer.id} notes={notes} canWrite={can(user.role, "customer-note:write")} />
         </Card>
@@ -77,6 +80,17 @@ export default async function MyCustomerPage({ params }: { params: Promise<{ id:
             </ul>
           )}
         </Card>
+        {photos && (
+          <Card title={t.admin.photos.title} className="lg:col-span-2">
+            <VisitPhotos
+              customerId={customer.id}
+              consented={photos.consented}
+              groups={photos.groups}
+              targets={photos.targets.map((x) => ({ appointmentId: x.appointmentId, label: `${formatDateLabel(x.startsAt)} ${formatTime(x.startsAt)} · ${x.service}` }))}
+              canWrite={can(user.role, "visit-photo:write")}
+            />
+          </Card>
+        )}
         <Card title={M.diagnoses} className="lg:col-span-2">
           {visits.length === 0 ? (
             <p className="text-[14px] text-ink-soft">—</p>
