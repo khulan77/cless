@@ -24,10 +24,11 @@ export async function generateMetadata({ params }: { params: Promise<{ section: 
 }
 
 export default async function SettingsSectionPage({ params }: { params: Promise<{ section: string }> }) {
-  await requirePagePermission("settings:write");
   const { section } = await params;
   const topic: Topic | undefined = SECTIONS[section as keyof typeof SECTIONS];
   if (!topic) notFound();
+  // Төлбөрийн интеграц (QPay) — зөвхөн ADMIN; бусад тохиргоо — ADMIN, MANAGER
+  await requirePagePermission(topic === "qpay" ? "integration:write" : "settings:write");
 
   let body: React.ReactNode;
   if (topic === "salon") {

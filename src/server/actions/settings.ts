@@ -83,7 +83,8 @@ export async function saveEmailSettingsAction(input: Parameters<typeof saveEmail
 
 export async function saveQPayModeAction(mode: "manual" | "api") {
   return runAction(async () => {
-    const user = await requirePermission("settings:write");
+    // Интеграцийн тохиргоо — зөвхөн ADMIN
+    const user = await requirePermission("integration:write");
     await saveQPayMode(mode, user.id);
     revalidatePath("/admin/settings");
   }, "QPay горим хадгалагдлаа.");

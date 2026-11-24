@@ -304,7 +304,7 @@ export async function moveAppointment(raw: ApptMoveInput, actor: Actor, now = ne
 export async function changeStatus(raw: ApptStatusInput, actor: Actor, now = new Date()) {
   const input = apptStatusSchema.parse(raw);
   if (input.action === "complete") {
-    if (!can(actor.role, "appointment:done-manual")) throw new ForbiddenError("Цагийг гараар дуусгах эрх зөвхөн админд.");
+    if (!can(actor.role, "appointment:done-manual")) throw new ForbiddenError("Цагийг гараар дуусгах эрх зөвхөн админ, менежерт.");
     if (!input.reason?.trim()) throw new UserError("Гараар дуусгах шалтгааныг бичнэ үү.", { reason: ["Шалтгаан заавал."] });
   }
   return db.$transaction(async (tx) => {

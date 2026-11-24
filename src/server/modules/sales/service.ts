@@ -121,17 +121,18 @@ async function price(client: Tx | typeof db, cart: Cart, lines: ResolvedLine[]):
 // ─────────────────────────── Хөнгөлөлтийн баталгаажуулалт ───────────────────────────
 
 /**
- * ADMIN-ий имэйл + нууц үгийг шалгана (transaction-ээс ГАДУУР — амжилтгүй
- * оролдлогыг rate limit-д бичихийн тулд). Буруу бол алдаа, зөв бол ADMIN-ий id.
+ * Хөнгөлөлтийн хязгаараас дээш зөвшөөрөх эрхтэй (discount:over-limit — ADMIN, MANAGER) хэрэглэгчийн
+ * имэйл + нууц үгийг шалгана (transaction-ээс ГАДУУР — амжилтгүй оролдлогыг rate limit-д бичихийн тулд).
+ * Буруу бол алдаа, зөв бол баталгаажуулсан хүний id.
  */
 export async function verifyAdminApproval(raw: ApprovalInput): Promise<string> {
   const { email, password } = approvalSchema.parse(raw);
   const key = "pos-discount-approval";
   if (await isLoginBlocked(key, email)) throw new UserError("Хэт олон удаа буруу оролдлоо. 15 минутын дараа дахин оролдоно уу.");
   const admin = await db.user.findUnique({ where: { email }, select: { id: true, role: true, isActive: true, passwordHash: true } });
-  const ok = Boolean(admin && admin.isActive && admin.role === "ADMIN" && (await bcrypt.compare(password, admin.passwordHash)));
+  const ok = Boolean(admin && admin.isActive && can(admin.role, "discount:over-limit") && (await bcrypt.compare(password, admin.passwordHash)));
   await recordLoginAttempt(key, email, ok);
-  if (!ok || !admin) throw new UserError("Админы имэйл эсвэл нууц үг буруу байна.", { approval: ["Баталгаажуулалт амжилтгүй."] });
+  if (!ok || !admin) throw new UserError("Менежер эсвэл админы имэйл, нууц үг буруу байна.", { approval: ["Баталгаажуулалт амжилтгүй."] });
   return admin.id;
 }
 
@@ -218,7 +219,7 @@ export async function checkout(raw: CartInput, actor: Actor, approval?: Approval
     else if (approval) approverId = await verifyAdminApproval(approval);
     else {
       throw new UserError(
-        `Хөнгөлөлт ${pos.maxManagerDiscountPercent}%-иас хэтэрсэн тул админы баталгаажуулалт шаардлагатай.`,
+        `Хөнгөлөлт ${pos.maxManagerDiscountPercent}%-иас хэтэрсэн тул менежер эсвэл админы баталгаажуулалт шаардлагатай.`,
         undefined,
         APPROVAL_REQUIRED,
       );
@@ -245,7 +246,7 @@ export async function checkout(raw: CartInput, actor: Actor, approval?: Approval
     const lines = await resolveLines(tx, cart);
     const priced = await price(tx, cart, lines);
     if (exceedsDiscountLimit(priced, pos.maxManagerDiscountPercent) && !approverId) {
-      throw new UserError("Хөнгөлөлт хязгаараас хэтэрсэн тул админы баталгаажуулалт шаардлагатай.", undefined, APPROVAL_REQUIRED);
+      throw new UserError("Хөнгөлөлт хязгаараас хэтэрсэн тул менежер эсвэл админы баталгаажуулалт шаардлагатай.", undefined, APPROVAL_REQUIRED);
     }
 
     if (cart.customerId) {

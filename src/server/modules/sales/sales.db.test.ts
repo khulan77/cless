@@ -87,21 +87,37 @@ describe("checkout / lock", () => {
     ).rejects.toThrow();
   });
 
-  it("discount over the manager limit needs a valid ADMIN approval", async () => {
-    const admin = await makeUser("ADMIN", { password: "admin-pass" });
+  it("discount over the limit: MANAGER approves it themself (11/24 — same as ADMIN)", async () => {
     const v = await makeVariant({ price: 100_000, stock: 5 });
     const cart = {
       items: [{ kind: "PRODUCT" as const, variantId: v.id, qty: 1 }],
       saleDiscount: { type: "PERCENT" as const, percent: 15 },
       saleDiscountReason: "VIP",
     };
-    await expect(checkout(cart, asManager())).rejects.toMatchObject({ code: APPROVAL_REQUIRED });
-    await expect(checkout(cart, asManager(), { email: admin.email, password: "wrong" })).rejects.toThrow(/буруу/);
-    const r = await checkout(cart, asManager(), { email: admin.email, password: "admin-pass" });
+    const r = await checkout(cart, asManager());
     expect(r.total).toBe(85_000);
     const sale = await db.sale.findUniqueOrThrow({ where: { id: r.saleId } });
-    expect(sale.discountApprovedById).toBe(admin.id);
-    expect(await db.auditLog.count({ where: { action: "sale.discount_approved", userId: admin.id } })).toBe(1);
+    expect(sale.discountApprovedById).toBe(manager.id);
+  });
+
+  it("discount over the limit without the right: asks for MANAGER/ADMIN credentials, never STAFF", async () => {
+    // A role without discount:over-limit (STAFF here) gets APPROVAL_REQUIRED and needs someone who has it
+    const approver = await makeUser("MANAGER", { password: "manager-pass" });
+    const beautician = await makeUser("STAFF", { password: "staff-pass" });
+    const v = await makeVariant({ price: 100_000, stock: 5 });
+    const cart = {
+      items: [{ kind: "PRODUCT" as const, variantId: v.id, qty: 1 }],
+      saleDiscount: { type: "PERCENT" as const, percent: 15 },
+      saleDiscountReason: "VIP",
+    };
+    const asStaff = { id: staff.id, role: staff.role };
+    await expect(checkout(cart, asStaff)).rejects.toMatchObject({ code: APPROVAL_REQUIRED });
+    await expect(checkout(cart, asStaff, { email: beautician.email, password: "staff-pass" })).rejects.toThrow(/буруу/);
+    await expect(checkout(cart, asStaff, { email: approver.email, password: "wrong" })).rejects.toThrow(/буруу/);
+    const r = await checkout(cart, asStaff, { email: approver.email, password: "manager-pass" });
+    const sale = await db.sale.findUniqueOrThrow({ where: { id: r.saleId } });
+    expect(sale.discountApprovedById).toBe(approver.id);
+    expect(await db.auditLog.count({ where: { action: "sale.discount_approved", userId: approver.id } })).toBe(1);
   });
 
   it("exactly 10% is allowed without approval", async () => {

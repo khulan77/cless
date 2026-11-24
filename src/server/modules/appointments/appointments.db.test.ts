@@ -150,11 +150,12 @@ describe("update / move / status", () => {
     await expect(book(s, "10:00")).resolves.toBeTruthy(); // NO_SHOW чөлөөлнө
   });
 
-  it("manual DONE: ADMIN only, only ARRIVED/IN_PROGRESS, only after the start time, reason required", async () => {
+  it("manual DONE: ADMIN/MANAGER only, only ARRIVED/IN_PROGRESS, only after the start time, reason required", async () => {
     const s = await setup();
     const a = await book(s, "10:00");
     const asAdmin = { id: admin.id, role: "ADMIN" as const };
-    await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, asManager(), at("10:30"))).rejects.toThrow(/админ/);
+    await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, { id: admin.id, role: "STAFF" as const }, at("10:30"))).rejects.toThrow(/админ/);
+    await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, asManager(), at("10:30"))).rejects.toThrow(/ирсэн/); // BOOKED — MANAGER passes the role check
     await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, asAdmin, at("10:30"))).rejects.toThrow(/ирсэн/); // BOOKED
     await changeStatus({ id: a.id, action: "arrive" }, asManager(), at("09:50"));
     await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, asAdmin, at("09:55"))).rejects.toThrow(/эхлээгүй/);

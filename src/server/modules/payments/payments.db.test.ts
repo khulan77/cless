@@ -97,11 +97,10 @@ describe("createPayment", () => {
     ).rejects.toThrow(/үлдэгдлээс/);
   });
 
-  it("TRANSFER is admin-only", async () => {
+  it("TRANSFER: MANAGER confirms it too (11/24 — same as ADMIN)", async () => {
     const s = await lockedSale();
     const input = { saleId: s.saleId, method: "TRANSFER" as const, amount: 410_000, externalRef: "Golomt 123", idempotencyKey: key() };
-    await expect(createPayment(input, asManager())).rejects.toThrow();
-    const r = await createPayment(input, asAdmin());
+    const r = await createPayment(input, asManager());
     expect(r.sale.status).toBe("PAID");
   });
 

@@ -82,7 +82,7 @@ export const ADMIN_NAV: NavEntry[] = [
       { href: "/admin/settings/shop", label: n.settingsShop, icon: "storefront", permission: "settings:write" },
       { href: "/admin/settings/pos", label: n.settingsPos, icon: "discount", permission: "settings:write" },
       { href: "/admin/settings/email", label: n.settingsEmail, icon: "email", permission: "settings:write" },
-      { href: "/admin/settings/payments", label: n.settingsPayments, icon: "payments", permission: "settings:write" },
+      { href: "/admin/settings/payments", label: n.settingsPayments, icon: "payments", permission: "integration:write" },
       { href: "/admin/users", label: n.users, icon: "users", permission: "user:write" },
       { href: "/admin/system", label: n.system, icon: "system", permission: "settings:write" },
     ],
