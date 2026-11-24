@@ -1,4 +1,4 @@
--- PROMPT 12 A6: цуцлалт — хэн, хэзээ, ямар ангиллаар. Зөвхөн нэмэлт; хуучин cancelReason хэвээр.
+
 ALTER TABLE "Appointment" ADD COLUMN "cancelCategory" TEXT;
 ALTER TABLE "Appointment" ADD COLUMN "cancelledById" TEXT;
 ALTER TABLE "Appointment" ADD COLUMN "cancelledAt" TIMESTAMPTZ(3);
