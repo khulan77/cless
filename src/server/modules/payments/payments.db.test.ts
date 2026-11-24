@@ -102,6 +102,9 @@ describe("createPayment", () => {
     const input = { saleId: s.saleId, method: "TRANSFER" as const, amount: 410_000, externalRef: "Golomt 123", idempotencyKey: key() };
     const r = await createPayment(input, asManager());
     expect(r.sale.status).toBe("PAID");
+    const s2 = await lockedSale();
+    const r2 = await createPayment({ ...input, saleId: s2.saleId, idempotencyKey: key() }, asAdmin());
+    expect(r2.sale.status).toBe("PAID");
   });
 
   it("CARD requires an approval code", async () => {
