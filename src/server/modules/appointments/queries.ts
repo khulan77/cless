@@ -20,6 +20,7 @@ const apptSelect = (canContact: boolean) =>
     startsAt: true,
     endsAt: true,
     blockedUntil: true,
+    extraMin: true,
     status: true,
     source: true,
     note: true,
@@ -37,6 +38,7 @@ export type CalendarAppt = {
   startsAt: Date;
   endsAt: Date;
   blockedUntil: Date;
+  extraMin: number;
   status: ApptStatus;
   source: string;
   note: string | null;

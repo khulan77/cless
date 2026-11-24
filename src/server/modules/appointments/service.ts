@@ -15,12 +15,14 @@ import { draftDataSchema } from "@/server/modules/sales/drafts";
 import { checkSlot, findSlots, type SlotProblem } from "./availability";
 import { availabilityData } from "./repo";
 import {
+  apptExtraSchema,
   apptInputSchema,
   apptMoveSchema,
   apptStatusSchema,
   apptUpdateSchema,
   freeSearchSchema,
   slotQuerySchema,
+  type ApptExtraInput,
   type ApptInput,
   type ApptMoveInput,
   type ApptStatusInput,
@@ -83,7 +85,8 @@ export async function listSlots(raw: SlotQuery, now = new Date()) {
   const slots = findSlots({
     date: q.date,
     now,
-    service: data.service,
+    // Нэмэлт цаг нь buffer-ийн адил дараагийн цагийг хаана
+    service: { ...data.service, bufferMin: data.service.bufferMin + q.extraMin },
     staff: data.availabilityStaff,
     rooms: data.availabilityRooms,
     branchHours: data.hoursFor(ubWeekday(q.date)),
@@ -123,7 +126,7 @@ export async function searchFreeSlots(raw: { serviceId: string; staffId?: string
 
 // ─────────────────────────── Үүсгэх / засах ───────────────────────────
 
-type Placement = { serviceId: string; staffId: string; roomId?: string | null; startsAt: Date };
+type Placement = { serviceId: string; staffId: string; roomId?: string | null; startsAt: Date; extraMin?: number };
 
 /** Сервер талын шалгалт (1-р давхар хамгаалалт). Буцаах: endsAt, blockedUntil, үнэ */
 async function validatePlacement(tx: Tx, p: Placement, opts: { excludeId?: string; now: Date }) {
@@ -133,13 +136,14 @@ async function validatePlacement(tx: Tx, p: Placement, opts: { excludeId?: strin
     throw new UserError("Энэ ажилтан энэ үйлчилгээг хийдэггүй эсвэл цаг авах боломжгүй.", { staffId: ["Ажилтан тохирохгүй."] });
   }
   if (p.roomId && !data.rooms.some((r) => r.id === p.roomId)) throw new UserError("Өрөө олдсонгүй.", { roomId: ["Өрөө олдсонгүй."] });
+  const extra = p.extraMin ?? 0;
   const problem = checkSlot({
     startsAt: p.startsAt,
     staffId: p.staffId,
     roomId: p.roomId ?? null,
     now: opts.now,
     // Өрөө сонгосон бол (шаардлагагүй үйлчилгээнд ч) өрөөний давхцлыг шалгана
-    service: { ...data.service, requiresRoom: data.service.requiresRoom || Boolean(p.roomId) },
+    service: { ...data.service, bufferMin: data.service.bufferMin + extra, requiresRoom: data.service.requiresRoom || Boolean(p.roomId) },
     staff: data.availabilityStaff,
     rooms: data.availabilityRooms,
     branchHours: data.hoursFor(ubWeekday(date)),
@@ -151,7 +155,8 @@ async function validatePlacement(tx: Tx, p: Placement, opts: { excludeId?: strin
   return {
     service: data.service,
     endsAt,
-    blockedUntil: addMinutes(endsAt, data.service.bufferMin),
+    blockedUntil: addMinutes(endsAt, data.service.bufferMin + extra),
+    extraMin: extra,
     roomId: data.rooms.length > 0 ? (p.roomId ?? null) : null,
   };
 }
@@ -174,6 +179,7 @@ export async function createAppointment(raw: ApptInput, actor: Actor, now = new 
           startsAt: input.startsAt,
           endsAt: v.endsAt,
           blockedUntil: v.blockedUntil,
+          extraMin: v.extraMin,
           source: input.source,
           note: input.note ?? null,
           priceSnapshot: v.service.price,
@@ -209,7 +215,7 @@ async function lockAppt(tx: Tx, id: string) {
 async function applyChange(
   tx: Tx,
   current: Awaited<ReturnType<typeof lockAppt>>,
-  next: { customerId: string; serviceId: string; staffId: string; roomId?: string | null; startsAt: Date; source?: string; note?: string | null },
+  next: { customerId: string; serviceId: string; staffId: string; roomId?: string | null; startsAt: Date; extraMin?: number; source?: string; note?: string | null },
   version: number,
   actor: Actor,
   now: Date,
@@ -217,7 +223,8 @@ async function applyChange(
 ) {
   if (current.version !== version) throw new UserError("Энэ цагийг өөр хүн дөнгөж сая өөрчилсөн. Хуудсаа шинэчилнэ үү.", undefined, "STALE");
   await assertPlacementChangeable(tx, current);
-  const v = await validatePlacement(tx, next, { excludeId: current.id, now });
+  // Moving on the calendar keeps the extra time; the edit form sends it explicitly
+  const v = await validatePlacement(tx, { ...next, extraMin: next.extraMin ?? current.extraMin }, { excludeId: current.id, now });
   const updated = await tx.appointment.update({
     where: { id: current.id },
     data: {
@@ -228,6 +235,7 @@ async function applyChange(
       startsAt: next.startsAt,
       endsAt: v.endsAt,
       blockedUntil: v.blockedUntil,
+      extraMin: v.extraMin,
       ...(next.source ? { source: next.source as "PHONE" } : {}),
       ...(next.note !== undefined ? { note: next.note ?? null } : {}),
       priceSnapshot: next.serviceId !== current.serviceId ? v.service.price : current.priceSnapshot,
@@ -251,6 +259,38 @@ async function assertPlacementChangeable(tx: Tx, current: Awaited<ReturnType<typ
   if (!isEditable(current.status)) throw new UserError("Дууссан эсвэл цуцлагдсан цагийг засах боломжгүй.", undefined, "APPT_LOCKED");
   const activeSale = await tx.sale.count({ where: { appointmentId: current.id, status: { in: [...ACTIVE_SALE] } } });
   if (activeSale > 0) throw new UserError(ARRIVED_LOCKED, undefined, "APPT_LOCKED");
+}
+
+/**
+ * "+ Нэмэлт цаг" (өрөө бэлдэх, цэвэрлэх) — календарийн дэлгэрэнгүйгээс. Зөвхөн дуусах хилийг
+ * (blockedUntil) хөдөлгөнө, тиймээс ирсэн / үйлчилгээнд байгаа цагт ч болно. Дараагийн цагтай
+ * давхцвал DB-ийн EXCLUDE constraint татгалзана.
+ */
+export async function setExtraTime(raw: ApptExtraInput, actor: Actor) {
+  const input = apptExtraSchema.parse(raw);
+  return withOverlapGuard(() =>
+    db.$transaction(async (tx) => {
+      const current = await lockAppt(tx, input.id);
+      if (!isEditable(current.status) && current.status !== "ARRIVED" && current.status !== "IN_PROGRESS") {
+        throw new UserError("Дууссан эсвэл цуцлагдсан цагт нэмэлт цаг өгөх боломжгүй.", undefined, "APPT_LOCKED");
+      }
+      if (current.extraMin === input.extraMin) return current;
+      const blockedUntil = addMinutes(current.blockedUntil, input.extraMin - current.extraMin);
+      const updated = await tx.appointment.update({
+        where: { id: current.id },
+        data: { extraMin: input.extraMin, blockedUntil, version: { increment: 1 } },
+      });
+      await audit(tx, {
+        userId: actor.id,
+        action: "appointment.extra_time",
+        entity: "Appointment",
+        entityId: current.id,
+        before: { extraMin: current.extraMin },
+        after: { extraMin: updated.extraMin },
+      });
+      return updated;
+    }, TX_OPTS),
+  );
 }
 
 /** Тэмдэглэл засах — бүх идэвхтэй төлөвт (ирсэн цагт ч) болно; байршилд хүрэхгүй */

@@ -19,6 +19,8 @@ export type CalAppt = {
   startsAt: string;
   endsAt: string;
   blockedUntil: string;
+  /** "+ Нэмэлт цаг" (minutes) — the last part of [endsAt, blockedUntil) */
+  extraMin: number;
   status: ApptStatus;
   source: string;
   note: string | null;

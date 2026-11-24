@@ -10,9 +10,10 @@ import { Badge, Button, Field, Select, Textarea } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { formatDateLabel, formatDateTime, formatTime, ubDateKey } from "@/lib/time";
-import { apptDetail, apptNote, apptOpenPos, apptStatus } from "@/server/actions/appointments";
+import { apptDetail, apptExtraTime, apptNote, apptOpenPos, apptStatus } from "@/server/actions/appointments";
 import { availableActions, type ApptAction } from "@/server/modules/appointments/state";
 import type { ApptDialogInit } from "./AppointmentDialog";
+import { ExtraTimePicker } from "./ExtraTimePicker";
 import type { CalPerms } from "./types";
 import { saleLabel, statusTone } from "./status";
 
@@ -38,6 +39,7 @@ export function AppointmentPanel({
   const [reason, setReason] = useState("");
   const status = useServerAction(apptStatus);
   const openPos = useServerAction(apptOpenPos);
+  const extra = useServerAction(apptExtraTime);
 
   const [reloadKey, setReloadKey] = useState(0);
   const load = useCallback(() => setReloadKey((k) => k + 1), []);
@@ -93,6 +95,7 @@ export function AppointmentPanel({
     [c.service, `${detail.service.name} · ${detail.service.durationMin}′${detail.service.bufferMin ? ` (+${detail.service.bufferMin}′ ${c.buffer.toLowerCase()})` : ""}`],
     [c.staff, detail.staff.name],
     ...(detail.room ? [[c.room, detail.room.name] as [string, React.ReactNode]] : []),
+    ...(detail.extraMin ? [[c.extraTime, c.extraLabel(detail.extraMin)] as [string, React.ReactNode]] : []),
     [c.source, t.admin.apptSource[detail.source as keyof typeof t.admin.apptSource] ?? detail.source],
     [c.price, formatMNT(detail.priceSnapshot)],
     ...(detail.note ? [[c.note, <span key="n" className="whitespace-pre-line">{detail.note}</span>] as [string, React.ReactNode]] : []),
@@ -163,6 +166,7 @@ export function AppointmentPanel({
                   date: ubDateKey(startsAt),
                   time: formatTime(startsAt),
                   roomId: detail.roomId,
+                  extraMin: detail.extraMin,
                   source: detail.source as ApptDialogInit["source"],
                   note: detail.note,
                 })
@@ -188,6 +192,15 @@ export function AppointmentPanel({
             </Button>
           )}
         </div>
+
+        {/* "+ Нэмэлт цаг" — also after arrival: it only moves the end of the block */}
+        {perms.canWrite && ["BOOKED", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(detail.status) && (
+          <ExtraTimePicker
+            value={detail.extraMin}
+            disabled={extra.pending}
+            onChange={(extraMin) => extra.run({ id, extraMin }, { onSuccess: () => (load(), router.refresh()) })}
+          />
+        )}
 
         {perms.canWrite && locked && detail.status !== "DONE" && <NoteEditor key={detail.note ?? ""} id={id} initial={detail.note ?? ""} onSaved={() => (load(), router.refresh())} />}
 

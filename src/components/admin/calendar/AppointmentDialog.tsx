@@ -10,6 +10,7 @@ import { useServerAction } from "@/components/admin/use-action";
 import { Badge, Button, Field, Input, Select, Textarea } from "@/components/admin/ui";
 import type { ApptStatus } from "@/generated/prisma/enums";
 import { t } from "@/i18n";
+import { ExtraTimePicker } from "./ExtraTimePicker";
 import { formatMNT } from "@/lib/money";
 import { formatTime, ubDateKey } from "@/lib/time";
 import { apptCreate, apptSlots, apptStatus, apptUpdate } from "@/server/actions/appointments";
@@ -33,6 +34,8 @@ export type ApptDialogInit = {
   /** "HH:MM" — preselect this slot if it is available */
   time?: string;
   roomId?: string | null;
+  /** "+ Нэмэлт цаг" in minutes */
+  extraMin?: number;
   source?: Source;
   note?: string | null;
 };
@@ -71,6 +74,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
   const [loading, setLoading] = useState(false);
   const [picked, setPicked] = useState<Slot | null>(null);
   const [roomId, setRoomId] = useState<string>(init.roomId ?? "");
+  const [extraMin, setExtraMin] = useState(init.extraMin ?? 0);
   const [source, setSource] = useState<Source>(init.source ?? "PHONE");
   const [note, setNote] = useState(init.note ?? "");
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -86,7 +90,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
     let stale = false;
     const run = async () => {
       setLoading(true);
-      const res = await apptSlots({ serviceId, date, staffId: staffId || null, excludeId: init.id ?? null });
+      const res = await apptSlots({ serviceId, date, staffId: staffId || null, excludeId: init.id ?? null, extraMin });
       if (stale) return;
       setLoading(false);
       if (!res.ok) return setResult(null);
@@ -101,7 +105,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
     return () => {
       stale = true;
     };
-  }, [serviceId, date, staffId, init.id, init.time, init.date]);
+  }, [serviceId, date, staffId, extraMin, init.id, init.time, init.date]);
 
   // "Anyone": one chip per time (first free staff member)
   const chips = useMemo(() => {
@@ -139,6 +143,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
       staffId: picked.staffId,
       roomId: needsRoom ? roomId || picked.roomId : null,
       startsAt: picked.startsAt,
+      extraMin,
       source,
       note: note || null,
     };
@@ -149,7 +154,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
     } else if (res.code === "APPT_OVERLAP" || res.code?.startsWith("SLOT_")) {
       // The slot was just taken — reload the free slots
       setPicked(null);
-      const again = await apptSlots({ serviceId, date, staffId: staffId || null, excludeId: init.id ?? null });
+      const again = await apptSlots({ serviceId, date, staffId: staffId || null, excludeId: init.id ?? null, extraMin });
       if (again.ok) setResult(again.data);
     }
   };
@@ -245,6 +250,8 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
           {save.fieldErrors.startsAt && <p className="mt-1 text-[13px] text-danger" role="alert">{save.fieldErrors.startsAt[0]}</p>}
         </fieldset>
       )}
+
+      {serviceId && <ExtraTimePicker value={extraMin} onChange={setExtraMin} />}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {needsRoom && (

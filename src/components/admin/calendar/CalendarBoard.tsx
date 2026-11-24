@@ -336,7 +336,8 @@ export function CalendarBoard(p: Props) {
                         byRoom={byRoom(col)}
                         top={top(a.startsAt)}
                         h={height(a.startsAt, a.endsAt)}
-                        bufferH={height(a.endsAt, a.blockedUntil)}
+                        bufferH={height(a.endsAt, a.blockedUntil) - a.extraMin * PX_PER_MIN}
+                        extraH={a.extraMin * PX_PER_MIN}
                         draggable={p.perms.canWrite && (a.status === "BOOKED" || a.status === "CONFIRMED")}
                         onOpen={() => setPanelId(a.id)}
                         onDragStart={() => setDragId(a.id)}
@@ -411,13 +412,15 @@ export function CalendarBoard(p: Props) {
 }
 
 /** Pastel card in the staff member's colour; status shown with a small mark, not a colour change */
-function ApptCard({ a, byRoom, top, h, bufferH, draggable, onOpen, onDragStart, onDragEnd }: {
+function ApptCard({ a, byRoom, top, h, bufferH, extraH = 0, draggable, onOpen, onDragStart, onDragEnd }: {
   a: CalAppt;
   /** In a room column the second line names the staff member instead of the room */
   byRoom?: boolean;
   top: number;
   h: number;
   bufferH: number;
+  /** "+ Нэмэлт цаг" — drawn after the buffer in its own (champagne) stripes */
+  extraH?: number;
   draggable: boolean;
   onOpen: () => void;
   onDragStart: () => void;
@@ -432,7 +435,7 @@ function ApptCard({ a, byRoom, top, h, bufferH, draggable, onOpen, onDragStart, 
     a.status === "ARRIVED" ? <span className="size-2 rounded-full bg-ok" aria-hidden /> :
     a.status === "IN_PROGRESS" ? <span className="size-2 rounded-full bg-[#C08A2E]" aria-hidden /> : null;
   return (
-    <div className={`absolute z-10 ${noShow ? "left-1.5 right-1/3" : "inset-x-1.5"}`} style={{ top: top + 2, height: h + bufferH - 4 }}>
+    <div className={`absolute z-10 ${noShow ? "left-1.5 right-1/3" : "inset-x-1.5"}`} style={{ top: top + 2, height: h + bufferH + extraH - 4 }}>
       <button
         type="button"
         draggable={draggable}
@@ -470,6 +473,14 @@ function ApptCard({ a, byRoom, top, h, bufferH, draggable, onOpen, onDragStart, 
           title={c.buffer}
           className="mx-1 rounded-b-lg bg-[repeating-linear-gradient(135deg,transparent_0,transparent_3px,rgba(28,34,48,0.07)_3px,rgba(28,34,48,0.07)_5px)]"
           style={{ height: Math.max(0, bufferH) }}
+        />
+      )}
+      {extraH > 0 && (
+        <div
+          aria-label={c.extraLabel(a.extraMin)}
+          title={c.extraLabel(a.extraMin)}
+          className="mx-1 rounded-b-lg border border-t-0 border-dashed border-champagne/60 bg-[repeating-linear-gradient(135deg,transparent_0,transparent_4px,rgba(184,155,114,0.28)_4px,rgba(184,155,114,0.28)_7px)]"
+          style={{ height: Math.max(0, extraH) }}
         />
       )}
     </div>

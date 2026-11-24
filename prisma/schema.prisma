@@ -600,8 +600,10 @@ model Appointment {
   startsAt      DateTime   @db.Timestamptz(3)
   /// startsAt + service.durationMin (buffer ОРОХГҮЙ)
   endsAt        DateTime   @db.Timestamptz(3)
-  /// endsAt + service.bufferMin — давхцлын constraint үүн дээр
+  /// endsAt + service.bufferMin + extraMin — давхцлын constraint үүн дээр
   blockedUntil  DateTime   @db.Timestamptz(3)
+  /// "Нэмэлт цаг": өрөө бэлдэх, цэвэрлэх (0 / 10 / 15 / 30 мин) — buffer-ээс гадна
+  extraMin      Int        @default(0)
   status        ApptStatus @default(BOOKED)
   source        ApptSource @default(PHONE)
   note          String?

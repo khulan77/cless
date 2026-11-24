@@ -1,6 +1,7 @@
 /** Цаг захиалгын оролтын schema (цэвэр) */
 import { z } from "zod";
 import { isDateKey, isHm } from "@/lib/time";
+import { EXTRA_MINUTES } from "./extra-minutes";
 
 const id = z.string().min(1).max(64);
 const dateKey = z.string().refine(isDateKey, "Огноо буруу байна.");
@@ -8,12 +9,19 @@ const instant = z.coerce.date({ error: "Цагаа сонгоно уу." });
 
 export const APPT_SOURCES = ["PHONE", "INSTAGRAM", "FACEBOOK", "WALK_IN", "OTHER"] as const;
 
+export { EXTRA_MINUTES };
+const extraMin = z
+  .number()
+  .int()
+  .refine((n) => (EXTRA_MINUTES as readonly number[]).includes(n), "Нэмэлт цаг 0, 10, 15 эсвэл 30 минут.");
+
 export const apptInputSchema = z.object({
   customerId: id,
   serviceId: id,
   staffId: id,
   roomId: id.nullish(),
   startsAt: instant,
+  extraMin: extraMin.default(0),
   source: z.enum(APPT_SOURCES).default("PHONE"),
   note: z.string().trim().max(1000).nullish(),
 });
@@ -21,6 +29,8 @@ export type ApptInput = z.input<typeof apptInputSchema>;
 
 export const apptUpdateSchema = apptInputSchema.extend({
   id,
+  /** Not sent → the appointment keeps its current extra time */
+  extraMin: extraMin.optional(),
   /** Optimistic lock — өөр хүн зэрэг засвал татгалзана */
   version: z.number().int().min(0),
 });
@@ -44,7 +54,13 @@ export const slotQuerySchema = z.object({
   roomId: id.nullish(),
   /** Засварлаж буй цагийг завгүйд тооцохгүй */
   excludeId: id.nullish(),
+  /** Нэмэлт цагийг багтаах сул цаг */
+  extraMin: extraMin.default(0),
 });
+
+/** Календарийн дэлгэрэнгүйгээс нэмэлт цаг солих */
+export const apptExtraSchema = z.object({ id, extraMin });
+export type ApptExtraInput = z.input<typeof apptExtraSchema>;
 export type SlotQuery = z.input<typeof slotQuerySchema>;
 
 export const freeSearchSchema = z.object({
