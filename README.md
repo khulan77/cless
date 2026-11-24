@@ -76,7 +76,7 @@ bun scripts/reset-transactions.ts --confirm  # устгана (NODE_ENV=producti
 
 | Job | Юу хийнэ |
 |---|---|
-| `check` | `bun install --frozen-lockfile` → `prisma generate` → `tsc --noEmit` → lint → vitest (unit + DB тест, CI доторх Postgres 16) |
+| `check` | `bun install --frozen-lockfile` → `prisma generate` → `next typegen` → `tsc --noEmit` → lint → vitest (unit + DB тест, CI доторх Postgres 16) |
 | `build` | CI Postgres-д migrate + seed → `bun run build` (`ENV_CHECK=relaxed`, `NEXT_IMAGE_UNOPTIMIZED=1`) |
 | `e2e` | Playwright — зөвхөн гараар: Actions → CI → **Run workflow** |
 
