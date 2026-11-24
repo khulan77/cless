@@ -1136,6 +1136,7 @@ export const mn = {
       netTitle: (net: string) => `НӨАТ-гүй: ${net}`,
       service: "Үйлчилгээний орлого",
       serviceHint: (n: number, pct: number) => `${n} үйлчилгээ · нийтийн ${pct}%`,
+      serviceSplit: (oneTime: string, course: string) => `Нэг удаагийн: ${oneTime} · Курс/багц: ${course}`,
       product: "Бүтээгдэхүүний орлого",
       productHint: (n: number, pct: number) => `${n} ширхэг · нийтийн ${pct}%`,
       pending: "Хүлээгдэж буй",

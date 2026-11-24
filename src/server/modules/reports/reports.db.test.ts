@@ -75,7 +75,7 @@ describe("reports", () => {
       { kind: "PRODUCT", name: "LOTION P50 · 250 мл", unitPrice: 50_000, vat: 4_545 },
     ], [["CASH", 60_000], ["CARD", 90_000]]);
     const r = await loadReport(NOV, { canCost: false });
-    expect(r.kpi).toMatchObject({ total: 150_000, service: 100_000, product: 50_000, sales: 1, average: 150_000, serviceQty: 1, productQty: 1 });
+    expect(r.kpi).toMatchObject({ total: 150_000, service: 100_000, serviceOneTime: 100_000, serviceCourse: 0, product: 50_000, sales: 1, average: 150_000, serviceQty: 1, productQty: 1 });
     expect(r.kpi.service + r.kpi.product).toBe(r.kpi.total);
     expect(r.kpi.net).toBe(150_000 - 13_636);
     expect(r.payments).toEqual([{ method: "CARD", amount: 90_000 }, { method: "CASH", amount: 60_000 }]);

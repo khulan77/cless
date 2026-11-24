@@ -115,7 +115,14 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
       {/* KPI row 1 — the money */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.35fr_1fr_1fr_1fr]">
         <Kpi dark label={R.total} value={formatMNT(k.total)} hint={R.totalHint(k.sales)} title={R.netTitle(formatMNT(k.net))} delta={change(k.total, p.total)} big />
-        <Kpi label={R.service} value={formatMNT(k.service)} hint={R.serviceHint(k.serviceQty, pct(k.service))} delta={change(k.service, p.service)} big />
+        <Kpi
+          label={R.service}
+          value={formatMNT(k.service)}
+          hint={R.serviceHint(k.serviceQty, pct(k.service))}
+          sub={R.serviceSplit(formatMNT(k.serviceOneTime), formatMNT(k.serviceCourse))}
+          delta={change(k.service, p.service)}
+          big
+        />
         <Kpi label={R.product} value={formatMNT(k.product)} hint={R.productHint(k.productQty, pct(k.product))} delta={change(k.product, p.product)} big />
         <Kpi accent label={R.pending} value={formatMNT(k.pending)} hint={R.pendingHint(k.pendingCount)} big />
       </div>
@@ -236,10 +243,12 @@ function MoreLink({ href, label }: { href: string; label: string }) {
 }
 
 /** KPI tile; first one dark navy, "Хүлээгдэж буй" with a champagne border; ▲/▼ vs the previous period */
-function Kpi({ label, value, hint, delta, dark, accent, big, upIsBad, title }: {
+function Kpi({ label, value, hint, sub, delta, dark, accent, big, upIsBad, title }: {
   label: string;
   value: React.ReactNode;
   hint?: string;
+  /** Нэмэлт задаргааны мөр (A12: нэг удаагийн / курс) */
+  sub?: string;
   delta?: number | null;
   dark?: boolean;
   accent?: boolean;
@@ -266,6 +275,7 @@ function Kpi({ label, value, hint, delta, dark, accent, big, upIsBad, title }: {
           </span>
         )}
       </div>
+      {sub && <p className={`mt-1.5 text-[13px] ${dark ? "text-white/65" : "text-ink-soft"}`}>{sub}</p>}
     </div>
   );
 }

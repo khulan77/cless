@@ -26,6 +26,10 @@ export type ReportKpi = {
   /** НӨАТ-гүй */
   net: number;
   service: number;
+  /** A12: нэг удаагийн үйлчилгээ (одоогийн бүх үйлчилгээний мөр) */
+  serviceOneTime: number;
+  /** A12: курс/багцын ашиглалт — B хэсэг (Package) хэрэгжих хүртэл 0 */
+  serviceCourse: number;
   product: number;
   serviceQty: number;
   productQty: number;
@@ -122,6 +126,8 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
     total,
     net: Math.round(total - vat),
     service,
+    serviceOneTime: service,
+    serviceCourse: 0,
     product,
     serviceQty,
     productQty,
