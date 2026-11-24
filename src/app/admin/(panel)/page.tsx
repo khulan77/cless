@@ -5,6 +5,7 @@ import { Breakdown } from "@/components/admin/reports/Breakdown";
 import { CsvButton } from "@/components/admin/reports/CsvButton";
 import { DailyChart } from "@/components/admin/reports/DailyChart";
 import { RangePicker } from "@/components/admin/reports/RangePicker";
+import { ReportTabs } from "@/components/admin/reports/ReportTabs";
 import { LaunchButton } from "@/components/admin/system/LaunchButton";
 import { Badge, ButtonLink, Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { t } from "@/i18n";
@@ -100,6 +101,11 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
         </p>
       )}
 
+      {can(user.role, "report:read") && (
+        <div className="mb-5">
+          <ReportTabs active="overview" from={range.from} to={range.to} />
+        </div>
+      )}
       <PageHeader
         eyebrow={R.eyebrow}
         title={R.title}

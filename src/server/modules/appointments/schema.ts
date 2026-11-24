@@ -1,6 +1,7 @@
 /** Цаг захиалгын оролтын schema (цэвэр) */
 import { z } from "zod";
 import { isDateKey, isHm } from "@/lib/time";
+import { CANCEL_CATEGORIES } from "./cancel";
 import { EXTRA_MINUTES } from "./extra-minutes";
 
 const id = z.string().min(1).max(64);
@@ -44,6 +45,8 @@ export const apptStatusSchema = z.object({
   id,
   action: z.enum(["confirm", "arrive", "start", "complete", "cancel", "noShow"]),
   reason: z.string().trim().max(300).nullish(),
+  /** Цуцлахад заавал (A6) */
+  category: z.enum(CANCEL_CATEGORIES).nullish(),
 });
 export type ApptStatusInput = z.input<typeof apptStatusSchema>;
 

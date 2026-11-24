@@ -46,7 +46,6 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   let appointments: CalAppt[];
   let axis: { startMin: number; endMin: number };
   let slotMinutes: number;
-  let cancelReasons: string[];
   let weekStaffId: string | null = null;
   let cancelled = 0;
 
@@ -55,7 +54,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     // Week starts on Monday (UB)
     const weekStart = addDays(date, -((ubWeekday(date) + 6) % 7));
     const data = weekStaffId ? await weekView(weekStaffId, weekStart, { canContact }) : null;
-    const day = await dayView(date, { canContact }); // for cancel reasons / slot settings
+    const day = await dayView(date, { canContact }); // slot settings when the staff member has no data
     columns = data
       ? data.days.map((d) => ({
           key: d.date,
@@ -71,7 +70,6 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     appointments = (data?.appointments ?? []).map((a) => serialize(a, stats.money));
     axis = data?.axis ?? day.axis;
     slotMinutes = data?.slotMinutes ?? day.slotMinutes;
-    cancelReasons = day.cancelReasons;
   } else {
     const [data, stats] = await Promise.all([dayView(date, { canContact }), calendarMoney(ubDayRange(date))]);
     cancelled = stats.cancelled;
@@ -86,7 +84,6 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     appointments = data.appointments.map((a) => serialize(a, stats.money));
     axis = data.axis;
     slotMinutes = data.slotMinutes;
-    cancelReasons = data.cancelReasons;
   }
 
   return (
@@ -104,7 +101,6 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         slotMinutes={slotMinutes}
         services={services}
         staff={staffList}
-        cancelReasons={cancelReasons}
         perms={{
           canWrite: can(user.role, "appointment:write"),
           canStatus: can(user.role, "appointment:status"),

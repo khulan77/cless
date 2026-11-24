@@ -30,7 +30,6 @@ type Props = {
   slotMinutes: number;
   services: CalService[];
   staff: { id: string; name: string }[];
-  cancelReasons: string[];
   perms: CalPerms;
   /** Cancelled appointments in the visible range (not drawn) */
   cancelled: number;
@@ -380,7 +379,6 @@ export function CalendarBoard(p: Props) {
         open={dialog !== null}
         init={dialog}
         services={p.services}
-        cancelReasons={p.cancelReasons}
         canCancel={p.perms.canStatus}
         onClose={() => setDialog(null)}
       />
@@ -399,7 +397,6 @@ export function CalendarBoard(p: Props) {
           key={panelId}
           id={panelId}
           perms={p.perms}
-          cancelReasons={p.cancelReasons}
           onClose={() => setPanelId(null)}
           onEdit={(init) => {
             setPanelId(null);

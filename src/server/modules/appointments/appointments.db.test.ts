@@ -109,7 +109,7 @@ describe("create / overlap", () => {
   it("a cancelled appointment frees the time", async () => {
     const s = await setup();
     const a = await book(s, "10:00");
-    await changeStatus({ id: a.id, action: "cancel", reason: "Үйлчлүүлэгч цуцалсан" }, asManager(), NOW);
+    await changeStatus({ id: a.id, action: "cancel", category: "CUSTOMER" }, asManager(), NOW);
     await expect(book(s, "10:00")).resolves.toBeTruthy();
   });
 
@@ -181,6 +181,20 @@ describe("update / move / status", () => {
       updateAppointment({ id: a.id, version: a.version, customerId: s.customer.id, serviceId: s.service.id, staffId: s.staff.id, startsAt: at("10:00"), note: "Утсаар баталгаажсан" }, asManager(), NOW),
     ).resolves.toMatchObject({ note: "Утсаар баталгаажсан" });
     expect(await db.auditLog.count({ where: { entity: "Appointment", action: "appointment.move" } })).toBe(1);
+  });
+
+  it("cancel (A6): category required, a note for \"Бусад\"; who and when are recorded", async () => {
+    const s = await setup();
+    const a = await book(s, "10:00");
+    await expect(changeStatus({ id: a.id, action: "cancel", reason: "чөлөөт текст" }, asManager(), NOW)).rejects.toThrow(/шалтгааныг сонгоно/);
+    await expect(changeStatus({ id: a.id, action: "cancel", category: "OTHER" }, asManager(), NOW)).rejects.toThrow(/тайлбар/);
+    await changeStatus({ id: a.id, action: "cancel", category: "STAFF_SICK" }, asManager(), NOW);
+    const row = await db.appointment.findUniqueOrThrow({ where: { id: a.id } });
+    expect(row).toMatchObject({ status: "CANCELLED", cancelCategory: "STAFF_SICK", cancelReason: "Ажилтан өвчтэй", cancelledById: manager.id });
+    expect(row.cancelledAt?.toISOString()).toBe(NOW.toISOString());
+    const b = await book(s, "12:00");
+    await changeStatus({ id: b.id, action: "cancel", category: "OTHER", reason: "Цасан шуурга" }, asManager(), NOW);
+    expect(await db.appointment.findUniqueOrThrow({ where: { id: b.id } })).toMatchObject({ cancelCategory: "OTHER", cancelReason: "Цасан шуурга" });
   });
 
   it("status: cancel needs a reason, no-show only after start", async () => {

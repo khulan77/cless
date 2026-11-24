@@ -29,6 +29,7 @@ import {
   type ApptUpdateInput,
   type SlotQuery,
 } from "./schema";
+import { CANCEL_CATEGORY_LABELS } from "./cancel";
 import { isEditable, nextApptStatus, ApptStateError } from "./state";
 import type { ApptEmailKind } from "@/server/modules/notifications/appointment-email";
 export { completeForSale } from "./complete";
@@ -343,6 +344,12 @@ export async function moveAppointment(raw: ApptMoveInput, actor: Actor, now = ne
 
 export async function changeStatus(raw: ApptStatusInput, actor: Actor, now = new Date()) {
   const input = apptStatusSchema.parse(raw);
+  // Цуцлах: ангилал заавал, "Бусад" бол тайлбар заавал. cancelReason = тайлбар (байхгүй бол ангиллын нэр)
+  if (input.action === "cancel") {
+    if (!input.category) throw new UserError("Цуцлах шалтгааныг сонгоно уу.", { category: ["Шалтгаан заавал."] });
+    if (input.category === "OTHER" && !input.reason?.trim()) throw new UserError("\"Бусад\" шалтгааны тайлбарыг бичнэ үү.", { reason: ["Тайлбар заавал."] });
+    input.reason = input.reason?.trim() || CANCEL_CATEGORY_LABELS[input.category];
+  }
   if (input.action === "complete") {
     if (!can(actor.role, "appointment:done-manual")) throw new ForbiddenError("Цагийг гараар дуусгах эрх зөвхөн админ, менежерт.");
     if (!input.reason?.trim()) throw new UserError("Гараар дуусгах шалтгааныг бичнэ үү.", { reason: ["Шалтгаан заавал."] });
@@ -359,7 +366,13 @@ export async function changeStatus(raw: ApptStatusInput, actor: Actor, now = new
     }
     const updated = await tx.appointment.update({
       where: { id: current.id },
-      data: { status, ...(input.action === "cancel" ? { cancelReason: input.reason!.trim() } : {}), version: { increment: 1 } },
+      data: {
+        status,
+        ...(input.action === "cancel"
+          ? { cancelReason: input.reason!.trim(), cancelCategory: input.category, cancelledById: actor.id, cancelledAt: now }
+          : {}),
+        version: { increment: 1 },
+      },
     });
     await audit(tx, {
       userId: actor.id,
@@ -367,7 +380,7 @@ export async function changeStatus(raw: ApptStatusInput, actor: Actor, now = new
       entity: "Appointment",
       entityId: current.id,
       before: { status: current.status },
-      after: { status, reason: input.reason ?? null },
+      after: { status, reason: input.reason ?? null, ...(input.category ? { category: input.category } : {}) },
     });
     if (input.action === "cancel") await notify(tx, current.id, "cancelled", now);
     return updated;

@@ -243,6 +243,7 @@ model User {
 
   staffAppointments   Appointment[]    @relation("ApptStaff")
   createdAppointments Appointment[]    @relation("ApptCreatedBy")
+  cancelledAppointments Appointment[] @relation("ApptCancelledBy")
   conductedVisits     Visit[]
   createdSales        Sale[]           @relation("SaleCreatedBy")
   closedSales         Sale[]           @relation("SaleClosedBy")
@@ -608,6 +609,11 @@ model Appointment {
   source        ApptSource @default(PHONE)
   note          String?
   cancelReason  String?
+  /// Цуцалсан ангилал (CANCEL_CATEGORIES — appointments/cancel.ts); cancelReason нь тайлбар
+  cancelCategory String?
+  /// Хэн, хэзээ цуцалсан
+  cancelledById String?
+  cancelledAt   DateTime?  @db.Timestamptz(3)
   /// Захиалах үеийн үнэ (мэдээлэл) — POS дээр үнэ дахин тооцогдоно
   priceSnapshot Int        @default(0)
   createdById   String?
@@ -621,6 +627,7 @@ model Appointment {
   service   Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   room      Room?    @relation(fields: [roomId], references: [id], onDelete: Restrict)
   createdBy User?    @relation("ApptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  cancelledBy User?  @relation("ApptCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
   visit     Visit?
   sales     Sale[]
 
@@ -628,6 +635,7 @@ model Appointment {
   @@index([staffId, startsAt])
   @@index([customerId, startsAt])
   @@index([startsAt])
+  @@index([cancelledAt])
 }
 
 /// Эмчилгээний өрөө. Идэвхтэй өрөө 0 бол өрөөний логик бүхэлдээ унтарна.
