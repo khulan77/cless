@@ -244,6 +244,7 @@ model User {
   staffAppointments   Appointment[]    @relation("ApptStaff")
   createdAppointments Appointment[]    @relation("ApptCreatedBy")
   cancelledAppointments Appointment[] @relation("ApptCancelledBy")
+  customerNotes         CustomerNote[] @relation("CustomerNoteAuthor")
   conductedVisits     Visit[]
   createdSales        Sale[]           @relation("SaleCreatedBy")
   closedSales         Sale[]           @relation("SaleClosedBy")
@@ -577,6 +578,7 @@ model Customer {
   sales        Sale[]
   giftCards    GiftCard[]
   wallet       Wallet?
+  notesLog     CustomerNote[]
 
   @@index([email])
   @@index([name])
@@ -698,6 +700,24 @@ model ServiceStaff {
   @@index([staffId])
 }
 
+/// Үйлчлүүлэгчийн тэмдэглэл (A8): гоо сайханч, менежер бичнэ — "Үйлчлүүлэгч ингэж хэлсэн", мэдрэг
+/// байдал, дуртай/дургүй зүйл. Зохиогч 24 цагийн дотор засна/устгана; ADMIN, MANAGER бүгдийг.
+model CustomerNote {
+  id         String   @id @default(cuid())
+  customerId String
+  authorId   String
+  visitId    String?
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author   User     @relation("CustomerNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  visit    Visit?   @relation(fields: [visitId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+}
+
 model Visit {
   id             String      @id @default(cuid())
   branchId       String
@@ -723,6 +743,7 @@ model Visit {
   appointment     Appointment?          @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   sale            Sale?                 @relation(fields: [saleId], references: [id], onDelete: SetNull)
   recommendations VisitRecommendation[]
+  customerNotes   CustomerNote[]
 
   @@index([customerId, createdAt])
   @@index([branchId, createdAt])

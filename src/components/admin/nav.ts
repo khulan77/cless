@@ -31,6 +31,8 @@ export const ADMIN_NAV: NavEntry[] = [
   { href: "/admin/calendar", label: n.calendar, icon: "calendar", permission: "appointment:read" },
   // STAFF: their own schedule + account (no groups)
   { href: "/admin/schedule", label: n.schedule, icon: "schedule", permission: "schedule:own", hiddenWith: "schedule:all" },
+  { href: "/admin/me/customers", label: n.myCustomers, icon: "customers", permission: "me:read", hiddenWith: "schedule:all" },
+  { href: "/admin/me/sales", label: n.mySales, icon: "orders", permission: "me:read", hiddenWith: "schedule:all" },
   { href: "/admin/account", label: n.account, icon: "account", permission: "schedule:own", hiddenWith: "schedule:all" },
   {
     id: "cash",

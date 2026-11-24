@@ -147,12 +147,19 @@ export async function appointmentDetail(id: string, opts: { canContact: boolean 
     },
   });
   if (!appt) return null;
+  // Сүүлийн 3 тэмдэглэл — үйлчилгээ эхлэхээс өмнө харах (A8)
+  const notes = await db.customerNote.findMany({
+    where: { customerId: appt.customer.id },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+    select: { id: true, body: true, createdAt: true, author: { select: { name: true } } },
+  });
   const history = await db.auditLog.findMany({
     where: { entity: "Appointment", entityId: id },
     orderBy: { createdAt: "asc" },
     select: { id: true, action: true, createdAt: true, after: true, user: { select: { name: true } } },
   });
-  return { ...appt, history };
+  return { ...appt, history, notes };
 }
 
 /** "Миний хуваарь": зөвхөн өөрийн цагууд, утас/имэйлгүй, өмнөх оношлогоотой */
@@ -183,7 +190,20 @@ export async function mySchedule(staffId: string, from: string, days: number) {
         select: { customerId: true, createdAt: true, skinType: true, diagnosisNotes: true },
       })
     : [];
-  return appts.map(({ customerId, ...a }) => ({ ...a, lastVisit: visits.find((v) => v.customerId === customerId && v.createdAt < a.startsAt) ?? null }));
+  // Сүүлийн 3 тэмдэглэл — үйлчилгээ эхлэхээс өмнө харах (A8)
+  const notes = customerIds.length
+    ? await db.customerNote.findMany({
+        where: { customerId: { in: customerIds } },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, customerId: true, body: true, createdAt: true, author: { select: { name: true } } },
+      })
+    : [];
+  return appts.map(({ customerId, ...a }) => ({
+    ...a,
+    customerId,
+    lastVisit: visits.find((v) => v.customerId === customerId && v.createdAt < a.startsAt) ?? null,
+    notes: notes.filter((n) => n.customerId === customerId).slice(0, 3),
+  }));
 }
 
 /** POS: өнөөдрийн идэвхтэй цагууд (цагаар) */

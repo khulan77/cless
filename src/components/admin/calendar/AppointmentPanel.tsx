@@ -204,6 +204,23 @@ export function AppointmentPanel({
           )}
         </div>
 
+        {detail.notes.length > 0 && (
+          <section className="rounded-xl border border-champagne/30 bg-champagne/[0.06] px-4 py-3">
+            <h3 className="mb-1.5 text-[13px] font-medium text-champagne-ink">{t.admin.notes.recent}</h3>
+            <ul className="space-y-1.5 text-[14px]">
+              {detail.notes.map((n) => (
+                <li key={n.id}>
+                  <span className="text-ink-soft">{formatDateTime(new Date(n.createdAt))} · {n.author.name}: </span>
+                  <span className="whitespace-pre-line">{n.body}</span>
+                </li>
+              ))}
+            </ul>
+            <Link href={`/admin/customers/${detail.customer.id}?tab=notes`} className="mt-2 inline-block text-[13px] underline underline-offset-4">
+              {t.admin.notes.title} →
+            </Link>
+          </section>
+        )}
+
         {/* "+ Нэмэлт цаг" — also after arrival: it only moves the end of the block */}
         {perms.canWrite && ["BOOKED", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(detail.status) && (
           <ExtraTimePicker

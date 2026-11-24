@@ -1,8 +1,11 @@
 import { CalendarHeart } from "lucide-react";
+import Link from "next/link";
+import { MeTabs } from "@/components/admin/me/MeTabs";
 import { Badge, EmptyState, PageHeader } from "@/components/admin/ui";
 import { statusTone } from "@/components/admin/calendar/status";
 import { t } from "@/i18n";
 import { addDays, formatDateLabel, formatTime, ubDateKey } from "@/lib/time";
+import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { mySchedule } from "@/server/modules/appointments/queries";
 
@@ -26,6 +29,11 @@ export default async function MySchedulePage() {
 
   return (
     <>
+      {can(user.role, "me:read") && (
+        <div className="mb-5">
+          <MeTabs active="schedule" />
+        </div>
+      )}
       <PageHeader title="Миний хуваарь" description={m.subtitle(list.length)} />
       <div className="max-w-[720px] space-y-8">
         {days.map((d, i) => {
@@ -48,7 +56,15 @@ export default async function MySchedulePage() {
                           <p className="mt-1 text-[13px] text-ink-soft tabular-nums">–{formatTime(a.endsAt)}</p>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[17px] font-semibold">{a.customer.name}</p>
+                          <p className="truncate text-[17px] font-semibold">
+                            {can(user.role, "me:read") ? (
+                              <Link href={`/admin/me/customers/${a.customerId}`} className="hover:underline">
+                                {a.customer.name}
+                              </Link>
+                            ) : (
+                              a.customer.name
+                            )}
+                          </p>
                           <p className="text-[15px] text-ink-soft">
                             {a.service.name}
                             {a.room ? ` · ${a.room.name}` : ""}
@@ -71,6 +87,19 @@ export default async function MySchedulePage() {
                           </span>
                           {[a.lastVisit.skinType && t.admin.skinTypes[a.lastVisit.skinType], a.lastVisit.diagnosisNotes].filter(Boolean).join(" · ")}
                         </p>
+                      )}
+                      {a.notes.length > 0 && (
+                        <div className="mt-3 rounded-xl border border-champagne/30 bg-champagne/[0.06] px-3.5 py-2.5">
+                          <p className="mb-1 text-[13px] font-medium text-champagne-ink">{t.admin.notes.recent}</p>
+                          <ul className="space-y-1 text-[14px]">
+                            {a.notes.map((n) => (
+                              <li key={n.id}>
+                                <span className="text-ink-soft">{formatDateLabel(n.createdAt)} · {n.author.name}: </span>
+                                <span className="whitespace-pre-line">{n.body}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </li>
                   ))}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CustomerFormButton } from "@/components/admin/customers/CustomerForm";
+import { CustomerNotes } from "@/components/admin/customers/CustomerNotes";
 import { ResendEmailButton } from "@/components/admin/sales/SaleActions";
 import { Badge, Card, EmptyState, PageHeader, SegmentedTabs, Table, btnClass, tdClass, thClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
@@ -10,6 +11,7 @@ import { formatDateLabel, formatTime, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { customerHistory } from "@/server/modules/customers/history";
+import { noteViews } from "@/server/modules/customers/notes";
 import { customerProfile } from "@/server/modules/customers/service";
 import { concernNames } from "@/server/modules/visits/service";
 import { VisitSummary } from "@/components/admin/visits/VisitSummary";
@@ -18,14 +20,14 @@ export const metadata = { title: "Үйлчлүүлэгч" };
 export const instant = false;
 
 const H = t.admin.customers.history;
-const TABS = ["services", "products", "visits", "sales"] as const;
+const TABS = ["services", "products", "visits", "notes", "sales"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function CustomerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const user = await requirePagePermission("customer:read");
   const { id } = await params;
   const tab: Tab = (TABS as readonly string[]).includes((await searchParams).tab ?? "") ? ((await searchParams).tab as Tab) : "services";
-  const [profile, history] = await Promise.all([customerProfile(id), customerHistory(id)]);
+  const [profile, history, notes] = await Promise.all([customerProfile(id), customerHistory(id), tab === "notes" ? noteViews(id, user) : null]);
   if (!profile) notFound();
   const { customer: c, visits, sales } = profile;
   const slugs = [...new Set(visits.flatMap((v) => v.concerns))];
@@ -194,6 +196,12 @@ export default async function CustomerPage({ params, searchParams }: { params: P
               ))}
             </ul>
           )}
+        </Card>
+      )}
+
+      {tab === "notes" && notes && (
+        <Card title={t.admin.notes.title} description={t.admin.notes.rule}>
+          <CustomerNotes customerId={c.id} notes={notes} canWrite={can(user.role, "customer-note:write")} />
         </Card>
       )}
 
