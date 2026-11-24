@@ -7,6 +7,7 @@
  */
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/server/db";
+import { LINE_SELLER } from "@/server/modules/reports/attribution";
 
 /** Нэг мөрийн буцаалтгүй үлдэгдэл (тоо, дүн) — SaleItem `i`, Sale `s` гэсэн alias-тай query-д */
 const NET_ITEMS = Prisma.sql`
@@ -133,7 +134,7 @@ export async function customerHistory(customerId: string) {
       FROM "SaleItem" i JOIN "Sale" s ON s."id" = i."saleId"
       LEFT JOIN r ON r."itemId" = i."id"
       LEFT JOIN "Variant" v ON v."id" = i."variantId"
-      LEFT JOIN "User" u ON u."id" = i."staffId"
+      LEFT JOIN "User" u ON u."id" = ${LINE_SELLER}
       LEFT JOIN "User" cb ON cb."id" = s."createdById"
       WHERE ${PAID} AND s."customerId" = ${customerId} AND i."kind"::text = 'PRODUCT'
       ORDER BY s."paidAt" DESC, i."sortOrder"`,

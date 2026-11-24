@@ -41,7 +41,8 @@ describe("customer history and ranking (A7)", () => {
 
     const h = await customerHistory(big.id);
     expect(h.totals).toEqual({ product: 120_000, service: 250_000, total: 370_000 });
-    expect(h.products).toEqual([expect.objectContaining({ barcode: "4600000000777", qty: 2, amount: 120_000, staff: admin.name })]);
+    // Sold together with the facial → attributed to the beautician, not the cashier (attribution.ts)
+    expect(h.products).toEqual([expect.objectContaining({ barcode: "4600000000777", qty: 2, amount: 120_000, staff: staff.name })]);
     expect(h.services).toEqual([expect.objectContaining({ service: "Нүүрний эмчилгээ", staff: staff.name, amount: 250_000, status: "SOLD" })]);
 
     const ranked = await listCustomersRanked();

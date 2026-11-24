@@ -5,6 +5,7 @@
 import { db } from "@/server/db";
 import { rangeBounds, type ReportRange } from "@/server/modules/reports/definitions";
 import { servedCustomerIds } from "@/server/modules/customers/access";
+import { LINE_SELLER } from "@/server/modules/reports/attribution";
 import { commissionFor, type CommissionRuleLite } from "./commission";
 
 /** Миний үйлчлүүлэгчид: нэр, сүүлийн үйлчилгээ, нийт хэдэн удаа, сүүлийн оношлогооны арьсны төрөл */
@@ -64,7 +65,7 @@ export async function mySales(staffId: string, range: ReportRange) {
       FROM "SaleItem" i JOIN "Sale" s ON s."id" = i."saleId"
       LEFT JOIN r ON r."itemId" = i."id"
       LEFT JOIN "Variant" v ON v."id" = i."variantId"
-      WHERE i."staffId" = ${staffId}
+      WHERE (CASE WHEN i."kind"::text = 'SERVICE' THEN i."staffId" ELSE ${LINE_SELLER} END) = ${staffId}
         AND s."status"::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
         AND s."paidAt" >= ${start} AND s."paidAt" < ${end}
       ORDER BY s."paidAt" DESC`,
