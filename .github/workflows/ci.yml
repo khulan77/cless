@@ -1,0 +1,161 @@
+# CI — every pull request and every push to main. E2E only on demand (Actions → CI → Run workflow).
+#
+# Databases are throwaway Postgres 16 service containers on localhost — never Supabase.
+# No repository secrets are used: the values below (passwords, AUTH_SECRET) are CI-only placeholders.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      e2e:
+        description: "Run the Playwright E2E suite"
+        type: boolean
+        default: true
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TZ: Asia/Ulaanbaatar
+  # Same as local runs and the Dockerfile
+  NEXT_TELEMETRY_DISABLED: "1"
+  CI_DB: postgresql://postgres:postgres@127.0.0.1:5432
+
+jobs:
+  check:
+    name: check (tsc · lint · unit/db tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        # The official image ships contrib extensions (btree_gist is created by a migration)
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # vitest "db" project: resets this database and applies every migration (tests/db-global-setup.ts)
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/cless_test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/cless_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json # "packageManager": "bun@1.3.x"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
+      - run: bunx tsc --noEmit
+      - run: bun run lint
+      - run: bun run test
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cless_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # The build prerenders pages from the DB → migrate + seed a CI database first
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/cless_ci
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/cless_ci
+      SEED_ADMIN_PASSWORD: ci-only-seed-password
+      ENV_CHECK: relaxed
+      NEXT_IMAGE_UNOPTIMIZED: "1"
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:20267
+      AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-0000
+      INTERNAL_REVALIDATE_SECRET: ci-only-internal-secret-not-used-anywhere-00
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('src/**', 'next.config.ts') }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma migrate deploy
+      - run: bunx prisma db seed
+      - run: bun run build # prebuild: scripts/check-db-url.ts
+
+  e2e:
+    name: e2e (Playwright, manual)
+    if: github.event_name == 'workflow_dispatch' && inputs.e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cless_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/cless_ci
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/cless_ci
+      # E2E resets its own database (tests/e2e/prepare-db.ts)
+      E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/cless_e2e
+      SEED_ADMIN_PASSWORD: ci-only-seed-password
+      ENV_CHECK: relaxed
+      NEXT_IMAGE_UNOPTIMIZED: "1"
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:20267
+      AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-0000
+      INTERNAL_REVALIDATE_SECRET: ci-only-internal-secret-not-used-anywhere-00
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bunx prisma migrate deploy
+      - run: bunx prisma db seed
+      - run: bun run build
+      - run: bun run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7

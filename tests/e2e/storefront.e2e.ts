@@ -1,6 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import pg from "pg";
 import { E2E_DATABASE_URL, seedPassword } from "./env";
+import { contactWindow, inquiryReply } from "../../src/lib/hours";
 
 /**
  * Storefront launch (CATALOG mode):
@@ -86,8 +87,11 @@ test("'Салонд захиалах' request reaches admin and the outbox", asy
   await expect(sheet).toContainText("8 оронтой утасны дугаар");
   await sheet.getByLabel("Утасны дугаар").fill("9911 4455");
   await sheet.getByRole("button", { name: "Хүсэлт илгээх" }).click();
-  // E2E branch hours are 00:00–24:00 → "within 1 hour"
-  await expect(sheet.getByRole("status")).toHaveText("Хүсэлт хүлээн авлаа. Ажлын цагаар 1 цагийн дотор холбогдоно.");
+  // The reply depends on the server's clock: with the E2E hours (00:00–24:00) it is "within 1 hour",
+  // except in the last 30 minutes of the day (UB) — "tomorrow". Expect what the same rule gives now,
+  // so the test passes at any time of day.
+  const allDay = Object.fromEntries(["0", "1", "2", "3", "4", "5", "6"].map((d) => [d, [{ start: "00:00", end: "24:00" }]]));
+  await expect(sheet.getByRole("status")).toHaveText(inquiryReply(contactWindow(allDay, new Date())));
 
   const c = new pg.Client(E2E_DATABASE_URL);
   await c.connect();

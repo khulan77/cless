@@ -1,5 +1,7 @@
 # Biologique Recherche Mongolia
 
+[![CI](https://github.com/khulan77/cless/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/khulan77/cless/actions/workflows/ci.yml)
+
 Biologique Recherche-ийн Монгол дахь албан ёсны дистрибьюторын систем: онлайн дэлгүүр, СПА салон (айлчлал/POS, цаг захиалга), агуулах, тайлан, цалин, eBarimt.
 
 **Stack:** Next.js 16 (App Router, Cache Components) · TypeScript strict · Tailwind CSS 4 · PostgreSQL + Prisma 7 · Bun
@@ -65,6 +67,22 @@ bun scripts/reset-transactions.ts --confirm  # устгана (NODE_ENV=producti
 Админ: http://127.0.0.1:20267/admin (seed хэрэглэгчээр нэвтэрнэ).
 
 > `bun run build` нь нүүр хуудсыг build үед prerender хийдэг тул DB-д холбогдох боломжтой байх ёстой.
+
+## CI
+
+**Дүрэм: PR-ийг merge хийхийн өмнө CI ногоон (✓ check, ✓ build) байх ёстой.**
+
+`.github/workflows/ci.yml` — бүх pull request болон `main` руу push бүрт:
+
+| Job | Юу хийнэ |
+|---|---|
+| `check` | `bun install --frozen-lockfile` → `prisma generate` → `tsc --noEmit` → lint → vitest (unit + DB тест, CI доторх Postgres 16) |
+| `build` | CI Postgres-д migrate + seed → `bun run build` (`ENV_CHECK=relaxed`, `NEXT_IMAGE_UNOPTIMIZED=1`) |
+| `e2e` | Playwright — зөвхөн гараар: Actions → CI → **Run workflow** |
+
+DB нь CI доторх түр Postgres (localhost) — Supabase болон ямар ч secret ашиглахгүй. Цагийн бүс `Asia/Ulaanbaatar`.
+
+GitHub-д заавал болгох: Settings → Branches → `main` → *Require status checks to pass* → `check`, `build`.
 
 ## Vercel deploy (Supabase)
 
