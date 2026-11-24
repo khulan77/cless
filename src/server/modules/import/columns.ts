@@ -42,7 +42,7 @@ export type ProductColumn =
   | "isPublished"
   | "images";
 
-export type VariantColumn = "productSlug" | "sku" | "size" | "price" | "costPrice" | "initialStock" | "lowStockAt";
+export type VariantColumn = "productSlug" | "sku" | "barcode" | "size" | "price" | "costPrice" | "initialStock" | "lowStockAt";
 
 export const PRODUCT_COLUMNS: ColumnDef<ProductColumn>[] = [
   {
@@ -168,6 +168,14 @@ export const VARIANT_COLUMNS: ColumnDef<VariantColumn>[] = [
     note: "Латин том үсэг, тоо, зураас. Давхардахгүй. Хувилбарыг үүгээр таньна.",
     width: 18,
     examples: ["EX-MV-50", "EX-VITC-30"],
+  },
+  {
+    key: "barcode",
+    header: "Баркод",
+    aliases: ["barcode", "ean"],
+    note: "Заавал биш. Тоо, латин үсэг (4–32). Давхардахгүй. Хоосон: байгаа хувилбарт өөрчлөхгүй.",
+    width: 18,
+    examples: ["", ""],
   },
   {
     key: "size",

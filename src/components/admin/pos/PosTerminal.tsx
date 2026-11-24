@@ -216,6 +216,11 @@ export function PosTerminal({
         e.preventDefault();
         searchRef.current?.focus();
       }
+      // Barcode scanner (keyboard wedge) while nothing editable has focus: send the digits to the
+      // search box — moving focus on keydown makes the character land there
+      if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && /^[0-9A-Za-z]$/.test(e.key) && !document.querySelector("[role=dialog]")) {
+        searchRef.current?.focus();
+      }
       if (e.key === "F2") {
         e.preventDefault();
         document.getElementById("pos-checkout")?.click();
@@ -381,14 +386,22 @@ export function PosTerminal({
             onKeyDown={async (e) => {
               if (e.key !== "Enter") return;
               e.preventDefault();
-              // Barcode scanner: add directly on an exact SKU match
-              const res = await posSearchCatalog(query);
+              // Barcode scanner: add directly on an exact SKU / barcode match
+              const code = query.trim();
+              const res = await posSearchCatalog(code);
               if (!res.ok) return;
               const exact = res.data.products.find((p) => p.id === res.data.exactSku);
               if (exact) {
                 addProduct(exact);
                 setQuery("");
-              } else setCatalog(res.data);
+              } else {
+                setCatalog(res.data);
+                // Looks like a scanned code (no spaces, has digits) but nothing matches it
+                if (/^[0-9A-Za-z-]{4,32}$/.test(code) && /\d/.test(code)) {
+                  toast.error(s.codeNotFound(code));
+                  setQuery("");
+                }
+              }
             }}
             placeholder={s.search}
             aria-label={s.searchLabel}

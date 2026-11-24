@@ -329,6 +329,10 @@ model Variant {
   id         String   @id @default(cuid())
   productId  String
   sku        String   @unique
+  /// Баркод (EAN/UPC эсвэл дотоод код) — POS-ийн баркод уншигч
+  barcode    String?  @unique
+  /// Smart Logic-ийн барааны код (интеграц — дараагийн шат)
+  slItemId   String?
   size       String
   price      Int
   costPrice  Int      @default(0)
@@ -504,6 +508,8 @@ model Service {
   /// Цэвэрлэгээ/бэлтгэлийн хугацаа — дараагийн цаг эхлэх хүртэл
   bufferMin        Int      @default(0)
   requiresRoom     Boolean  @default(false)
+  /// Smart Logic-ийн үйлчилгээний код (интеграц — дараагийн шат)
+  slItemId         String?
   /// Цагийн календарьт захиалж болох эсэх
   bookable         Boolean  @default(true)
   /// Сайтад харагдах эсэх (дотоод үйлчилгээ = false)

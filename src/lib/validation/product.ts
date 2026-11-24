@@ -13,6 +13,24 @@ const lines = (maxItems: number, maxLen: number) =>
     .max(maxItems, `${maxItems}-аас ихгүй мөр.`)
     .transform((arr) => arr.filter(Boolean));
 
+/** "4 600 000 123 456" → "4600000123456" (the stored form; "" stays "") */
+export const normBarcode = (raw: string | null | undefined) => (raw ?? "").replace(/\s+/g, "").toUpperCase();
+
+/** "4 600 000 123 456" → "4600000123456"; латин үсэг, тоо, зураас; 4–32 тэмдэгт; хоосон → null */
+export const barcodeSchema = z
+  .string()
+  .trim()
+  .transform(normBarcode)
+  .pipe(
+    z
+      .string()
+      .max(32, "Баркод 32 тэмдэгтээс ихгүй.")
+      .refine((v) => v === "" || /^[A-Z0-9-]{4,32}$/.test(v), "Баркод: тоо, латин үсэг, зураас (4–32 тэмдэгт)."),
+  )
+  .transform((v) => v || null)
+  .nullish()
+  .transform((v) => v ?? null);
+
 export const variantInputSchema = z.object({
   id: idSchema.optional(),
   sku: z
@@ -22,6 +40,8 @@ export const variantInputSchema = z.object({
     .min(1, REQUIRED)
     .max(64)
     .regex(/^[A-Z0-9][A-Z0-9-]*$/, "SKU: латин том үсэг, тоо, зураас."),
+  /** Баркод (EAN-13, UPC эсвэл дотоод код) — хоосон бол null */
+  barcode: barcodeSchema,
   size: requiredText(50),
   price: moneySchema,
   costPrice: moneySchema,
@@ -67,6 +87,12 @@ export const productInputSchema = z
         ctx.addIssue({ code: "custom", path: ["variants", i, "sku"], message: "SKU давхардсан байна." });
       }
       seen.set(v.sku, i);
+    });
+    const barcodes = new Map<string, number>();
+    p.variants.forEach((v, i) => {
+      if (!v.barcode) return;
+      if (barcodes.has(v.barcode)) ctx.addIssue({ code: "custom", path: ["variants", i, "barcode"], message: "Баркод давхардсан байна." });
+      barcodes.set(v.barcode, i);
     });
     if (p.isPublished && !p.variants.some((v) => v.isActive)) {
       ctx.addIssue({ code: "custom", path: ["variants"], message: "Нийтлэхийн тулд дор хаяж нэг идэвхтэй хувилбар хэрэгтэй." });

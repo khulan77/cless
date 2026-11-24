@@ -11,7 +11,7 @@
  *  - Зураг: бүтээгдэхүүнд зураг байхгүй үед л нэмнэ (давтан импорт давхардуулахгүй).
  */
 import { infra } from "@/i18n/mn.infra";
-import { productInputSchema, type ProductInput } from "@/lib/validation/product";
+import { barcodeSchema, normBarcode, productInputSchema, type ProductInput } from "@/lib/validation/product";
 import {
   BADGE_INPUT,
   EXAMPLE_SLUG_PREFIX,
@@ -55,7 +55,7 @@ export type ExistingProduct = {
   sortOrder: number;
   images: { id: string; url: string; alt: string }[];
   /** sortOrder-оор эрэмбэлсэн */
-  variants: { id: string; sku: string; size: string; price: number; costPrice: number; lowStockAt: number; isActive: boolean }[];
+  variants: { id: string; sku: string; barcode: string | null; size: string; price: number; costPrice: number; lowStockAt: number; isActive: boolean }[];
   collectionIds: string[];
   relations: { relatedId: string; type: RelationType }[];
   bundleItems: { variantId: string; qty: number }[];
@@ -67,6 +67,8 @@ export type ImportContext = {
   products: Map<string, ExistingProduct>;
   /** SKU → эзэмшигч бүтээгдэхүүний slug (Excel-д байгаа SKU-уудаар) */
   skuOwners: Map<string, string>;
+  /** Баркод → эзэмшигч хувилбарын SKU (Excel-д байгаа баркодуудаар) */
+  barcodeOwners: Map<string, string>;
 };
 
 export type ProductAction = "create" | "update" | "unchanged" | "error";
@@ -74,6 +76,7 @@ export type ProductAction = "create" | "update" | "unchanged" | "error";
 export type PlannedVariant = {
   row: number;
   sku: string;
+  barcode: string | null;
   size: string;
   price: number | null;
   action: "create" | "update" | "unchanged";
@@ -151,6 +154,7 @@ export function buildImportPlan(parsed: ParsedWorkbook, ctx: ImportContext): Imp
   const productSlugs = new Set(parsed.products.map((p) => p.values.slug.trim().toLowerCase()));
   const variantsBySlug = new Map<string, RawRow<VariantColumn>[]>();
   const skuFirstRow = new Map<string, number>();
+  const barcodeFirstRow = new Map<string, number>();
   const variantRowErrors = new Map<number, string[]>();
   const addVErr = (row: number, msg: string) => variantRowErrors.set(row, [...(variantRowErrors.get(row) ?? []), msg]);
 
@@ -161,6 +165,12 @@ export function buildImportPlan(parsed: ParsedWorkbook, ctx: ImportContext): Imp
       const first = skuFirstRow.get(sku);
       if (first !== undefined) addVErr(v.row, E.dupSku(vRow(v.row), sku, first));
       else skuFirstRow.set(sku, v.row);
+    }
+    const code = normBarcode(v.values.barcode);
+    if (code) {
+      const firstCode = barcodeFirstRow.get(code);
+      if (firstCode !== undefined) addVErr(v.row, E.dupBarcode(vRow(v.row), code, firstCode));
+      else barcodeFirstRow.set(code, v.row);
     }
     if (!slug) {
       addVErr(v.row, E.required(vRow(v.row), vLabel("productSlug")));
@@ -256,6 +266,11 @@ export function buildImportPlan(parsed: ParsedWorkbook, ctx: ImportContext): Imp
 
       const owner = sku ? ctx.skuOwners.get(sku) : undefined;
       if (owner && owner !== slug) errs.push(E.skuOwned(vr, sku, owner));
+      const barcodeParsed = barcodeSchema.safeParse(v.values.barcode);
+      if (!barcodeParsed.success) errs.push(E.field(vr, vLabel("barcode"), barcodeParsed.error.issues[0]!.message));
+      const barcode = barcodeParsed.success ? barcodeParsed.data : null;
+      const codeOwner = barcode ? ctx.barcodeOwners.get(barcode) : undefined;
+      if (codeOwner && codeOwner !== sku) errs.push(E.barcodeOwned(vr, barcode!, codeOwner));
       const old = existingBySku.get(sku);
       if (old && stock) warns.push(W.stockIgnored(vr, sku));
       if (old && !old.isActive) warns.push(W.archivedVariant(vr, sku));
@@ -263,14 +278,16 @@ export function buildImportPlan(parsed: ParsedWorkbook, ctx: ImportContext): Imp
       const priceN = price ?? 0;
       const costN = cost ?? old?.costPrice ?? 0;
       const lowN = low ?? old?.lowStockAt ?? 3;
+      // Empty barcode cell keeps the current one
+      const barcodeN = barcode ?? old?.barcode ?? null;
       const action: PlannedVariant["action"] = !old
         ? "create"
-        : old.size === size && old.price === priceN && old.costPrice === costN && old.lowStockAt === lowN
+        : old.size === size && old.price === priceN && old.costPrice === costN && old.lowStockAt === lowN && old.barcode === barcodeN
           ? "unchanged"
           : "update";
-      planned.push({ row: v.row, sku, size, price, action, initialStock: !old && stock && stock > 0 ? stock : 0, costPrice: costN });
+      planned.push({ row: v.row, sku, barcode: barcodeN, size, price, action, initialStock: !old && stock && stock > 0 ? stock : 0, costPrice: costN });
       if (!old) {
-        variantInputs.push({ sku, size, price: priceN, costPrice: costN, lowStockAt: lowN, isActive: true });
+        variantInputs.push({ sku, barcode: barcodeN, size, price: priceN, costPrice: costN, lowStockAt: lowN, isActive: true });
         variantInputRows.push(v.row);
       }
       // байгаа хувилбарыг доор (existing-ийн дарааллаар) нэмнэ
@@ -289,6 +306,7 @@ export function buildImportPlan(parsed: ParsedWorkbook, ctx: ImportContext): Imp
         existingInputs.push({
           id: old.id,
           sku: old.sku,
+          barcode: hit.v.barcode,
           size: hit.v.size,
           price: hit.v.price ?? old.price,
           costPrice: hit.v.costPrice,
@@ -297,8 +315,8 @@ export function buildImportPlan(parsed: ParsedWorkbook, ctx: ImportContext): Imp
         });
         existingRows.push(hit.raw.row);
       } else {
-        const { id, sku, size, price, costPrice, lowStockAt, isActive } = old;
-        existingInputs.push({ id, sku, size, price, costPrice, lowStockAt, isActive });
+        const { id, sku, barcode, size, price, costPrice, lowStockAt, isActive } = old;
+        existingInputs.push({ id, sku, barcode, size, price, costPrice, lowStockAt, isActive });
         existingRows.push(p.row);
       }
     }

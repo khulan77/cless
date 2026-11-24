@@ -155,3 +155,27 @@ describe("Excel импорт (DB)", () => {
     expect(plan.products[0]!.errors.join()).toContain("ангилал «serums» олдсонгүй");
   });
 });
+
+describe("баркод — импорт → POS-ийн баркод уншигч", () => {
+  it("импортоор хадгалж, POS-д яг таарна; өөр хувилбарт давхардвал татгалзана", async () => {
+    const { searchPosCatalog } = await import("@/server/modules/sales/queries");
+    const plan = await planImport(
+      await parseWorkbook(await makeXlsx([product("serum-c")], [variant("serum-c", "SC-30", { barcode: "4600 0001 2345 6" })])),
+    );
+    expect(plan.products[0]!.errors).toEqual([]);
+    await executeImport(plan, { fetchImage: fakeFetch });
+    const v = await db.variant.findUniqueOrThrow({ where: { sku: "SC-30" } });
+    expect(v.barcode).toBe("4600000123456");
+
+    // Сканнер кодыг бичээд Enter — яг таарсан хувилбар
+    const found = await searchPosCatalog("4600000123456");
+    expect(found.exactSku).toBe(v.id);
+    expect((await searchPosCatalog("4600000999999")).exactSku).toBeNull();
+
+    // Өөр бүтээгдэхүүнд ижил баркод
+    const dup = await planImport(
+      await parseWorkbook(await makeXlsx([product("masque-vivant")], [variant("masque-vivant", "MV-50", { barcode: "4600000123456" })])),
+    );
+    expect(dup.products[0]!.errors.join()).toContain("өөр хувилбарт (SC-30)");
+  });
+});

@@ -46,7 +46,7 @@ const TAB_OF: Record<string, Tab> = {
   relations: "relations", bundleItems: "bundle", seoTitle: "seo", seoDescription: "seo",
 };
 
-const emptyVariant = (): VariantInput => ({ sku: "", size: "", price: 0, costPrice: 0, lowStockAt: 3, isActive: true });
+const emptyVariant = (): VariantInput => ({ sku: "", barcode: null, size: "", price: 0, costPrice: 0, lowStockAt: 3, isActive: true });
 const num = (v: string) => (v === "" ? Number.NaN : Number(v));
 const numValue = (v: number) => (Number.isNaN(v) ? "" : v);
 
@@ -256,10 +256,11 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
           >
             {err("variants") && <p className="mb-3 text-[13px] text-danger">{err("variants")![0]}</p>}
             <div className="-mx-5 -mb-5 overflow-x-auto">
-              <table className="w-full min-w-[900px] text-[13px]">
+              <table className="w-full min-w-[1060px] text-[13px]">
                 <thead>
                   <tr className="text-left text-[13px] uppercase tracking-[0.4px] text-ink-soft">
                     <th className="px-3 py-2 pl-5 font-medium">{F.sku}</th>
+                    <th className="px-2 py-2 font-medium">{F.barcode}</th>
                     <th className="px-2 py-2 font-medium">{F.size}</th>
                     <th className="px-2 py-2 font-medium">{F.price}</th>
                     <th className="px-2 py-2 font-medium">{F.cost}</th>
@@ -278,6 +279,19 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
                         <td className="px-3 py-2 pl-5">
                           <input aria-label={F.sku} value={v.sku} onChange={(e) => setVariant(i, { sku: e.target.value.toUpperCase() })} className={`${cls("sku")} w-52 font-mono text-[13px]`} />
                           {cell("sku") && <p className="mt-1 text-[13px] text-danger">{cell("sku")![0]}</p>}
+                        </td>
+                        <td className="px-2 py-2">
+                          <input
+                            aria-label={F.barcode}
+                            inputMode="numeric"
+                            value={v.barcode ?? ""}
+                            onChange={(e) => setVariant(i, { barcode: e.target.value })}
+                            // A scanner sends Enter after the code — don't submit the whole form
+                            onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                            placeholder={F.barcodePlaceholder}
+                            className={`${cls("barcode")} w-40 font-mono text-[13px]`}
+                          />
+                          {cell("barcode") && <p className="mt-1 text-[13px] text-danger">{cell("barcode")![0]}</p>}
                         </td>
                         <td className="px-2 py-2">
                           <input aria-label={F.size} value={v.size} onChange={(e) => setVariant(i, { size: e.target.value })} placeholder={F.sizePlaceholder} className={`${cls("size")} w-24`} />

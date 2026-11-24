@@ -93,6 +93,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           variants: product.variants.map((v) => ({
             id: v.id,
             sku: v.sku,
+            barcode: v.barcode,
             size: v.size,
             price: v.price,
             costPrice: v.costPrice,
