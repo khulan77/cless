@@ -27,6 +27,7 @@ const apptSelect = (canContact: boolean) =>
     customer: { select: customerSelect(canContact) },
     service: { select: { id: true, name: true, durationMin: true, bufferMin: true } },
     room: { select: { id: true, name: true } },
+    staff: { select: { name: true } },
   }) satisfies Prisma.AppointmentSelect;
 
 export type CalendarAppt = {
@@ -43,6 +44,7 @@ export type CalendarAppt = {
   customer: { id: string; name: string; phone?: string; email?: string | null };
   service: { id: string; name: string; durationMin: number; bufferMin: number };
   room: { id: string; name: string } | null;
+  staff: { name: string };
 };
 
 /** Харуулах цагийн тэнхлэг: салбарын ажлын цаг (амралтын өдөр бол 7 хоногийн хамгийн өргөн) */

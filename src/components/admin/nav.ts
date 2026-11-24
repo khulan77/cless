@@ -69,7 +69,6 @@ export const ADMIN_NAV: NavEntry[] = [
     children: [
       { href: "/admin/services", label: n.services, icon: "service", permission: "service:write" },
       { href: "/admin/staff-schedules", label: n.staffSchedules, icon: "staffSchedule", permission: "staff-schedule:write" },
-      { href: "/admin/rooms", label: n.rooms, icon: "room", permission: "room:write" },
     ],
   },
   {
@@ -81,6 +80,7 @@ export const ADMIN_NAV: NavEntry[] = [
       { href: "/admin/settings/salon", label: n.settingsSalon, icon: "salon", permission: "settings:write" },
       { href: "/admin/settings/shop", label: n.settingsShop, icon: "storefront", permission: "settings:write" },
       { href: "/admin/settings/pos", label: n.settingsPos, icon: "discount", permission: "settings:write" },
+      { href: "/admin/rooms", label: n.rooms, icon: "room", permission: "room:write" },
       { href: "/admin/settings/email", label: n.settingsEmail, icon: "email", permission: "settings:write" },
       { href: "/admin/settings/payments", label: n.settingsPayments, icon: "payments", permission: "integration:write" },
       { href: "/admin/users", label: n.users, icon: "users", permission: "user:write" },

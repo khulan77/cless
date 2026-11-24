@@ -20,6 +20,8 @@ const PX_PER_MIN = 1.6;
 
 type Props = {
   view: "day" | "week";
+  /** Day view columns: staff (default) or rooms */
+  by: "staff" | "room";
   date: string;
   weekStaffId: string | null;
   columns: CalColumn[];
@@ -67,7 +69,7 @@ export function CalendarBoard(p: Props) {
   }, []);
 
   const go = useCallback(
-    (next: { date?: string; view?: "day" | "week"; staff?: string | null }) => {
+    (next: { date?: string; view?: "day" | "week"; staff?: string | null; by?: "staff" | "room" }) => {
       const sp = new URLSearchParams();
       sp.set("date", next.date ?? p.date);
       const view = next.view ?? p.view;
@@ -75,10 +77,10 @@ export function CalendarBoard(p: Props) {
         sp.set("view", "week");
         const staff = next.staff === undefined ? p.weekStaffId : next.staff;
         if (staff) sp.set("staff", staff);
-      }
+      } else if ((next.by ?? p.by) === "room") sp.set("by", "room");
       router.push(`/admin/calendar?${sp.toString()}`);
     },
-    [p.date, p.view, p.weekStaffId, router],
+    [p.by, p.date, p.view, p.weekStaffId, router],
   );
   const step = p.view === "week" ? 7 : 1;
 
@@ -126,12 +128,17 @@ export function CalendarBoard(p: Props) {
     };
   }, [p.columns, p.appointments]);
 
-  const colAppts = (col: CalColumn) => p.appointments.filter((a) => a.staffId === col.staffId && ubDateKey(new Date(a.startsAt)) === col.date);
+  const byRoom = (col: CalColumn) => col.roomId !== undefined;
+  const colAppts = (col: CalColumn) =>
+    p.appointments.filter((a) => (byRoom(col) ? a.roomId === col.roomId : a.staffId === col.staffId) && ubDateKey(new Date(a.startsAt)) === col.date);
 
   const move = async (appt: CalAppt, col: CalColumn, minute: number) => {
     const startsAt = ubAt(col.date, formatHm(minute)).toISOString();
-    if (startsAt === appt.startsAt && col.staffId === appt.staffId) return;
-    const res = await apptMove({ id: appt.id, version: appt.version, startsAt, staffId: col.staffId, roomId: appt.roomId });
+    // Room columns move the appointment to another room (same staff); staff columns to another staff member
+    const staffId = byRoom(col) ? appt.staffId : col.staffId;
+    const roomId = byRoom(col) ? (col.roomId ?? null) : appt.roomId;
+    if (startsAt === appt.startsAt && staffId === appt.staffId && roomId === appt.roomId) return;
+    const res = await apptMove({ id: appt.id, version: appt.version, startsAt, staffId, roomId });
     if (!res.ok) toast.error(`${c.moveFailed} ${res.error}`);
     else if (res.message) toast.success(res.message);
     router.refresh();
@@ -199,7 +206,7 @@ export function CalendarBoard(p: Props) {
         <dl className="flex flex-wrap items-baseline gap-x-7 gap-y-2 text-[15px]">
           {[
             [c.stats.bookings, stats.bookings],
-            [c.stats.staffOn, stats.staffOn],
+            [p.by === "room" && p.view === "day" ? c.stats.rooms : c.stats.staffOn, stats.staffOn],
             [c.stats.load, `${stats.load}%`],
             [c.stats.free, c.stats.hours(hoursLabel(stats.free))],
             [c.stats.cancelled, p.cancelled],
@@ -211,6 +218,17 @@ export function CalendarBoard(p: Props) {
           ))}
         </dl>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {p.view === "day" && (
+            <SegmentedTabs
+              label={c.byLabel}
+              value={p.by}
+              onChange={(by) => go({ by })}
+              items={[
+                { value: "staff", label: c.byStaff },
+                { value: "room", label: c.byRoom },
+              ]}
+            />
+          )}
           {p.view === "week" && (
             <div className="w-56">
               <Select aria-label={c.staff} value={p.weekStaffId ?? ""} onChange={(e) => go({ staff: e.target.value })}>
@@ -235,7 +253,7 @@ export function CalendarBoard(p: Props) {
       </div>
 
       {p.columns.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center text-[15px] text-ink-soft">{c.noStaff}</p>
+        <p className="mt-6 rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center text-[15px] text-ink-soft">{p.by === "room" ? c.noRooms : c.noStaff}</p>
       ) : (
         <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-hairline bg-white">
           <div className="min-h-0 flex-1 overflow-auto">
@@ -248,7 +266,7 @@ export function CalendarBoard(p: Props) {
                 const highlight = p.view === "week" && col.date === today;
                 return (
                   <div key={col.key} className={`sticky top-0 z-20 flex items-center justify-center gap-3 border-b border-l border-hairline px-3 py-3 ${highlight ? "bg-[#F6F1E9]" : "bg-white"}`}>
-                    {p.view === "day" && <Avatar name={col.label} id={col.staffId} size={36} />}
+                    {p.view === "day" && !byRoom(col) && <Avatar name={col.label} id={col.staffId} size={36} />}
                     <div className="min-w-0 text-left">
                       <p className="truncate text-[15px] font-semibold text-ink">{col.label}</p>
                       <p className="truncate text-[13px] text-ink-soft tabular-nums">{c.staffHead(list.length, formatMNT(sum))}</p>
@@ -302,7 +320,9 @@ export function CalendarBoard(p: Props) {
                           aria-label={c.emptyCell(col.label, formatHm(m))}
                           className={`absolute inset-x-0 ${line} transition-colors duration-100 hover:bg-[#F6F1E9] focus-visible:bg-[#F6F1E9] focus-visible:outline-none disabled:cursor-default disabled:hover:bg-transparent`}
                           style={style}
-                          onClick={() => setDialog({ date: col.date, staffId: col.staffId, time: formatHm(m) })}
+                          onClick={() =>
+                            setDialog(byRoom(col) ? { date: col.date, time: formatHm(m), roomId: col.roomId ?? null } : { date: col.date, staffId: col.staffId, time: formatHm(m) })
+                          }
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={drop(col, m)}
                         />
@@ -313,6 +333,7 @@ export function CalendarBoard(p: Props) {
                       <ApptCard
                         key={a.id}
                         a={a}
+                        byRoom={byRoom(col)}
                         top={top(a.startsAt)}
                         h={height(a.startsAt, a.endsAt)}
                         bufferH={height(a.endsAt, a.blockedUntil)}
@@ -390,8 +411,10 @@ export function CalendarBoard(p: Props) {
 }
 
 /** Pastel card in the staff member's colour; status shown with a small mark, not a colour change */
-function ApptCard({ a, top, h, bufferH, draggable, onOpen, onDragStart, onDragEnd }: {
+function ApptCard({ a, byRoom, top, h, bufferH, draggable, onOpen, onDragStart, onDragEnd }: {
   a: CalAppt;
+  /** In a room column the second line names the staff member instead of the room */
+  byRoom?: boolean;
   top: number;
   h: number;
   bufferH: number;
@@ -432,7 +455,7 @@ function ApptCard({ a, top, h, bufferH, draggable, onOpen, onDragStart, onDragEn
         {!short && (
           <span className="block truncate text-[13px] leading-[18px] text-ink-soft">
             {a.service.name}
-            {a.room ? ` · ${a.room.name}` : ""}
+            {byRoom ? ` · ${a.staff.name}` : a.room ? ` · ${a.room.name}` : ""}
           </span>
         )}
         <span className="sr-only">, {t.admin.apptStatus[a.status]}</span>

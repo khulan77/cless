@@ -1,6 +1,7 @@
 import { CalendarBoard } from "@/components/admin/calendar/CalendarBoard";
 import type { CalAppt, CalColumn } from "@/components/admin/calendar/types";
-import { formatDateLabel, isDateKey, ubDateKey, ubDayRange, ubWeekday, addDays } from "@/lib/time";
+import { t } from "@/i18n";
+import { formatDateLabel, isDateKey, ubAt, ubDateKey, ubDayRange, ubWeekday, addDays } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { db } from "@/server/db";
@@ -27,6 +28,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const date = typeof sp.date === "string" && isDateKey(sp.date) ? sp.date : ubDateKey();
   const view = sp.view === "week" ? "week" : "day";
+  // Day view: columns by staff (default) or by room
+  const by = view === "day" && sp.by === "room" ? "room" : "staff";
   const canContact = can(user.role, "customer:contact:read");
 
   const [services, staff] = await Promise.all([
@@ -72,7 +75,14 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   } else {
     const [data, stats] = await Promise.all([dayView(date, { canContact }), calendarMoney(ubDayRange(date))]);
     cancelled = stats.cancelled;
-    columns = data.staff.map((s) => ({ key: s.id, label: s.name, date, staffId: s.id, working: iso(s.working), timeOff: iso(s.timeOff) }));
+    if (by === "room") {
+      // A room is free whenever the salon is open; appointments without a room get their own column
+      const open = data.branchHours.map((h) => ({ start: ubAt(date, h.start), end: ubAt(date, h.end) }));
+      columns = data.rooms.map((r) => ({ key: r.id, label: r.name, date, staffId: "", roomId: r.id, working: iso(open), timeOff: [] }));
+      if (data.appointments.some((a) => !a.roomId)) columns.push({ key: "no-room", label: t.admin.calendar.noRoom, date, staffId: "", roomId: null, working: iso(open), timeOff: [] });
+    } else {
+      columns = data.staff.map((s) => ({ key: s.id, label: s.name, date, staffId: s.id, working: iso(s.working), timeOff: iso(s.timeOff) }));
+    }
     appointments = data.appointments.map((a) => serialize(a, stats.money));
     axis = data.axis;
     slotMinutes = data.slotMinutes;
@@ -85,6 +95,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       <CalendarBoard
         cancelled={cancelled}
         view={view}
+        by={by}
         date={date}
         weekStaffId={weekStaffId}
         columns={columns}
