@@ -22,6 +22,8 @@ enum Role {
   ADMIN
   MANAGER
   STAFF
+  /// Нягтлан: менежерийн хэсгийг зөвхөн харна + цалингийн модулийг бүрэн удирдана
+  ACCOUNTANT
 }
 
 enum CollectionKind {
@@ -185,6 +187,33 @@ enum PayrollStatus {
   PAID
 }
 
+/// ADVANCE — сарын эхний хагасын урьдчилгаа; FINAL — сарын эцсийн тооцоо (бүтэн сараар суутгал, урьдчилгаа хасна);
+/// FULL — хагас тус бүрийг бие даан (суутгалтай)
+enum PayrollKind {
+  ADVANCE
+  FINAL
+  FULL
+}
+
+/// Ирц: менежер тэмдэглэнэ. Тэмдэглээгүй өдөр — ажлын хуваариас (WORKED / OFF) тооцоолно.
+enum WorkDayStatus {
+  WORKED
+  HALF_DAY
+  /// Цалинтай чөлөө — ажилласанд тооцно
+  PAID_LEAVE
+  UNPAID_LEAVE
+  SICK
+  /// Тасалсан
+  ABSENT
+  /// Амралт
+  OFF
+}
+
+enum PayrollAdjustmentType {
+  ADDITION
+  DEDUCTION
+}
+
 enum JobStatus {
   PENDING
   PROCESSING
@@ -246,37 +275,48 @@ model User {
   /// Нууц үг солигдсон мөч — үүнээс өмнө олгосон session хүчингүй
   passwordChangedAt  DateTime?
   baseSalary         Int       @default(0)
+  /// Ажил олгогчийн НДШ-ийн ангилал (PayrollRateSet.employerRates[].code); null = эхний ангилал
+  siCategory         String?
+  /// Банкны данс — AES-256-GCM шифрлэгдсэн (src/server/crypto/field.ts). Зөвхөн ADMIN / ACCOUNTANT уншина.
+  bankAccountEnc     String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  staffAppointments     Appointment[]    @relation("ApptStaff")
-  createdAppointments   Appointment[]    @relation("ApptCreatedBy")
-  cancelledAppointments Appointment[]    @relation("ApptCancelledBy")
-  customerNotes         CustomerNote[]   @relation("CustomerNoteAuthor")
-  visitPhotos           VisitPhoto[]     @relation("VisitPhotoCreatedBy")
-  reportDispatches      ReportDispatch[] @relation("ReportDispatchSentBy")
+  staffAppointments     Appointment[]       @relation("ApptStaff")
+  createdAppointments   Appointment[]       @relation("ApptCreatedBy")
+  cancelledAppointments Appointment[]       @relation("ApptCancelledBy")
+  customerNotes         CustomerNote[]      @relation("CustomerNoteAuthor")
+  visitPhotos           VisitPhoto[]        @relation("VisitPhotoCreatedBy")
+  reportDispatches      ReportDispatch[]    @relation("ReportDispatchSentBy")
   conductedVisits       Visit[]
-  createdSales          Sale[]           @relation("SaleCreatedBy")
-  closedSales           Sale[]           @relation("SaleClosedBy")
-  discountApprovals     Sale[]           @relation("SaleDiscountApprovedBy")
+  createdSales          Sale[]              @relation("SaleCreatedBy")
+  closedSales           Sale[]              @relation("SaleClosedBy")
+  discountApprovals     Sale[]              @relation("SaleDiscountApprovedBy")
   saleItems             SaleItem[]
-  createdPayments       Payment[]        @relation("PaymentCreatedBy")
-  confirmedPayments     Payment[]        @relation("PaymentConfirmedBy")
+  createdPayments       Payment[]           @relation("PaymentCreatedBy")
+  confirmedPayments     Payment[]           @relation("PaymentConfirmedBy")
   cashMovements         CashMovement[]
-  requestedRefunds      Refund[]         @relation("RefundRequestedBy")
-  approvedRefunds       Refund[]         @relation("RefundApprovedBy")
+  requestedRefunds      Refund[]            @relation("RefundRequestedBy")
+  approvedRefunds       Refund[]            @relation("RefundApprovedBy")
   priceChanges          PriceHistory[]
   stockMovements        StockMovement[]
-  openedShifts          CashShift[]      @relation("ShiftOpenedBy")
-  closedShifts          CashShift[]      @relation("ShiftClosedBy")
+  openedShifts          CashShift[]         @relation("ShiftOpenedBy")
+  closedShifts          CashShift[]         @relation("ShiftClosedBy")
   commissionRules       CommissionRule[]
   payrollLines          PayrollLine[]
   auditLogs             AuditLog[]
-  schedules             StaffSchedule[]  @relation("StaffSchedules")
-  timeOffs              StaffTimeOff[]   @relation("StaffTimeOffs")
-  createdTimeOffs       StaffTimeOff[]   @relation("TimeOffCreatedBy")
-  services              ServiceStaff[]   @relation("ServiceStaff")
-  handledInquiries      ProductInquiry[] @relation("InquiryHandledBy")
+  schedules             StaffSchedule[]     @relation("StaffSchedules")
+  timeOffs              StaffTimeOff[]      @relation("StaffTimeOffs")
+  createdTimeOffs       StaffTimeOff[]      @relation("TimeOffCreatedBy")
+  services              ServiceStaff[]      @relation("ServiceStaff")
+  handledInquiries      ProductInquiry[]    @relation("InquiryHandledBy")
+  soldItems             SaleItem[]          @relation("SaleItemSeller")
+  workDays              WorkDay[]           @relation("WorkDayStaff")
+  markedWorkDays        WorkDay[]           @relation("WorkDayMarkedBy")
+  salaryHistory         SalaryHistory[]     @relation("SalaryHistoryStaff")
+  payrollAdjustments    PayrollAdjustment[] @relation("PayrollAdjustmentStaff")
+  approvedPayrolls      PayrollPeriod[]     @relation("PayrollApprovedBy")
+  confirmedRateSets     PayrollRateSet[]    @relation("RateSetConfirmedBy")
 
   @@index([role, isActive])
 }
@@ -888,6 +928,8 @@ model SaleItem {
   serviceId             String?
   /// Үйлчилгээ хийсэн ажилтан — SERVICE мөрөнд заавал
   staffId               String?
+  /// Бүтээгдэхүүнийг зарсан ажилтан (PRODUCT): POS-д анхдагч = цагийн гоо сайханч, эсвэл кассчин
+  sellerId              String?
   nameSnapshot          String
   skuSnapshot           String?
   unitPrice             Int
@@ -909,11 +951,13 @@ model SaleItem {
   variant Variant? @relation(fields: [variantId], references: [id], onDelete: Restrict)
   service Service? @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   staff   User?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  seller  User?    @relation("SaleItemSeller", fields: [sellerId], references: [id], onDelete: SetNull)
 
   @@index([saleId])
   @@index([serviceId])
   @@index([variantId])
   @@index([staffId])
+  @@index([sellerId])
 }
 
 model Payment {
@@ -1198,14 +1242,22 @@ model CommissionRule {
 }
 
 model PayrollPeriod {
-  id        String        @id @default(cuid())
-  startDate DateTime      @db.Date
-  endDate   DateTime      @db.Date
-  status    PayrollStatus @default(DRAFT)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id           String        @id @default(cuid())
+  startDate    DateTime      @db.Date
+  endDate      DateTime      @db.Date
+  status       PayrollStatus @default(DRAFT)
+  kind         PayrollKind   @default(FULL)
+  /// Сүүлд тооцоолсон мөч (null = хараахан тооцоолоогүй)
+  calculatedAt DateTime?
+  approvedById String?
+  approvedAt   DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  lines PayrollLine[]
+  approvedBy  User?               @relation("PayrollApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  lines       PayrollLine[]
+  adjustments PayrollAdjustment[]
 
   @@unique([startDate, endDate])
 }
@@ -1219,6 +1271,16 @@ model PayrollLine {
   productCommission Int      @default(0)
   adjustments       Int      @default(0)
   deductions        Int      @default(0)
+  /// Төлөвлөсөн / ажилласан өдөр (хагас өдөр = 0.5)
+  plannedDays       Float    @default(0)
+  workedDays        Float    @default(0)
+  gross             Int      @default(0)
+  /// НДШ (даатгуулагч), ХХОАТ, ажил олгогчийн НДШ (зардал)
+  siEmployee        Int      @default(0)
+  pit               Int      @default(0)
+  siEmployer        Int      @default(0)
+  /// FINAL: хасагдсан урьдчилгаа (гарт олгосон)
+  advancePaid       Int      @default(0)
   net               Int
   details           Json
   createdAt         DateTime @default(now())
@@ -1228,6 +1290,91 @@ model PayrollLine {
   staff  User          @relation(fields: [staffId], references: [id], onDelete: Restrict)
 
   @@unique([periodId, staffId])
+}
+
+/// Цалингийн нэмэлт / хасалт (гараар, тайлбартай). Үе+ажилтанд холбоно — дахин тооцоолоход хадгалагдана.
+model PayrollAdjustment {
+  id          String                @id @default(cuid())
+  periodId    String
+  staffId     String
+  type        PayrollAdjustmentType
+  amount      Int
+  reason      String
+  createdById String?
+  createdAt   DateTime              @default(now())
+
+  period PayrollPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  staff  User          @relation("PayrollAdjustmentStaff", fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([periodId, staffId])
+}
+
+/// Ирц — зөвхөн менежер өөрчилсөн өдөр мөр үүснэ
+model WorkDay {
+  id         String        @id @default(cuid())
+  staffId    String
+  date       DateTime      @db.Date
+  status     WorkDayStatus
+  hours      Float?
+  note       String?
+  markedById String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  staff    User  @relation("WorkDayStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  markedBy User? @relation("WorkDayMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
+
+  @@unique([staffId, date])
+  @@index([date])
+}
+
+/// Нийтийн амралтын өдөр — ажлын өдрийн тоонд орохгүй
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @unique @db.Date
+  name      String
+  createdAt DateTime @default(now())
+}
+
+/// Сарын үндсэн цалингийн түүх — үеийн дундуур өөрчлөгдвөл өдрөөр хуваана
+model SalaryHistory {
+  id            String   @id @default(cuid())
+  staffId       String
+  monthly       Int
+  effectiveFrom DateTime @db.Date
+  note          String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  staff User @relation("SalaryHistoryStaff", fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, effectiveFrom])
+}
+
+/// НДШ / ХХОАТ-ын хувь хэмжээ — огноотой. Хувь нь basis point (1150 = 11.5%).
+/// Seed-д албан ёсны утга оруулахгүй: нягтлан оруулж баталгаажуулна (confirmedAt).
+model PayrollRateSet {
+  id            String    @id @default(cuid())
+  effectiveFrom DateTime  @unique @db.Date
+  /// Даатгуулагчийн НДШ (bp)
+  employeeSiBp  Int       @default(0)
+  /// Ажил олгогчийн НДШ ангиллаар: [{ code, label, bp }]
+  employerRates Json      @default("[]")
+  /// Задаргаа (сонголтоор): [{ label, employeeBp, employerBp }]
+  siBreakdown   Json      @default("[]")
+  /// НДШ ногдуулах сарын орлогын дээд хязгаар (₮); null = хязгааргүй
+  siCap         Int?
+  /// ХХОАТ (bp)
+  pitBp         Int       @default(0)
+  /// Хөнгөлөлтийн шатлал: [{ from, to (null = дээд хязгааргүй), credit }] — сарын ₮
+  pitCredits    Json      @default("[]")
+  note          String?
+  confirmedById String?
+  confirmedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  confirmedBy User? @relation("RateSetConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
 }
 
 // ─────────────────────── Аудит, тохиргоо ───────────────────────
