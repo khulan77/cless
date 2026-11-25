@@ -29,13 +29,13 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // CATALOG горим (онлайн төлбөр/хүргэлт 2-р үе шатанд): сагс, бүртгэл, checkout, хүргэлтийн
+  // CATALOG горим (онлайн төлбөр/хүргэлт 2-р үе шатанд): сагс, checkout, хүргэлтийн
+  // (/account — PROMPT 15-аас үйлчлүүлэгчийн бүртгэл, redirect-гүй)
   // хуудас байхгүй. Түр (307) — CHECKOUT нээгдэхэд (CHECKOUT_AVAILABLE) эндээс хасна.
   async redirects() {
     return [
       { source: "/cart", destination: "/collections", permanent: false },
       { source: "/checkout/:path*", destination: "/collections", permanent: false },
-      { source: "/account/:path*", destination: "/", permanent: false },
       { source: "/shipping", destination: "/salon", permanent: false },
     ];
   },

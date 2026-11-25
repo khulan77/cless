@@ -74,6 +74,8 @@ test("POS: shift → draft survives reload → split payment → e-mail SENT →
   await page.fill("#nc-name", "E2E Номин");
   await page.fill("#nc-phone", "8800 3344");
   await page.fill("#nc-email", "e2e-nomin@example.mn");
+  // PROMPT 15 §5: тайлан имэйлээр — зөвшөөрөлтэй үед л (E2E DB-д автомат илгээх асаалттай)
+  await page.check("#nc-email-consent");
   await waitAction(page, () => page.locator("dialog[open]").getByRole("button", { name: "Хадгалах" }).click());
   await expect(page.getByText("88003344")).toBeVisible();
 

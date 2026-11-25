@@ -7,6 +7,8 @@ import { getOnlineBookingSettings } from "@/server/modules/online-booking/settin
 import { getSalonInfo } from "@/server/queries/storefront";
 
 export const metadata = { title: "Цаг захиалах" };
+// Үйлчлүүлэгчийн session (cookie) уншдаг — request бүрт render
+export const instant = false;
 
 export default async function BookingPage({ searchParams }: { searchParams: Promise<{ service?: string }> }) {
   const [settings, salon, customer, sp] = await Promise.all([getOnlineBookingSettings(), getSalonInfo(), getCurrentCustomer(), searchParams]);

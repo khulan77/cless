@@ -29,20 +29,24 @@ async function login(page: Page, email: string, password: string) {
   await page.click("form button[type=submit]");
 }
 
-test("temporary password must be changed on first login", async ({ browser }) => {
+test("fallback temporary password (invited user) must be changed on first login", async ({ browser }) => {
   const admin = await newPage(browser, "198.51.100.10");
   await login(admin, "admin@example.mn", seedPassword());
   await admin.waitForURL((u) => !u.pathname.endsWith("/login"));
+  // PROMPT 15: нууц үггүй урина; утасгүй үед нөөц — түр нууц үг
   await admin.goto("/admin/users/new");
   await admin.fill("#name", "E2E Түр хэрэглэгч");
+  await admin.fill("#phone", "95551122");
   await admin.fill("#email", TEMP_EMAIL);
   await admin.selectOption("#role", "MANAGER");
-  await admin.fill("#password", "short-pw");
-  await admin.getByRole("button", { name: "Хэрэглэгч нэмэх" }).click();
-  await expect(admin.getByText("Нууц үг дор хаяж 10 тэмдэгт.")).toBeVisible();
-  await admin.fill("#password", TEMP_PASSWORD);
-  await admin.getByRole("button", { name: "Хэрэглэгч нэмэх" }).click();
+  await admin.getByRole("button", { name: "Урих" }).click();
   await admin.waitForURL(/\/admin\/users\/(?!new)/);
+  await admin.fill("#new-password", "short-pw");
+  await admin.getByRole("button", { name: "Нууц үг шинэчлэх" }).click();
+  await expect(admin.getByText("Нууц үг дор хаяж 10 тэмдэгт.")).toBeVisible();
+  await admin.fill("#new-password", TEMP_PASSWORD);
+  await admin.getByRole("button", { name: "Нууц үг шинэчлэх" }).click();
+  await expect(admin.getByText("Түр нууц үг тохируулагдлаа.").first()).toBeVisible();
 
   const user = await newPage(browser, "198.51.100.11");
   await login(user, TEMP_EMAIL, TEMP_PASSWORD);
@@ -65,7 +69,7 @@ test("6th login attempt is locked after 5 wrong passwords (generic error)", asyn
   const page = await newPage(browser, "203.0.113.77");
   for (let i = 0; i < 5; i++) {
     await login(page, TEMP_EMAIL, `wrong-password-${i}`);
-    await expect(page.getByText("Имэйл эсвэл нууц үг буруу байна.")).toBeVisible();
+    await expect(page.getByText("Утас/имэйл эсвэл нууц үг буруу байна.")).toBeVisible();
   }
   // Correct password, but locked
   await login(page, TEMP_EMAIL, NEW_PASSWORD);

@@ -11,6 +11,8 @@ import { getCurrentCustomer } from "@/server/modules/customer-auth/session";
 import { myAppointments } from "@/server/modules/online-booking/service";
 
 export const metadata = { title: t.pages.account.title, robots: { index: false } };
+// Үйлчлүүлэгчийн session (cookie) уншдаг — request бүрт render
+export const instant = false;
 
 const STATUS: Record<string, string> = {
   PENDING: "Батлахыг хүлээж буй",

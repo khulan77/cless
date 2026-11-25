@@ -4,6 +4,8 @@ import { getCurrentCustomer } from "@/server/modules/customer-auth/session";
 import { LoginClient } from "./LoginClient";
 
 export const metadata = { title: "Нэвтрэх", robots: { index: false } };
+// Үйлчлүүлэгчийн session (cookie) уншдаг — request бүрт render
+export const instant = false;
 
 /** Зөвхөн сайтын доторх зам (open redirect хамгаалалт) */
 function safeNext(raw: string | undefined) {
