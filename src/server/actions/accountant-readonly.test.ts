@@ -51,7 +51,7 @@ describe("ACCOUNTANT is read-only outside payroll (PROMPT 14 §1)", () => {
   });
 
   it("no write permission of the manager area is granted", () => {
-    const writes = ["appointment:write", "appointment:status", "customer:write", "visit:write", "pos:use", "sale:create", "sale:refund", "sale:void-paid", "shift:own", "shift:all", "stock:write", "product:write", "service:write", "price:write", "settings:write", "user:write", "staff-schedule:write", "room:write", "attendance:write", "inquiry:manage"] as const;
+    const writes = ["appointment:write", "appointment:status", "customer:write", "visit:write", "pos:use", "sale:create", "sale:refund", "sale:void-paid", "sale:seller", "shift:own", "shift:all", "stock:write", "product:write", "service:write", "price:write", "settings:write", "user:write", "staff-schedule:write", "room:write", "attendance:write", "inquiry:manage"] as const;
     for (const p of writes) expect(can("ACCOUNTANT", p), p).toBe(false);
   });
 

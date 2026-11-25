@@ -138,7 +138,7 @@ export async function getSaleDetail(id: string) {
       createdBy: { select: { name: true } },
       closedBy: { select: { name: true } },
       discountApprovedBy: { select: { name: true } },
-      items: { orderBy: { sortOrder: "asc" }, include: { staff: { select: { name: true } } } },
+      items: { orderBy: { sortOrder: "asc" }, include: { staff: { select: { name: true } }, seller: { select: { id: true, name: true } } } },
       payments: { orderBy: { createdAt: "asc" }, include: { createdBy: { select: { name: true } }, transactions: { select: { providerInvoiceId: true, providerStatus: true } } } },
       refunds: { orderBy: { createdAt: "asc" }, include: { requestedBy: { select: { name: true } } } },
       visit: {

@@ -28,6 +28,8 @@ export const cartItemSchema = z
     serviceId: idSchema.nullish(),
     qty: z.number().int().min(1, "Тоо 1-ээс багагүй.").max(999),
     staffId: idSchema.nullish(),
+    /** PRODUCT: зарсан ажилтан (PROMPT 14 §5). Хоосон бол: цагийн гоо сайханч, эсвэл кассчин */
+    sellerId: idSchema.nullish(),
     lineDiscount: discountSchema,
     lineDiscountReason: reason,
   })

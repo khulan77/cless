@@ -24,6 +24,8 @@ export const draftDataSchema = z.object({
         unitPrice: z.number().int().min(0),
         qty: z.number().int().min(1).max(999),
         staffId: text(64),
+        /** PRODUCT: зарсан ажилтан ("" = автоматаар) */
+        sellerId: text(64),
         discount,
         discountReason: text(200),
         howToUse: z.array(z.string().max(2000)).max(30).optional(),

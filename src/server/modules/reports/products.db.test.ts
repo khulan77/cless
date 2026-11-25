@@ -22,15 +22,15 @@ describe("Тайлан → Бүтээгдэхүүн (A10)", () => {
     await db.serviceConsumable.create({ data: { serviceId: facial.id, variantId: serum.id, qtyPerService: 0.25 } });
     const customer = await makeCustomer();
 
-    // POS records no staff on product lines: 3 serums sold together with Сараа's facial → hers
-    // (attribution.ts), 1 of them refunded; 1 serum sold alone → unknown
+    // PROMPT 14 §5: POS мөр бүрт "Зарсан" — 3 серумыг Сараа зарсан (сонгосон), 1-ийг буцаасан;
+    // 1 серумыг тусад нь, сонголтгүй → анхдагч: цаггүй тул кассчин (admin)
     const r = await checkout(
-      { customerId: customer.id, items: [{ kind: "SERVICE", serviceId: facial.id, qty: 1, staffId: sara.id }, { kind: "PRODUCT", variantId: serum.id, qty: 3 }] },
+      { customerId: customer.id, items: [{ kind: "SERVICE", serviceId: facial.id, qty: 1, staffId: sara.id }, { kind: "PRODUCT", variantId: serum.id, qty: 3, sellerId: sara.id }] },
       as,
     );
     await createPayment({ saleId: r.saleId, method: "CARD", amount: r.total, approvalCode: "A1", idempotencyKey: crypto.randomUUID() }, as);
     const item = await db.saleItem.findFirstOrThrow({ where: { saleId: r.saleId, kind: "PRODUCT" } });
-    expect(item.staffId).toBeNull();
+    expect(item).toMatchObject({ staffId: null, sellerId: sara.id });
     await createRefund({ saleId: r.saleId, items: [{ saleItemId: item.id, qty: 1 }], reason: "Харшил", method: "CARD", restock: true }, admin.id);
     const r2 = await checkout({ items: [{ kind: "PRODUCT", variantId: serum.id, qty: 1 }] }, as);
     await createPayment({ saleId: r2.saleId, method: "CASH", amount: r2.total, tendered: r2.total, idempotencyKey: crypto.randomUUID() }, as).catch(async () => {
@@ -52,7 +52,7 @@ describe("Тайлан → Бүтээгдэхүүн (A10)", () => {
     expect(row).toMatchObject({ variantId: serum.id, soldQty: 3, revenue: 180_000, usedQty: 0.5 });
     expect(row!.byStaff).toEqual([
       { staffId: sara.id, name: "Сараа", soldQty: 2, revenue: 120_000, usedQty: 0.5 },
-      { staffId: "none", name: null, soldQty: 1, revenue: 60_000, usedQty: 0 },
+      { staffId: admin.id, name: admin.name, soldQty: 1, revenue: 60_000, usedQty: 0 },
     ]);
 
     const d = await productDetail(serum.id, range);

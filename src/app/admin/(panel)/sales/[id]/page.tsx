@@ -11,6 +11,8 @@ import { getSaleDetail } from "@/server/modules/sales/queries";
 import { concernNames } from "@/server/modules/visits/service";
 import { VisitSummary } from "@/components/admin/visits/VisitSummary";
 import { ubDateKey } from "@/lib/time";
+import { SellerSelect } from "@/components/admin/sales/SellerSelect";
+import { db } from "@/server/db";
 
 export const metadata = { title: "Борлуулалт" };
 export const instant = false;
@@ -26,6 +28,11 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
   const concerns = sale.visit ? await concernNames(sale.visit.concerns) : [];
   const refundable = can(user.role, "sale:refund") && (sale.status === "PAID" || sale.status === "PARTIALLY_REFUNDED");
   const resumable = ["DRAFT", "PENDING_PAYMENT", "PARTIALLY_PAID"].includes(sale.status) && can(user.role, "pos:use");
+  // "Зарсан" ажилтныг засах (PROMPT 14 §5): ADMIN, MANAGER — идэвхтэй ажилтнууд (нягтлангүй)
+  const canSeller = can(user.role, "sale:seller") && sale.items.some((i) => i.kind === "PRODUCT");
+  const sellerOptions = canSeller
+    ? await db.user.findMany({ where: { isActive: true, role: { not: "ACCOUNTANT" } }, orderBy: { name: "asc" }, select: { id: true, name: true } })
+    : [];
 
   return (
     <>
@@ -82,7 +89,9 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
                         {i.skuSnapshot ?? (i.staff ? `Ажилтан: ${i.staff.name}` : "")}
                         {i.lineDiscountReason ? ` · ${i.lineDiscountReason}` : ""}
                         {i.refundedQty > 0 ? ` · буцаасан ${i.refundedQty}` : ""}
+                        {i.kind === "PRODUCT" && !canSeller && ` · ${t.admin.pos.sellerPrefix} ${i.seller?.name ?? "—"}`}
                       </span>
+                      {i.kind === "PRODUCT" && canSeller && <SellerSelect saleId={sale.id} itemId={i.id} value={i.sellerId ?? ""} options={sellerOptions} />}
                     </td>
                     <td className={`${tdClass} text-right tabular-nums`}>{i.qty}</td>
                     <td className={`${tdClass} text-right tabular-nums`}>{formatMNT(i.unitPrice)}</td>

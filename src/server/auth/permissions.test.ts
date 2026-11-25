@@ -30,6 +30,7 @@ const MATRIX: Row[] = [
   ["discount:over-limit", false, true, false, true],
   ["sale:refund", false, true, false, true],
   ["sale:void-paid", false, true, false, true],
+  ["sale:seller", false, true, false, true],
   ["customer:read", false, true, true, true],
   ["customer:write", false, true, false, true],
   ["visit:write", false, true, false, true],

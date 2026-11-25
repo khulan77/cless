@@ -32,6 +32,8 @@ export const PERMISSIONS = [
   "discount:over-limit",
   "sale:refund",
   "sale:void-paid",
+  // Бүтээгдэхүүний мөрийн "Зарсан" ажилтныг борлуулалтын дараа засах (урамшуулалд нөлөөлнө)
+  "sale:seller",
   // Үйлчлүүлэгч, айлчлал
   "customer:read",
   "customer:write",

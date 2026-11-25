@@ -32,7 +32,7 @@ describe("customer history and ranking (A7)", () => {
     await makeCustomer(); // never bought
 
     const s1 = await buy(big.id, [
-      { kind: "PRODUCT", variantId: serum.id, qty: 3 },
+      { kind: "PRODUCT", variantId: serum.id, qty: 3, sellerId: staff.id },
       { kind: "SERVICE", serviceId: facial.id, qty: 1, staffId: staff.id },
     ]);
     // 1 of 3 serums returned
@@ -41,7 +41,7 @@ describe("customer history and ranking (A7)", () => {
 
     const h = await customerHistory(big.id);
     expect(h.totals).toEqual({ product: 120_000, service: 250_000, total: 370_000 });
-    // Sold together with the facial → attributed to the beautician, not the cashier (attribution.ts)
+    // POS-д "Зарсан" — гоо сайханч (sellerId)
     expect(h.products).toEqual([expect.objectContaining({ barcode: "4600000000777", qty: 2, amount: 120_000, staff: staff.name })]);
     expect(h.services).toEqual([expect.objectContaining({ service: "Нүүрний эмчилгээ", staff: staff.name, amount: 250_000, status: "SOLD" })]);
 
