@@ -102,7 +102,7 @@ export const ADMIN_NAV: NavEntry[] = [
       { href: "/admin/settings/email", label: n.settingsEmail, icon: "email", permission: "settings:write" },
       { href: "/admin/settings/accountant", label: n.settingsAccountant, icon: "accountant", permission: "report:send" },
       { href: "/admin/settings/payments", label: n.settingsPayments, icon: "payments", permission: "integration:write" },
-      { href: "/admin/users", label: n.users, icon: "users", permission: "user:write" },
+      { href: "/admin/users", label: n.users, icon: "users", permission: "user:write", view: "user:write:staff" },
       { href: "/admin/system", label: n.system, icon: "system", permission: "settings:write" },
     ],
   },

@@ -10,12 +10,14 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
       <input type="hidden" name="callbackUrl" value={callbackUrl ?? ""} />
       <div className="space-y-1.5">
         <label htmlFor="email" className="block text-[14px] font-medium text-ink">
-          Имэйл
+          Утас эсвэл имэйл
         </label>
         <input
           id="email"
           name="email"
-          type="email"
+          type="text"
+          inputMode="email"
+          placeholder="99112233 эсвэл нэр@cless.mn"
           required
           autoComplete="username"
           defaultValue={state.email}
@@ -40,6 +42,9 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
           {state.error}
         </p>
       )}
+      <p className="text-right text-[14px]">
+        <a href="/admin/forgot" className="text-ink-soft underline underline-offset-4 hover:text-ink">Нууц үгээ мартсан уу?</a>
+      </p>
       <button
         type="submit"
         disabled={pending}

@@ -17,6 +17,11 @@ const PUBLIC_ACTIONS: Record<string, string> = {
   "auth.ts#logout": "Гарах",
   "catalog.ts#loadCollectionProducts": "Дэлгүүрийн нийтийн жагсаалт (зөвхөн нийтлэгдсэн бүтээгдэхүүн)",
   "inquiries.ts#submitInquiryAction": "\"Салонд захиалах\" нийтийн форм (honeypot, IP/утсаар 10 минутад 3, нөөц түгжихгүй)",
+  // PROMPT 15: ажилтны урилга / нууц үг сэргээх — нэвтрээгүй; кодын хязгаар (утас/имэйл 1 мин/1, 1 цаг/5; IP 1 цаг/20), бүртгэл задруулахгүй
+  "staff-auth.ts#requestActivationCodeAction": "Урилга идэвхжүүлэх код (хязгаартай, бүртгэл задруулахгүй)",
+  "staff-auth.ts#activateAccountAction": "Урилга + код + шинэ нууц үг (код нэг удаа, 5 оролдлого)",
+  "staff-auth.ts#requestResetCodeAction": "Нууц үг сэргээх код (хязгаартай, бүртгэл задруулахгүй)",
+  "staff-auth.ts#resetPasswordWithCodeAction": "Код + шинэ нууц үг (код нэг удаа, 5 оролдлого)",
 };
 /** Нэвтрэлтгүй route handler-ууд — өөрийн хамгаалалттай */
 const PUBLIC_ROUTES: Record<string, RegExp> = {

@@ -17,8 +17,13 @@ vi.mock("@/server/auth/session", () => ({
     if (!can(current.role, p)) throw new ForbiddenError();
     return { ...current, name: "Admin", email: "a@x", isActive: true };
   },
+  requireAnyPermission: async (...ps: Permission[]) => {
+    if (!current) throw new UnauthorizedError();
+    if (!ps.some((p) => can(current!.role, p))) throw new ForbiddenError();
+    return { ...current, name: "Admin", email: "a@x", isActive: true };
+  },
 }));
-const { createUser, resetPassword } = await import("@/server/actions/users");
+const { resetPassword } = await import("@/server/actions/users");
 
 beforeEach(async () => {
   await resetDb();
@@ -48,16 +53,11 @@ describe("login lockout", () => {
 });
 
 describe("passwords and sessions", () => {
-  it("new users and admin resets get a temporary password that must be changed (≥10 chars)", async () => {
+  it("fallback: a temporary password (≥10 chars) must be changed at first login", async () => {
     const admin = await makeUser("ADMIN");
     current = { id: admin.id, role: "ADMIN" };
-    expect(await createUser({ name: "Шинэ ажилтан", email: "new@x.mn", role: "STAFF", baseSalary: 0, password: "short-pw" })).toMatchObject({ ok: false });
-    const res = await createUser({ name: "Шинэ ажилтан", email: "new@x.mn", role: "STAFF", baseSalary: 0, password: "temporary-pass" });
-    expect(res.ok).toBe(true);
-    const u = await db.user.findUniqueOrThrow({ where: { email: "new@x.mn" } });
-    expect(u.mustChangePassword).toBe(true);
-    expect(u.isBookable).toBe(true);
-
+    const u = await makeUser("STAFF");
+    expect(await resetPassword({ id: u.id, password: "short-pw" })).toMatchObject({ ok: false });
     await db.user.update({ where: { id: u.id }, data: { mustChangePassword: false } });
     expect((await resetPassword({ id: u.id, password: "another-temp-1" })).ok).toBe(true);
     const after = await db.user.findUniqueOrThrow({ where: { id: u.id } });
