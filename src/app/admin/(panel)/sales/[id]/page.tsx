@@ -194,7 +194,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
           </Card>
 
           {sale.visit && (
-            <Card title="Айлчлалын имэйл" actions={sale.customer?.email && <ResendEmailButton visitId={sale.visit.id} />}>
+            <Card title="Айлчлалын имэйл" actions={sale.customer?.email && can(user.role, "visit:write") && <ResendEmailButton visitId={sale.visit.id} />}>
               <p className="text-[14px]">
                 <Badge tone={sale.visit.emailStatus === "SENT" ? "green" : sale.visit.emailStatus === "FAILED" ? "red" : "neutral"}>
                   {t.admin.emailStatus[sale.visit.emailStatus]}

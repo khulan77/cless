@@ -4,7 +4,8 @@ import { navFor } from "@/components/admin/nav";
 import { getSalonInfo } from "@/server/queries/storefront";
 import { countNewInquiries } from "@/server/modules/inquiries/service";
 import { failedEmailCount } from "@/server/modules/outbox/monitor";
-import { can } from "@/server/auth/permissions";
+import { can, isReadOnly } from "@/server/auth/permissions";
+import { ReadOnlyBanner } from "@/components/admin/readonly/ReadOnly";
 import { requireUser } from "@/server/auth/session";
 import { logout } from "@/server/actions/auth";
 import { ChangePasswordForm } from "@/components/admin/account/ChangePasswordForm";
@@ -47,11 +48,12 @@ export default async function AdminPanelLayout({ children }: { children: React.R
 
   return (
     <div className="min-h-dvh lg:flex">
-      <Sidebar entries={entries} brand={salon.name || salon.siteName} user={me} logout={logout} />
+      <Sidebar entries={entries} brand={salon.name || salon.siteName} user={me} logout={logout} tag={user.role === "ACCOUNTANT" ? t.admin.nav.roles.ACCOUNTANT : undefined} />
       {/* Full width to the right of the sidebar, 40px padding */}
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar entries={entries} user={me} notices={notices} />
         <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8 lg:p-10">
+          {isReadOnly(user.role) && <ReadOnlyBanner />}
           {children}
         </main>
       </div>

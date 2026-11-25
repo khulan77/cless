@@ -56,7 +56,16 @@ export const PERMISSIONS = [
   "report:read",
   // Өдрийн тайланг нягтланд имэйлээр илгээх
   "report:send",
+  // Менежерийн хэсгийг зөвхөн харах (ACCOUNTANT) — засах товч харагдахгүй, бичих action бүр өөрийн эрхээр хориотой
+  "admin:view",
+  // Ирц: харах / тэмдэглэх; нийтийн амралтын өдрүүд
+  "attendance:read",
+  "attendance:write",
+  "holiday:write",
+  // Цалин: харах; тооцоолох, засвар, батлах, олгосон, экспорт (банкны данс); хувь хэмжээ
+  "payroll:read",
   "payroll:write",
+  "payroll:settings",
   "user:write",
   "settings:write",
   // Интеграцийн нууц тохиргоо (QPay API, Smart Logic, SMS)
@@ -74,16 +83,45 @@ const STAFF: readonly Permission[] = ["schedule:own", "me:read", "customer-note:
 /** Зөвхөн ADMIN: хэрэглэгч нэмэх/хасах, интеграцийн нууц тохиргоо */
 const ADMIN_ONLY: readonly Permission[] = ["user:write", "integration:write"];
 
-/** MANAGER = ADMIN-аас ADMIN_ONLY-г хассан (11/24: менежер бүгдийг харж, засна; 10%-иас дээш хөнгөлөлт ч өгнө) */
-const MANAGER: readonly Permission[] = PERMISSIONS.filter((p) => !ADMIN_ONLY.includes(p));
+/** Цалин — ADMIN ба ACCOUNTANT (11/25). Цалингийн мэдээлэл эмзэг тул MANAGER-т үгүй. */
+const PAYROLL: readonly Permission[] = ["payroll:read", "payroll:write", "payroll:settings"];
+
+/** MANAGER = ADMIN-аас ADMIN_ONLY, цалинг хассан (11/24: менежер бүгдийг харж, засна; 10%-иас дээш хөнгөлөлт ч өгнө) */
+const MANAGER: readonly Permission[] = PERMISSIONS.filter((p) => !ADMIN_ONLY.includes(p) && !PAYROLL.includes(p));
+
+/**
+ * ACCOUNTANT (11/25): менежерийн харж буй бүх хэсгийг зөвхөн харна + цалин бүрэн + "Нягтланд илгээх".
+ * Айлчлалын зураг (visit-photo:*) — эрүүл мэндийн хувийн мэдээлэл тул үгүй. Бичих эрх (…:write, pos:use, shift:*) үгүй.
+ */
+const ACCOUNTANT: readonly Permission[] = [
+  "schedule:all",
+  "appointment:read",
+  "customer:read",
+  "customer:contact:read",
+  "sale:read",
+  "stock:read",
+  "cost:read",
+  "report:read",
+  "report:send",
+  "admin:view",
+  "attendance:read",
+  "holiday:write",
+  ...PAYROLL,
+];
 
 const ADMIN: readonly Permission[] = PERMISSIONS;
 
 export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   STAFF: new Set(STAFF),
   MANAGER: new Set(MANAGER),
+  ACCOUNTANT: new Set(ACCOUNTANT),
   ADMIN: new Set(ADMIN),
 };
+
+/** Зөвхөн харах горим: менежерийн хуудсыг харна, гэхдээ тухайн хэсгийн бичих эрхгүй (ACCOUNTANT) */
+export function isReadOnly(role: Role | null | undefined): boolean {
+  return can(role, "admin:view") && !can(role, "appointment:write");
+}
 
 export function can(role: Role | null | undefined, permission: Permission): boolean {
   if (!role) return false;
@@ -93,6 +131,7 @@ export function can(role: Role | null | undefined, permission: Permission): bool
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "Админ",
   MANAGER: "Ресепшн (менежер)",
+  ACCOUNTANT: "Нягтлан",
   STAFF: "Гоо сайханч",
 };
 

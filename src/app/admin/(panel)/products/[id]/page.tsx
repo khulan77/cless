@@ -4,7 +4,8 @@ import { ProductForm } from "@/components/admin/products/ProductForm";
 import { Card, PageHeader, btnClass, tdClass, thClass } from "@/components/admin/ui";
 import { formatMNT } from "@/lib/money";
 import { db } from "@/server/db";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageOrView } from "@/server/auth/session";
+import { ReadOnlyFieldset } from "@/components/admin/readonly/ReadOnly";
 import { listCollectionOptions } from "@/server/queries/admin";
 
 export const metadata = { title: "Бүтээгдэхүүн засах" };
@@ -14,7 +15,7 @@ export const instant = false;
 const dt = new Intl.DateTimeFormat("mn-MN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ulaanbaatar" });
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePagePermission("product:write");
+  const { readOnly } = await requirePageOrView("product:write");
   const { id } = await params;
   const [product, collections] = await Promise.all([
     db.product.findUnique({
@@ -55,6 +56,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           ) : null
         }
       />
+      <ReadOnlyFieldset readOnly={readOnly}>
       <ProductForm
         collections={collections}
         stockByVariant={Object.fromEntries(product.variants.map((v) => [v.id, v.stock]))}
@@ -102,6 +104,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           })),
         }}
       />
+      </ReadOnlyFieldset>
 
       <Card title="Үнийн түүх" description="Сүүлийн 10 өөрчлөлт" className="mt-5 lg:mr-[340px]">
         {history.length === 0 ? (

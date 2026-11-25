@@ -1,60 +1,69 @@
 import { describe, expect, it } from "vitest";
-import { PERMISSIONS, can, homePathFor, type Permission } from "./permissions";
+import { PERMISSIONS, can, homePathFor, isReadOnly, type Permission } from "./permissions";
 
-type Row = [Permission, staff: boolean, manager: boolean, admin: boolean];
+type Row = [Permission, staff: boolean, manager: boolean, accountant: boolean, admin: boolean];
 
 // Шаардлагын хүснэгт — PROMPT 2 §2, 11/24-ний уулзалтаар шинэчилсэн (PROMPT 12 A1):
 // MANAGER нь ADMIN-тай адил, зөвхөн хэрэглэгч (user:write) ба интеграцийн нууц тохиргоо (integration:write) үгүй.
 // STAFF: өөрийн хуваарь, "Миний самбар", тэмдэглэл, айлчлалын зураг (өөрөө үйлчилсэн үйлчлүүлэгч дээр).
+// PROMPT 14: ACCOUNTANT — менежерийн хэсгийг зөвхөн харна (бичих эрхгүй, айлчлалын зураггүй) + цалин бүрэн + нягтланд илгээх.
+// Цалин (payroll:*) — зөвхөн ADMIN, ACCOUNTANT.
 const MATRIX: Row[] = [
-  ["schedule:own", true, true, true],
-  ["schedule:all", false, true, true],
-  ["appointment:read", false, true, true],
-  ["appointment:write", false, true, true],
-  ["appointment:status", false, true, true],
-  ["appointment:done-manual", false, true, true],
-  ["staff-schedule:write", false, true, true],
-  ["room:write", false, true, true],
-  ["service-staff:write", false, true, true],
-  ["customer:contact:read", false, true, true],
-  ["inquiry:manage", false, true, true],
-  ["pos:use", false, true, true],
-  ["sale:create", false, true, true],
-  ["sale:read", false, true, true],
-  ["payment:cash", false, true, true],
-  ["payment:card", false, true, true],
-  ["payment:qpay", false, true, true],
-  ["payment:transfer:confirm", false, true, true],
-  ["discount:over-limit", false, true, true],
-  ["sale:refund", false, true, true],
-  ["sale:void-paid", false, true, true],
-  ["customer:read", false, true, true],
-  ["customer:write", false, true, true],
-  ["visit:write", false, true, true],
-  ["customer-note:write", true, true, true],
-  ["visit-photo:read", true, true, true],
-  ["visit-photo:write", true, true, true],
-  ["me:read", true, true, true],
-  ["shift:own", false, true, true],
-  ["shift:all", false, true, true],
-  ["stock:read", false, true, true],
-  ["stock:write", false, true, true],
-  ["product:write", false, true, true],
-  ["service:write", false, true, true],
-  ["price:write", false, true, true],
-  ["cost:read", false, true, true],
-  ["report:read", false, true, true],
-  ["report:send", false, true, true],
-  ["payroll:write", false, true, true],
-  ["user:write", false, false, true],
-  ["settings:write", false, true, true],
-  ["integration:write", false, false, true],
+  ["schedule:own", true, true, false, true],
+  ["schedule:all", false, true, true, true],
+  ["appointment:read", false, true, true, true],
+  ["appointment:write", false, true, false, true],
+  ["appointment:status", false, true, false, true],
+  ["appointment:done-manual", false, true, false, true],
+  ["staff-schedule:write", false, true, false, true],
+  ["room:write", false, true, false, true],
+  ["service-staff:write", false, true, false, true],
+  ["customer:contact:read", false, true, true, true],
+  ["inquiry:manage", false, true, false, true],
+  ["pos:use", false, true, false, true],
+  ["sale:create", false, true, false, true],
+  ["sale:read", false, true, true, true],
+  ["payment:cash", false, true, false, true],
+  ["payment:card", false, true, false, true],
+  ["payment:qpay", false, true, false, true],
+  ["payment:transfer:confirm", false, true, false, true],
+  ["discount:over-limit", false, true, false, true],
+  ["sale:refund", false, true, false, true],
+  ["sale:void-paid", false, true, false, true],
+  ["customer:read", false, true, true, true],
+  ["customer:write", false, true, false, true],
+  ["visit:write", false, true, false, true],
+  ["customer-note:write", true, true, false, true],
+  ["visit-photo:read", true, true, false, true],
+  ["visit-photo:write", true, true, false, true],
+  ["me:read", true, true, false, true],
+  ["shift:own", false, true, false, true],
+  ["shift:all", false, true, false, true],
+  ["stock:read", false, true, true, true],
+  ["stock:write", false, true, false, true],
+  ["product:write", false, true, false, true],
+  ["service:write", false, true, false, true],
+  ["price:write", false, true, false, true],
+  ["cost:read", false, true, true, true],
+  ["report:read", false, true, true, true],
+  ["report:send", false, true, true, true],
+  ["admin:view", false, true, true, true],
+  ["attendance:read", false, true, true, true],
+  ["attendance:write", false, true, false, true],
+  ["holiday:write", false, true, true, true],
+  ["payroll:read", false, false, true, true],
+  ["payroll:write", false, false, true, true],
+  ["payroll:settings", false, false, true, true],
+  ["user:write", false, false, false, true],
+  ["settings:write", false, true, false, true],
+  ["integration:write", false, false, false, true],
 ];
 
 describe("permission matrix", () => {
-  it.each(MATRIX)("%s → STAFF=%s MANAGER=%s ADMIN=%s", (perm, staff, manager, admin) => {
+  it.each(MATRIX)("%s → STAFF=%s MANAGER=%s ACCOUNTANT=%s ADMIN=%s", (perm, staff, manager, accountant, admin) => {
     expect(can("STAFF", perm)).toBe(staff);
     expect(can("MANAGER", perm)).toBe(manager);
+    expect(can("ACCOUNTANT", perm)).toBe(accountant);
     expect(can("ADMIN", perm)).toBe(admin);
   });
 
@@ -74,5 +83,11 @@ describe("permission matrix", () => {
     expect(homePathFor("STAFF")).toBe("/admin/schedule");
     expect(homePathFor("MANAGER")).toBe("/admin");
     expect(homePathFor("ADMIN")).toBe("/admin");
+    expect(homePathFor("ACCOUNTANT")).toBe("/admin");
+  });
+
+  it("read-only mode only for ACCOUNTANT", () => {
+    expect(isReadOnly("ACCOUNTANT")).toBe(true);
+    for (const r of ["ADMIN", "MANAGER", "STAFF"] as const) expect(isReadOnly(r)).toBe(false);
   });
 });

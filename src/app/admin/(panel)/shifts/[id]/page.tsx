@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/admin/sales/SaleActions";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageOrView } from "@/server/auth/session";
 import { UserError } from "@/server/errors";
 import { shiftReport } from "@/server/modules/cash-shifts/service";
 
@@ -13,7 +13,7 @@ const dt = (d: Date) => d.toLocaleString("en-GB", { timeZone: "Asia/Ulaanbaatar"
 const MOVE: Record<string, string> = { SALE: "Бэлэн борлуулалт", REFUND: "Бэлэн буцаалт", PAY_IN: "Мөнгө нэмсэн", PAY_OUT: "Мөнгө гаргасан" };
 
 export default async function ShiftReportPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePagePermission("shift:own");
+  await requirePageOrView("shift:own");
   const { id } = await params;
   const r = await shiftReport(id).catch((e) => {
     if (e instanceof UserError) return null;

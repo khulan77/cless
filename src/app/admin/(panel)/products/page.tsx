@@ -9,7 +9,7 @@ import { formatMNT } from "@/lib/money";
 import { infra } from "@/i18n/mn.infra";
 import { BADGE_LABELS } from "@/lib/validation/product";
 import { db } from "@/server/db";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageOrView } from "@/server/auth/session";
 
 export const metadata = { title: "Бүтээгдэхүүн" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
@@ -19,7 +19,7 @@ const PAGE_SIZE = 20;
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function ProductsPage({ searchParams }: { searchParams: SP }) {
-  await requirePagePermission("product:write");
+  const { readOnly } = await requirePageOrView("product:write");
   const sp = await searchParams;
   const q = str(sp.q);
   const collection = str(sp.collection);
@@ -73,7 +73,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
         title="Бүтээгдэхүүн"
         description={`Дэлгүүрт харагдах бүтээгдэхүүн, хэмжээ, үнэ · нийт ${total}`}
         actions={
-          <>
+          readOnly ? null : <>
             <ButtonLink href="/admin/products/import" variant="secondary">
               {infra.import.button}
             </ButtonLink>

@@ -22,7 +22,7 @@ async function setup() {
     { id: manager.id, role: manager.role },
     new Date("2026-12-01T00:00:00Z"),
   );
-  const as = (u: { id: string; role: "ADMIN" | "MANAGER" | "STAFF" }) => ({ id: u.id, role: u.role });
+  const as = (u: { id: string; role: "ADMIN" | "MANAGER" | "ACCOUNTANT" | "STAFF" }) => ({ id: u.id, role: u.role });
   return { manager: as(manager), sara: as(sara), nomin: as(nomin), customer, other };
 }
 

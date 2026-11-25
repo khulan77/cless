@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { REQUIRED, idSchema, moneySchema, optionalText, requiredText } from "./common";
 
-export const ROLES = ["ADMIN", "MANAGER", "STAFF"] as const;
+export const ROLES = ["ADMIN", "MANAGER", "ACCOUNTANT", "STAFF"] as const;
 
 const email = z.string({ error: REQUIRED }).trim().toLowerCase().pipe(z.email("Имэйл хаяг буруу байна."));
 export const passwordSchema = z

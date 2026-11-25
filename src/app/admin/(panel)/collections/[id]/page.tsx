@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { CollectionForm } from "@/components/admin/collections/CollectionForm";
 import { PageHeader } from "@/components/admin/ui";
 import { db } from "@/server/db";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageOrView } from "@/server/auth/session";
+import { ReadOnlyFieldset } from "@/components/admin/readonly/ReadOnly";
 import { listCollectionOptions } from "@/server/queries/admin";
 
 export const metadata = { title: "Ангилал засах" };
@@ -10,7 +11,7 @@ export const metadata = { title: "Ангилал засах" };
 export const instant = false;
 
 export default async function EditCollectionPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePagePermission("product:write");
+  const { readOnly } = await requirePageOrView("product:write");
   const { id } = await params;
   const [c, options] = await Promise.all([
     db.collection.findUnique({
@@ -32,6 +33,7 @@ export default async function EditCollectionPage({ params }: { params: Promise<{
   return (
     <>
       <PageHeader eyebrow="Ангилал" title={c.name} description="Нэр, баннер, бүтээгдэхүүний дараалал" />
+      <ReadOnlyFieldset readOnly={readOnly}>
       <CollectionForm
         blockers={c._count.products + c._count.children}
         parents={options.filter((o) => !descendants.has(o.id))}
@@ -63,6 +65,7 @@ export default async function EditCollectionPage({ params }: { params: Promise<{
           })),
         }}
       />
+      </ReadOnlyFieldset>
     </>
   );
 }

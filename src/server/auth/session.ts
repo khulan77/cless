@@ -45,6 +45,17 @@ export async function requirePagePermission(permission: Permission) {
   return user;
 }
 
+/**
+ * Хуудсанд: тухайн хэсгийн бичих эрхтэй бол бүрэн; үгүй ч "admin:view" (ACCOUNTANT) бол зөвхөн харах.
+ * readOnly = true үед хуудас засах/үүсгэх/устгах товчийг харуулахгүй. Action бүр өөрийн эрхээр хориотой хэвээр.
+ */
+export async function requirePageOrView(permission: Permission) {
+  const user = await requireUser();
+  if (can(user.role, permission)) return { user, readOnly: false };
+  if (can(user.role, "admin:view")) return { user, readOnly: true };
+  forbidden();
+}
+
 /** Түр нууц үгтэй хэрэглэгч эхлээд нууц үгээ солино — бусад үйлдэл хориотой */
 function assertPasswordChanged(user: NonNullable<CurrentUser>) {
   if (user.mustChangePassword) throw new ForbiddenError("Эхлээд нууц үгээ солино уу.");

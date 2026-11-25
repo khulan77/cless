@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Activity, BadgePercent, BarChart3, Banknote, Boxes, Calculator, CalendarDays, CalendarRange, ChevronDown, ChevronsLeft, ChevronsRight, Contact, CreditCard,
+  Activity, BadgePercent, CalendarCheck, CalendarOff, HandCoins, PiggyBank, BarChart3, Banknote, Boxes, Calculator, CalendarDays, CalendarRange, ChevronDown, ChevronsLeft, ChevronsRight, Contact, CreditCard,
   DoorOpen, FileText, Flower2, FolderTree, Inbox, LayoutDashboard, LogOut, Mail, Menu, Package, Receipt, Settings, ShoppingBag,
   Sparkles, Store, UserCog, UserRound, Users, Wallet, X, type LucideIcon,
 } from "lucide-react";
@@ -43,6 +43,10 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   payments: CreditCard,
   users: UserCog,
   system: Activity,
+  payroll: HandCoins,
+  attendance: CalendarCheck,
+  wallet: PiggyBank,
+  holiday: CalendarOff,
 };
 
 const n = t.admin.nav;
@@ -53,6 +57,8 @@ type Props = {
   brand: string;
   user: { name: string; id: string; role: string };
   logout: () => Promise<void>;
+  /** Role-ийн шошго (жишээ нь "Нягтлан") — брэндийн доор */
+  tag?: string;
 };
 
 function isActive(pathname: string, href: string) {
@@ -108,7 +114,7 @@ function Leaf({ item, pathname, child, inRail }: { item: NavLeaf; pathname: stri
   );
 }
 
-export function Sidebar({ entries, brand, user, logout }: Props) {
+export function Sidebar({ entries, brand, user, logout, tag }: Props) {
   const pathname = usePathname();
   const [drawer, setDrawer] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
@@ -285,9 +291,12 @@ export function Sidebar({ entries, brand, user, logout }: Props) {
       </div>
     ) : (
       <div className="flex shrink-0 items-center gap-2 pb-3 pl-6 pr-4 pt-4">
-        <Link href="/admin" aria-label={`${brand} — ${n.panelSubtitle}`} title={n.panelSubtitle} className="min-w-0 flex-1 truncate font-display text-[24px] font-semibold leading-tight tracking-[0.02em] text-white">
-          {brand}
-        </Link>
+        <div className="min-w-0 flex-1">
+          <Link href="/admin" aria-label={`${brand} — ${n.panelSubtitle}`} title={n.panelSubtitle} className="block truncate font-display text-[24px] font-semibold leading-tight tracking-[0.02em] text-white">
+            {brand}
+          </Link>
+          {tag && <span className="mt-1 inline-block rounded-full bg-champagne px-2.5 py-0.5 text-[12px] font-medium text-navy">{tag}</span>}
+        </div>
         {withToggle && collapseBtn}
       </div>
     );
@@ -300,6 +309,7 @@ export function Sidebar({ entries, brand, user, logout }: Props) {
           <Menu className="size-6" strokeWidth={1.5} />
         </button>
         <span className="font-display text-[22px] font-semibold">{brand}</span>
+        {tag && <span className="rounded-full bg-champagne px-2.5 py-0.5 text-[12px] font-medium text-navy">{tag}</span>}
       </div>
 
       <aside className={`sticky top-0 hidden h-dvh shrink-0 flex-col bg-navy text-white transition-[width] duration-200 lg:flex ${rail ? "w-20" : "w-[288px]"}`}>
