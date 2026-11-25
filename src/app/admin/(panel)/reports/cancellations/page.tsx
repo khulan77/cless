@@ -6,6 +6,7 @@ import { ReportTabs } from "@/components/admin/reports/ReportTabs";
 import { Badge, EmptyState, PageHeader, Table, inputClass, tdClass, thClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatDateLabel, formatDateTime, formatTime } from "@/lib/time";
+import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { CANCEL_CATEGORIES, CANCEL_CATEGORY_LABELS } from "@/server/modules/appointments/cancel";
 import { bookableStaff } from "@/server/modules/appointments/repo";
@@ -20,7 +21,7 @@ const C = R.cancellations;
 type Sp = Promise<{ from?: string; to?: string; preset?: string; staff?: string; category?: string }>;
 
 export default async function CancellationsPage({ searchParams }: { searchParams: Sp }) {
-  await requirePagePermission("report:read");
+  const user = await requirePagePermission("report:read");
   const sp = await searchParams;
   const { range, preset } = rangeFromParams(sp);
   const staffId = sp.staff || null;
@@ -33,7 +34,7 @@ export default async function CancellationsPage({ searchParams }: { searchParams
   return (
     <>
       <div className="mb-5">
-        <ReportTabs active="cancellations" from={range.from} to={range.to} />
+        <ReportTabs active="cancellations" from={range.from} to={range.to} showPayroll={can(user.role, "payroll:read")} />
       </div>
       <PageHeader
         eyebrow={C.eyebrow}

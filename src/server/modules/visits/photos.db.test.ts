@@ -13,7 +13,7 @@ process.env.STORAGE_PRIVATE_DIR = dir;
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 // The media route reads the session
-const session = vi.hoisted(() => ({ user: null as null | { id: string; role: "ADMIN" | "MANAGER" | "STAFF" } }));
+const session = vi.hoisted(() => ({ user: null as null | { id: string; role: "ADMIN" | "MANAGER" | "ACCOUNTANT" | "STAFF" } }));
 vi.mock("@/server/auth/session", () => ({ getCurrentUser: vi.fn(async () => session.user) }));
 
 const { deleteVisitPhoto, uploadVisitPhoto } = await import("./photos");
@@ -43,7 +43,7 @@ async function setup() {
     { id: manager.id, role: manager.role },
     new Date("2026-12-01T00:00:00Z"),
   );
-  const as = (u: { id: string; role: "ADMIN" | "MANAGER" | "STAFF" }) => ({ id: u.id, role: u.role });
+  const as = (u: { id: string; role: "ADMIN" | "MANAGER" | "ACCOUNTANT" | "STAFF" }) => ({ id: u.id, role: u.role });
   return { manager: as(manager), sara: as(sara), nomin: as(nomin), customer, appt };
 }
 beforeEach(async () => {

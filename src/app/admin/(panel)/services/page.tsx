@@ -6,7 +6,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { db } from "@/server/db";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageOrView } from "@/server/auth/session";
 
 export const metadata = { title: "Үйлчилгээ" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
@@ -17,7 +17,7 @@ const D = t.admin.calendar.dialog;
 type Tab = "active" | "archived" | "all";
 
 export default async function ServicesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requirePagePermission("service:write");
+  const { readOnly } = await requirePageOrView("service:write");
   const sp = await searchParams;
   const q = str(sp.q);
   const tab: Tab = sp.status === "archived" ? "archived" : sp.status === "all" ? "all" : "active";
@@ -51,9 +51,11 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
         title={L.title}
         description={L.description(groups.filter((g) => g.name).length, services.length)}
         actions={
-          <ButtonLink href="/admin/services/new">
-            <Plus className="size-[18px]" strokeWidth={2} /> {L.add}
-          </ButtonLink>
+          readOnly ? null : (
+            <ButtonLink href="/admin/services/new">
+              <Plus className="size-[18px]" strokeWidth={2} /> {L.add}
+            </ButtonLink>
+          )
         }
       />
 
@@ -75,7 +77,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
           icon={Sparkles}
           title={q ? L.noMatch : L.empty}
           action={
-            !q && (
+            !q && !readOnly && (
               <ButtonLink href="/admin/services/new">
                 <Plus className="size-[18px]" strokeWidth={2} /> {L.add}
               </ButtonLink>
@@ -90,12 +92,12 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
                 <span aria-hidden className="size-2 rounded-full bg-champagne" />
                 <h2 className="font-display text-[22px] font-semibold text-ink">{g.name ?? L.other}</h2>
                 <span className="text-[14px] text-ink-soft tabular-nums">{g.items.length}</span>
-                <Link
+                {!readOnly && <Link
                   href={`/admin/services/new${g.name ? `?category=${encodeURIComponent(g.name)}` : ""}`}
                   className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[14px] font-medium text-ink-soft hover:bg-ink/[0.05] hover:text-ink"
                 >
                   <Plus className="size-4" strokeWidth={2} /> {L.addIn}
-                </Link>
+                </Link>}
               </header>
               <div className="space-y-2">
                 {g.items.map((s) => (
@@ -118,7 +120,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
                         {s._count.consumables > 0 && <> · {L.consumables(s._count.consumables)}</>}
                       </>
                     }
-                    actions={<PillLink href={`/admin/services/${s.id}`}>{L.edit}</PillLink>}
+                    actions={readOnly ? null : <PillLink href={`/admin/services/${s.id}`}>{L.edit}</PillLink>}
                   />
                 ))}
               </div>

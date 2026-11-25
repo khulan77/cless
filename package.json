@@ -23,6 +23,7 @@
     "images:build": "bun scripts/build-default-images.ts",
     "images:attach": "bun --preload ./src/worker/preload.ts scripts/attach-default-images.ts",
     "seed:demo-sales": "bun --preload ./src/worker/preload.ts scripts/seed-demo-sales.ts",
+    "sellers:backfill": "bun --preload ./src/worker/preload.ts scripts/backfill-sellers.ts",
     "admin:create": "bun scripts/create-admin.ts",
     "worker:build": "bun scripts/build-worker.ts"
   },

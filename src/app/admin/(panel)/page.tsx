@@ -105,7 +105,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
 
       {can(user.role, "report:read") && (
         <div className="mb-5">
-          <ReportTabs active="overview" from={range.from} to={range.to} />
+          <ReportTabs active="overview" from={range.from} to={range.to} showPayroll={can(user.role, "payroll:read")} />
         </div>
       )}
       <PageHeader

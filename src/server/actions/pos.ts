@@ -10,6 +10,7 @@ import { requireAnyPermission, requirePermission } from "@/server/auth/session";
 import { addCashMovement, closeShift, openShift } from "@/server/modules/cash-shifts/service";
 import { createCustomer, findCustomerByPhone, searchCustomers, updateCustomer, type CustomerInput } from "@/server/modules/customers/service";
 import { resendVisitEmail } from "@/server/modules/notifications/service";
+import { setItemSeller } from "@/server/modules/sales/seller";
 import { cancelPayment, createPayment, verifyQPayPayment, type CreatePaymentInput } from "@/server/modules/payments/service";
 import { createRefund, type RefundInput } from "@/server/modules/refunds/service";
 import { searchPosCatalog } from "@/server/modules/sales/queries";
@@ -201,4 +202,13 @@ export async function closeShiftAction(input: { shiftId: string; countedCash: nu
     revalidatePath("/admin/shifts");
     return { id: s.id, difference: s.difference };
   }, "Касс хаагдлаа.");
+}
+
+/** Бүтээгдэхүүний мөрийн "Зарсан" ажилтныг засах (PROMPT 14 §5) — ADMIN, MANAGER */
+export async function setItemSellerAction(input: { itemId: string; sellerId: string | null; saleId: string }) {
+  return runAction(async () => {
+    const user = await requirePermission("sale:seller");
+    await setItemSeller(input.itemId, input.sellerId || null, user.id);
+    revalidatePath(`/admin/sales/${input.saleId}`);
+  }, "Зарсан ажилтан хадгалагдлаа.");
 }

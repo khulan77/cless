@@ -6,14 +6,14 @@ import type { CollectionKind } from "@/generated/prisma/enums";
 import { COLLECTION_KIND_LABELS } from "@/lib/validation/collection";
 import { listCollectionOptions } from "@/server/queries/admin";
 import { db } from "@/server/db";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageOrView } from "@/server/auth/session";
 
 export const metadata = { title: "Ангилал" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
 export const instant = false;
 
 export default async function CollectionsPage({ searchParams }: { searchParams: Promise<{ kind?: string }> }) {
-  await requirePagePermission("product:write");
+  const { readOnly } = await requirePageOrView("product:write");
   const { kind: rawKind } = await searchParams;
   const kind: CollectionKind = rawKind === "CONCERN" ? "CONCERN" : "CATEGORY";
 
@@ -36,9 +36,11 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
         title="Ангилал"
         description="Дэлгүүрийн цэс: бүтээгдэхүүний ангилал ба арьсны асуудлаар сонгох протокол"
         actions={
-          <Link href={`/admin/collections/new?kind=${kind}`} className={btnClass("primary")}>
-            <Plus className="size-[18px]" strokeWidth={2} /> Ангилал нэмэх
-          </Link>
+          readOnly ? null : (
+            <Link href={`/admin/collections/new?kind=${kind}`} className={btnClass("primary")}>
+              <Plus className="size-[18px]" strokeWidth={2} /> Ангилал нэмэх
+            </Link>
+          )
         }
       />
       <SegmentedTabs

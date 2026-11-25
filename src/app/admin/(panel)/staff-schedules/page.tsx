@@ -1,7 +1,8 @@
 import { BranchHoursForm, StaffScheduleCard } from "@/components/admin/staff-schedules/ScheduleEditors";
 import { PageHeader } from "@/components/admin/ui";
 import { t } from "@/i18n";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageOrView } from "@/server/auth/session";
+import { ReadOnlyFieldset } from "@/components/admin/readonly/ReadOnly";
 import { db } from "@/server/db";
 import { getBookingSettings } from "@/server/modules/settings/pos-settings";
 
@@ -9,7 +10,7 @@ export const metadata = { title: "Ажилтан ба хуваарь" };
 export const instant = false;
 
 export default async function StaffSchedulesPage() {
-  await requirePagePermission("staff-schedule:write");
+  const { readOnly } = await requirePageOrView("staff-schedule:write");
   const now = new Date();
   const [settings, users, services] = await Promise.all([
     getBookingSettings(),
@@ -58,6 +59,7 @@ export default async function StaffSchedulesPage() {
   return (
     <>
       <PageHeader eyebrow="СПА" title={S.title} description={S.description(users.length)} />
+      <ReadOnlyFieldset readOnly={readOnly}>
       <div className="space-y-10">
         <section>
           <h2 className="mb-4 font-display text-[22px] font-semibold">{S.bookableSection}</h2>
@@ -71,6 +73,7 @@ export default async function StaffSchedulesPage() {
           </section>
         )}
       </div>
+      </ReadOnlyFieldset>
     </>
   );
 }

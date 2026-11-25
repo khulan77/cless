@@ -3,14 +3,15 @@ import { ServiceForm } from "@/components/admin/services/ServiceForm";
 import { PageHeader } from "@/components/admin/ui";
 import { db } from "@/server/db";
 import { serviceCategories } from "@/server/modules/services/categories";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageOrView } from "@/server/auth/session";
+import { ReadOnlyFieldset } from "@/components/admin/readonly/ReadOnly";
 
 export const metadata = { title: "Үйлчилгээ засах" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
 export const instant = false;
 
 export default async function EditServicePage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePagePermission("service:write");
+  const { readOnly } = await requirePageOrView("service:write");
   const { id } = await params;
   const [service, categories] = await Promise.all([db.service.findUnique({
     where: { id },
@@ -26,6 +27,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
   return (
     <>
       <PageHeader title={service.name} description={service.isActive ? "Идэвхтэй" : "Архив"} />
+      <ReadOnlyFieldset readOnly={readOnly}>
       <ServiceForm
         categories={categories}
         variantLabels={Object.fromEntries(
@@ -54,6 +56,7 @@ export default async function EditServicePage({ params }: { params: Promise<{ id
           consumables: service.consumables.map((c) => ({ variantId: c.variantId, qtyPerService: c.qtyPerService })),
         }}
       />
+      </ReadOnlyFieldset>
     </>
   );
 }

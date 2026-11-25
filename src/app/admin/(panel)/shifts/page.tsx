@@ -4,7 +4,7 @@ import { Badge, Card, PageHeader, Table, tdClass, thClass } from "@/components/a
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { can } from "@/server/auth/permissions";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageOrView } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { getCurrentBranch } from "@/server/modules/branches/service";
 import { getOpenShift, shiftReport } from "@/server/modules/cash-shifts/service";
@@ -16,7 +16,7 @@ export const instant = false;
 const dt = (d: Date) => d.toLocaleString("en-GB", { timeZone: "Asia/Ulaanbaatar", dateStyle: "short", timeStyle: "short" });
 
 export default async function ShiftsPage() {
-  const user = await requirePagePermission("shift:own");
+  const { user, readOnly } = await requirePageOrView("shift:own");
   const branch = await getCurrentBranch();
   const open = await getOpenShift(db, branch.id);
   const report = open ? await shiftReport(open.id) : null;
@@ -34,7 +34,7 @@ export default async function ShiftsPage() {
       <PageHeader eyebrow="Касс" title="Кассын ээлж" description={branch.name} />
       {!open || !report ? (
         <Card title="Касс хаалттай" description="Ээлж нээж бэлэн төлбөр хүлээн авна." className="mb-6">
-          <OpenShiftForm />
+          {readOnly ? null : <OpenShiftForm />}
         </Card>
       ) : (
         <div className="mb-6 space-y-5">
@@ -62,7 +62,7 @@ export default async function ShiftsPage() {
               </p>
             )}
           </Card>
-          {mine ? <ShiftOpenControls shiftId={open.id} expected={report.expectedCash} threshold={pos.shiftDifferenceThreshold} /> : <p className="text-[14px] text-ink-soft">Энэ ээлжийг өөр ажилтан нээсэн.</p>}
+          {readOnly ? null : mine ? <ShiftOpenControls shiftId={open.id} expected={report.expectedCash} threshold={pos.shiftDifferenceThreshold} /> : <p className="text-[14px] text-ink-soft">Энэ ээлжийг өөр ажилтан нээсэн.</p>}
         </div>
       )}
 

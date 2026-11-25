@@ -27,9 +27,9 @@ describe("Миний борлуулалт (A8)", () => {
       const r = await checkout({ items }, as);
       await createPayment({ saleId: r.saleId, method: "CARD", amount: r.total, approvalCode: "AP1", idempotencyKey: crypto.randomUUID() }, as);
     };
-    await pay([{ kind: "SERVICE", serviceId: facial.id, qty: 1, staffId: sara.id }, { kind: "PRODUCT", variantId: serum.id, qty: 2 }]);
+    await pay([{ kind: "SERVICE", serviceId: facial.id, qty: 1, staffId: sara.id }, { kind: "PRODUCT", variantId: serum.id, qty: 2, sellerId: sara.id }]);
     await pay([{ kind: "SERVICE", serviceId: facial.id, qty: 1, staffId: nomin.id }]);
-    await pay([{ kind: "PRODUCT", variantId: serum.id, qty: 1 }]); // nobody's
+    await pay([{ kind: "PRODUCT", variantId: serum.id, qty: 1 }]); // сонголтгүй → кассчин (admin)
 
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ulaanbaatar" }).format(new Date());
     const s = await mySales(sara.id, { from: today, to: today });

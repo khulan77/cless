@@ -32,6 +32,7 @@ type ResolvedLine = {
   variantId: string | null;
   serviceId: string | null;
   staffId: string | null;
+  sellerId: string | null;
   nameSnapshot: string;
   skuSnapshot: string | null;
   unitPrice: number;
@@ -41,10 +42,10 @@ type ResolvedLine = {
 };
 
 /** Мөр бүрийн үнэ, нэр, өртгийг DB-ээс уншина (client-ийн үнийг үл тооно) */
-async function resolveLines(client: Tx | typeof db, cart: Cart): Promise<ResolvedLine[]> {
+async function resolveLines(client: Tx | typeof db, cart: Cart, defaultSeller: string | null = null): Promise<ResolvedLine[]> {
   const variantIds = cart.items.flatMap((i) => (i.kind === "PRODUCT" && i.variantId ? [i.variantId] : []));
   const serviceIds = cart.items.flatMap((i) => (i.kind === "SERVICE" && i.serviceId ? [i.serviceId] : []));
-  const staffIds = cart.items.flatMap((i) => (i.kind === "SERVICE" && i.staffId ? [i.staffId] : []));
+  const staffIds = cart.items.flatMap((i) => (i.kind === "SERVICE" && i.staffId ? [i.staffId] : i.kind === "PRODUCT" && i.sellerId ? [i.sellerId] : []));
 
   const [variants, services, staff] = await Promise.all([
     client.variant.findMany({
@@ -72,11 +73,17 @@ async function resolveLines(client: Tx | typeof db, cart: Cart): Promise<Resolve
       const v = vMap.get(item.variantId!);
       if (!v || !v.isActive) throw new UserError("Бүтээгдэхүүн олдсонгүй эсвэл идэвхгүй байна.", { [`items.${i}.variantId`]: ["Идэвхгүй."] });
       if (v.product.kind === "BUNDLE") throw new UserError(`${v.product.name}: багцыг POS-оор зарахгүй.`);
+      // Зарсан ажилтан: сонгосон (идэвхтэй, нягтлан биш) эсвэл анхдагч
+      const seller = item.sellerId ? staffMap.get(item.sellerId) : undefined;
+      if (item.sellerId && (!seller || !seller.isActive || seller.role === "ACCOUNTANT")) {
+        throw new UserError(`${v.product.name}: зарсан ажилтан буруу байна.`, { [`items.${i}.sellerId`]: ["Ажилтан сонгоно уу."] });
+      }
       return {
         kind: "PRODUCT",
         variantId: v.id,
         serviceId: null,
         staffId: null,
+        sellerId: seller?.id ?? defaultSeller,
         nameSnapshot: `${v.product.name} · ${v.size}`,
         skuSnapshot: v.sku,
         unitPrice: v.price,
@@ -98,6 +105,7 @@ async function resolveLines(client: Tx | typeof db, cart: Cart): Promise<Resolve
       variantId: null,
       serviceId: s.id,
       staffId: staffUser.id,
+      sellerId: null,
       nameSnapshot: s.name,
       skuSnapshot: null,
       unitPrice: s.price,
@@ -242,8 +250,11 @@ export async function checkout(raw: CartInput, actor: Actor, approval?: Approval
       saleId = (await tx.sale.create({ data: { branchId: branch.id, channel: "POS", createdById: actor.id }, select: { id: true } })).id;
     }
 
+    // Бүтээгдэхүүний мөрийн анхдагч зарсан ажилтан: цагийн гоо сайханч, үгүй бол кассчин (PROMPT 14 §5)
+    const apptId = cart.appointmentId ?? (await tx.sale.findUnique({ where: { id: saleId }, select: { appointmentId: true } }))?.appointmentId ?? null;
+    const apptStaff = apptId ? (await tx.appointment.findUnique({ where: { id: apptId }, select: { staffId: true } }))?.staffId : null;
     // Дахин DB-ээс уншиж тооцно (preview-ээс хойш үнэ өөрчлөгдсөн байж болно)
-    const lines = await resolveLines(tx, cart);
+    const lines = await resolveLines(tx, cart, apptStaff ?? actor.id);
     const priced = await price(tx, cart, lines);
     if (exceedsDiscountLimit(priced, pos.maxManagerDiscountPercent) && !approverId) {
       throw new UserError("Хөнгөлөлт хязгаараас хэтэрсэн тул менежер эсвэл админы баталгаажуулалт шаардлагатай.", undefined, APPROVAL_REQUIRED);
@@ -263,6 +274,7 @@ export async function checkout(raw: CartInput, actor: Actor, approval?: Approval
           variantId: l.variantId,
           serviceId: l.serviceId,
           staffId: l.staffId,
+          sellerId: l.sellerId,
           nameSnapshot: l.nameSnapshot,
           skuSnapshot: l.skuSnapshot,
           unitPrice: l.unitPrice,

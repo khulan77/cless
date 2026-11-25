@@ -67,8 +67,11 @@ export function PosTerminal({
   drafts,
   concernOptions,
   todayAppointments = [],
+  cashier,
 }: {
   staff: { id: string; name: string }[];
+  /** "Зарсан" сонголтод — кассчин (одоогийн хэрэглэгч) */
+  cashier: { id: string; name: string };
   qpayMode: "api" | "manual";
   shiftOpen: boolean;
   canTransfer: boolean;
@@ -249,13 +252,13 @@ export function PosTerminal({
     setLines((ls) => {
       const existing = ls.find((l) => l.kind === "PRODUCT" && l.refId === v.id);
       if (existing) return ls.map((l) => (l === existing ? { ...l, qty: l.qty + 1 } : l));
-      return [...ls, { key: lineKey(), kind: "PRODUCT", refId: v.id, name: v.name, detail: `${v.size} · ${v.sku}`, unitPrice: v.price, qty: 1, staffId: "", discount: null, discountReason: "", howToUse: v.howToUse }];
+      return [...ls, { key: lineKey(), kind: "PRODUCT", refId: v.id, name: v.name, detail: `${v.size} · ${v.sku}`, unitPrice: v.price, qty: 1, staffId: "", sellerId: "", discount: null, discountReason: "", howToUse: v.howToUse }];
     });
   };
   const addService = (sv: Catalog["services"][number]) => {
     setLines((ls) => [
       ...ls,
-      { key: lineKey(), kind: "SERVICE", refId: sv.id, name: sv.name, detail: `${sv.durationMin}′`, unitPrice: sv.price, qty: 1, staffId: staff.length === 1 ? staff[0]!.id : "", discount: null, discountReason: "" },
+      { key: lineKey(), kind: "SERVICE", refId: sv.id, name: sv.name, detail: `${sv.durationMin}′`, unitPrice: sv.price, qty: 1, staffId: staff.length === 1 ? staff[0]!.id : "", sellerId: "", discount: null, discountReason: "" },
     ]);
   };
   const update = (key: string, patch: Partial<CartLine>) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -312,6 +315,7 @@ export function PosTerminal({
           serviceId: l.kind === "SERVICE" ? l.refId : null,
           qty: l.qty,
           staffId: l.kind === "SERVICE" ? l.staffId || null : null,
+          sellerId: l.kind === "PRODUCT" ? l.sellerId || null : null,
           lineDiscount: toField(l.discount),
           lineDiscountReason: l.discountReason || null,
         })),
@@ -580,6 +584,16 @@ export function PosTerminal({
                             <Plus className="size-3.5" />
                           </button>
                         </div>
+                      ) : null}
+                      {l.kind === "PRODUCT" ? (
+                        <Select aria-label={s.seller} title={s.sellerHint} value={l.sellerId ?? ""} onChange={(e) => update(l.key, { sellerId: e.target.value })} className="h-10 w-48 text-[14px]">
+                          <option value="">{s.sellerAuto}</option>
+                          {[...staff.filter((u) => u.id !== cashier.id), cashier].map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {s.sellerPrefix} {u.name}
+                            </option>
+                          ))}
+                        </Select>
                       ) : (
                         <Select aria-label={s.staff} value={l.staffId} onChange={(e) => update(l.key, { staffId: e.target.value })} className="h-10 w-44 text-[14px]" aria-invalid={!l.staffId}>
                           <option value="">{s.chooseStaff}</option>

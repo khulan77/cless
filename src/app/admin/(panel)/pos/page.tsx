@@ -42,6 +42,7 @@ async function dataFromSale(sale: PosSale): Promise<DraftData> {
       unitPrice: i.unitPrice,
       qty: i.qty,
       staffId: i.staffId ?? "",
+      sellerId: i.sellerId ?? "",
       discount: i.lineDiscount > 0 ? { type: "AMOUNT", value: i.lineDiscount } : null,
       discountReason: i.lineDiscountReason ?? "",
     })),
@@ -150,6 +151,7 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
       <PosTerminal
         key={initial.saleId ?? "new"}
         staff={staff}
+        cashier={{ id: user.id, name: user.name }}
         qpayMode={effectiveQPayMode(qpay.mode)}
         shiftOpen={Boolean(shift)}
         canTransfer={can(user.role, "payment:transfer:confirm")}

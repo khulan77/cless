@@ -5,6 +5,7 @@ import { ReportTabs } from "@/components/admin/reports/ReportTabs";
 import { Card, EmptyState, PageHeader, Table, btnClass, tdClass, thClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
+import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { presetRange, rangeFromParams } from "@/server/modules/reports/definitions";
 import { productAnalytics, productDetail, type ProductRow } from "@/server/modules/reports/products";
@@ -42,7 +43,7 @@ function StaffTable({ rows }: { rows: ProductRow["byStaff"] }) {
 }
 
 export default async function ProductReportPage({ searchParams }: { searchParams: Sp }) {
-  await requirePagePermission("report:read");
+  const user = await requirePagePermission("report:read");
   const sp = await searchParams;
   const { range, preset } = rangeFromParams(sp);
   const base = "/admin/reports/products";
@@ -57,7 +58,7 @@ export default async function ProductReportPage({ searchParams }: { searchParams
   const header = (
     <>
       <div className="mb-5">
-        <ReportTabs active="products" from={range.from} to={range.to} />
+        <ReportTabs active="products" from={range.from} to={range.to} showPayroll={can(user.role, "payroll:read")} />
       </div>
       <PageHeader
         eyebrow={P.eyebrow}

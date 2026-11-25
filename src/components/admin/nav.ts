@@ -7,13 +7,16 @@ export type NavIcon =
   | "people" | "customers" | "inquiries"
   | "shop" | "product" | "stock" | "collection" | "content"
   | "spa" | "service" | "staffSchedule" | "room"
-  | "settings" | "salon" | "storefront" | "discount" | "email" | "accountant" | "payments" | "users" | "system";
+  | "settings" | "salon" | "storefront" | "discount" | "email" | "accountant" | "payments" | "users" | "system"
+  | "payroll" | "attendance" | "wallet" | "holiday";
 
 export type NavLeaf = {
   href: string;
   label: string;
   icon: NavIcon;
   permission: Permission;
+  /** Also shown (read-only) to roles with this permission — e.g. "admin:view" for ACCOUNTANT */
+  view?: Permission;
   /** Hidden for roles that have this permission (STAFF-only items) */
   hiddenWith?: Permission;
 };
@@ -33,6 +36,7 @@ export const ADMIN_NAV: NavEntry[] = [
   { href: "/admin/schedule", label: n.schedule, icon: "schedule", permission: "schedule:own", hiddenWith: "schedule:all" },
   { href: "/admin/me/customers", label: n.myCustomers, icon: "customers", permission: "me:read", hiddenWith: "schedule:all" },
   { href: "/admin/me/sales", label: n.mySales, icon: "orders", permission: "me:read", hiddenWith: "schedule:all" },
+  { href: "/admin/me/payroll", label: n.myPayroll, icon: "wallet", permission: "me:read", hiddenWith: "schedule:all" },
   { href: "/admin/account", label: n.account, icon: "account", permission: "schedule:own", hiddenWith: "schedule:all" },
   {
     id: "cash",
@@ -41,7 +45,7 @@ export const ADMIN_NAV: NavEntry[] = [
     children: [
       { href: "/admin/pos", label: n.pos, icon: "pos", permission: "pos:use" },
       { href: "/admin/sales", label: n.sales, icon: "orders", permission: "sale:read" },
-      { href: "/admin/shifts", label: n.shifts, icon: "shift", permission: "shift:own" },
+      { href: "/admin/shifts", label: n.shifts, icon: "shift", permission: "shift:own", view: "admin:view" },
     ],
   },
   {
@@ -58,9 +62,9 @@ export const ADMIN_NAV: NavEntry[] = [
     label: n.groups.shop,
     icon: "shop",
     children: [
-      { href: "/admin/products", label: n.products, icon: "product", permission: "product:write" },
+      { href: "/admin/products", label: n.products, icon: "product", permission: "product:write", view: "admin:view" },
       { href: "/admin/inventory", label: n.inventory, icon: "stock", permission: "stock:read" },
-      { href: "/admin/collections", label: n.collections, icon: "collection", permission: "product:write" },
+      { href: "/admin/collections", label: n.collections, icon: "collection", permission: "product:write", view: "admin:view" },
       { href: "/admin/content", label: n.content, icon: "content", permission: "settings:write" },
     ],
   },
@@ -69,8 +73,19 @@ export const ADMIN_NAV: NavEntry[] = [
     label: n.groups.spa,
     icon: "spa",
     children: [
-      { href: "/admin/services", label: n.services, icon: "service", permission: "service:write" },
-      { href: "/admin/staff-schedules", label: n.staffSchedules, icon: "staffSchedule", permission: "staff-schedule:write" },
+      { href: "/admin/services", label: n.services, icon: "service", permission: "service:write", view: "admin:view" },
+      { href: "/admin/staff-schedules", label: n.staffSchedules, icon: "staffSchedule", permission: "staff-schedule:write", view: "admin:view" },
+    ],
+  },
+  {
+    id: "payroll",
+    label: n.groups.payroll,
+    icon: "payroll",
+    children: [
+      { href: "/admin/attendance", label: n.attendance, icon: "attendance", permission: "attendance:read" },
+      { href: "/admin/payroll", label: n.payrollPeriods, icon: "payroll", permission: "payroll:read" },
+      { href: "/admin/payroll/staff", label: n.payrollStaff, icon: "wallet", permission: "payroll:write" },
+      { href: "/admin/payroll/settings", label: n.payrollSettings, icon: "accountant", permission: "payroll:settings" },
     ],
   },
   {
@@ -82,6 +97,7 @@ export const ADMIN_NAV: NavEntry[] = [
       { href: "/admin/settings/salon", label: n.settingsSalon, icon: "salon", permission: "settings:write" },
       { href: "/admin/settings/shop", label: n.settingsShop, icon: "storefront", permission: "settings:write" },
       { href: "/admin/settings/pos", label: n.settingsPos, icon: "discount", permission: "settings:write" },
+      { href: "/admin/holidays", label: n.holidays, icon: "holiday", permission: "holiday:write" },
       { href: "/admin/rooms", label: n.rooms, icon: "room", permission: "room:write" },
       { href: "/admin/settings/email", label: n.settingsEmail, icon: "email", permission: "settings:write" },
       { href: "/admin/settings/accountant", label: n.settingsAccountant, icon: "accountant", permission: "report:send" },
@@ -94,7 +110,7 @@ export const ADMIN_NAV: NavEntry[] = [
 
 /** Entries a role may see (groups keep only permitted children; empty groups are dropped) */
 export function navFor(can: (p: Permission) => boolean): NavEntry[] {
-  const ok = (l: NavLeaf) => can(l.permission) && !(l.hiddenWith && can(l.hiddenWith));
+  const ok = (l: NavLeaf) => (can(l.permission) || (!!l.view && can(l.view))) && !(l.hiddenWith && can(l.hiddenWith));
   return ADMIN_NAV.flatMap<NavEntry>((e) => {
     if (!isGroup(e)) return ok(e) ? [e] : [];
     const children = e.children.filter(ok);
