@@ -11,6 +11,7 @@ import { logout } from "@/server/actions/auth";
 import { ChangePasswordForm } from "@/components/admin/account/ChangePasswordForm";
 import { t } from "@/i18n";
 import { db } from "@/server/db";
+import { newOnlineCustomers } from "@/server/modules/customer-auth/account";
 
 // Session (cookie)-оос хамаардаг тул энэ хэсэг request бүрт render хийгдэнэ.
 export const instant = false;
@@ -44,7 +45,7 @@ export default async function AdminPanelLayout({ children }: { children: React.R
     can(user.role, "inquiry:manage") ? countNewInquiries() : null,
     can(user.role, "settings:write") ? failedEmailCount() : null,
     canOnline ? db.appointment.count({ where: { status: "PENDING" } }) : null,
-    canOnline ? db.customer.count({ where: { registeredVia: "ONLINE", onlineRegisteredAt: { gt: new Date(Date.now() - 86_400_000) } } }) : null,
+    canOnline ? newOnlineCustomers() : null,
   ]);
   // Bell: only what already exists — new "Салонд захиалах" requests and unsent e-mails (ADMIN)
   const notices = [

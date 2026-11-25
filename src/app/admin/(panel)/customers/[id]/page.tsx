@@ -1,13 +1,16 @@
+import { CustomerOnlinePanel, SendVisitReportButton } from "@/components/admin/notify/CustomerOnlinePanel";
+import { customerEmailHistory } from "@/server/modules/notifications/service";
+import { onlineBlocked } from "@/server/modules/online-booking/service";
+import { db } from "@/server/db";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CustomerFormButton } from "@/components/admin/customers/CustomerForm";
 import { CustomerNotes } from "@/components/admin/customers/CustomerNotes";
-import { ResendEmailButton } from "@/components/admin/sales/SaleActions";
 import { Badge, Card, EmptyState, PageHeader, SegmentedTabs, Table, btnClass, tdClass, thClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { saleStatusTone } from "@/lib/sale-status";
-import { formatDateLabel, formatTime, ubDateKey } from "@/lib/time";
+import { formatDateLabel, formatDateTime, formatTime, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { customerHistory } from "@/server/modules/customers/history";
@@ -25,15 +28,28 @@ const H = t.admin.customers.history;
 const TABS = ["services", "products", "visits", "photos", "notes", "sales"] as const;
 type Tab = (typeof TABS)[number];
 
+/** Онлайн бүртгэл, зөвшөөрөл, ирээгүйн хаалт, илгээсэн тайлангийн түүх */
+async function onlineInfo(customerId: string) {
+  const [c, history, blocked] = await Promise.all([
+    db.customer.findUnique({ where: { id: customerId }, select: { registeredVia: true, onlineRegisteredAt: true, lastLoginAt: true, emailConsentAt: true } }),
+    customerEmailHistory(customerId),
+    onlineBlocked(customerId).catch(() => false),
+  ]);
+  if (!c) return null;
+  const users = await db.user.findMany({ where: { id: { in: history.flatMap((h) => (h.sentById ? [h.sentById] : [])) } }, select: { id: true, name: true } });
+  return { ...c, blocked, history: history.map((h) => ({ ...h, by: users.find((u) => u.id === h.sentById)?.name ?? null })) };
+}
+
 export default async function CustomerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const user = await requirePagePermission("customer:read");
   const { id } = await params;
   const tab: Tab = (TABS as readonly string[]).includes((await searchParams).tab ?? "") ? ((await searchParams).tab as Tab) : "services";
-  const [profile, history, notes, photos] = await Promise.all([
+  const [profile, history, notes, photos, online] = await Promise.all([
     customerProfile(id),
     customerHistory(id),
     tab === "notes" ? noteViews(id, user) : null,
     tab === "photos" && can(user.role, "visit-photo:read") ? photoPanel(id, user) : null,
+    onlineInfo(id),
   ]);
   if (!profile) notFound();
   const { customer: c, visits, sales } = profile;
@@ -71,6 +87,20 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           </>
         }
       />
+      {online && (
+        <Card title="Онлайн ба имэйл" className="mb-5">
+          <CustomerOnlinePanel
+            customerId={c.id}
+            registeredVia={online.registeredVia}
+            onlineRegisteredAt={online.onlineRegisteredAt ? formatDateTime(online.onlineRegisteredAt) : null}
+            lastLoginAt={online.lastLoginAt ? formatDateTime(online.lastLoginAt) : null}
+            emailConsentAt={online.emailConsentAt ? formatDateTime(online.emailConsentAt) : null}
+            blocked={online.blocked}
+            canWrite={can(user.role, "customer:write")}
+            history={online.history.map((h) => ({ id: h.id, at: formatDateTime(h.createdAt), by: h.by, status: h.status, error: h.error }))}
+          />
+        </Card>
+      )}
       {/* Net of refunds (same rules as the reports) */}
       <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
@@ -177,7 +207,15 @@ export default async function CustomerPage({ params, searchParams }: { params: P
                 <li key={v.id} className="space-y-2 py-3 text-[14px]">
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <Badge tone={v.emailStatus === "SENT" ? "green" : v.emailStatus === "FAILED" ? "red" : "neutral"}>{t.admin.emailStatus[v.emailStatus]}</Badge>
-                    {c.email && can(user.role, "visit:write") && <ResendEmailButton visitId={v.id} />}
+                    {can(user.role, "visit:write") && (
+                      <SendVisitReportButton
+                        visitId={v.id}
+                        customerId={c.id}
+                        skinType={v.skinType}
+                        summary={v.diagnosisNotes}
+                        disabledReason={!c.email ? "Үйлчлүүлэгчид имэйл хаяг алга." : !online?.emailConsentAt ? "Үйлчлүүлэгч имэйлээр хүлээн авахыг зөвшөөрөөгүй." : null}
+                      />
+                    )}
                   </div>
                   <VisitSummary
                     visit={{

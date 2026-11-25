@@ -43,7 +43,7 @@ export function BookingWizard({
   const [staff, setStaff] = useState<{ id: string; name: string }[] | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
   const [date, setDate] = useState(dates[0] ?? "");
-  const [slots, setSlots] = useState<{ startsAt: string; staffIds: string[] }[] | null>(null);
+  const [slotData, setSlotData] = useState<{ key: string; slots: { startsAt: string; staffIds: string[] }[] } | null>(null);
   const [startsAt, setStartsAt] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [loggedIn, setLoggedIn] = useState(initialLoggedIn);
@@ -66,16 +66,21 @@ export function BookingWizard({
     return () => void (stale = true);
   }, [serviceId]);
 
+  // Сонголт өөрчлөгдөхөд хуучин цагууд шууд нуугдана (key таарахгүй бол "хайж байна")
+  const slotKey = `${serviceId}|${staffId}|${date}`;
+  const slots = slotData?.key === slotKey ? slotData.slots : null;
   useEffect(() => {
     if (!serviceId || step !== 2 || !date) return;
     let stale = false;
-    setSlots(null);
+    const key = `${serviceId}|${staffId}|${date}`;
     onlineSlotsAction({ serviceId, staffId, date }).then((r) => {
       if (stale) return;
-      if (r.ok) setSlots(r.data);
-      else (setSlots([]), setError(r.error));
+      setSlotData({ key, slots: r.ok ? r.data : [] });
+      if (!r.ok) setError(r.error);
     });
-    return () => void (stale = true);
+    return () => {
+      stale = true;
+    };
   }, [serviceId, staffId, date, step]);
 
   if (done) {
@@ -102,7 +107,10 @@ export function BookingWizard({
       if (r.ok) setDone(r.data.status === "PENDING" ? "PENDING" : "CONFIRMED");
       else {
         setError(r.error);
-        if (r.code === "APPT_OVERLAP") (setStartsAt(null), setStep(2));
+        if (r.code === "APPT_OVERLAP") {
+          setStartsAt(null);
+          setStep(2);
+        }
       }
     });
 

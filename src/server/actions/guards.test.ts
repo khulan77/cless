@@ -35,6 +35,7 @@ const PUBLIC_ROUTES: Record<string, RegExp> = {
   "src/app/api/auth/[...nextauth]/route.ts": /handlers/, // Auth.js
   "src/app/api/qpay/callback/route.ts": /verifyPaymentSignature\(/, // HMAC гарын үсэг
   "src/app/api/internal/revalidate/route.ts": /secretOk\(/, // shared secret + дотоод сүлжээ
+  "src/app/api/wesend/webhook/route.ts": /verifySignature\(/, // WeSend HMAC гарын үсэг (PROMPT 15)
   // Хамтрагчийн health check (нийтийн, нууц мэдээлэлгүй) — файл нэмэгдэхэд л шалгагдана
   "src/app/api/health/route.ts": /export\s+(async\s+)?function\s+GET|export\s+const\s+GET/,
 };

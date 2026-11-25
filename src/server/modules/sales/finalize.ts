@@ -7,7 +7,6 @@ import { queueVisitReport } from "@/server/modules/notifications/service";
 import type { Prisma } from "@/generated/prisma/client";
 import { audit } from "@/server/audit";
 import { completeForSale } from "@/server/modules/appointments/complete";
-import { enqueue } from "@/server/modules/outbox/service";
 import { SETTLED_STATUSES, nextStatus } from "./state";
 
 type Tx = Prisma.TransactionClient;

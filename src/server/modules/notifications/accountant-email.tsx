@@ -12,9 +12,10 @@ const s = t.email.accountant;
 const font = "Helvetica, Arial, sans-serif";
 const cell = { fontSize: 14, lineHeight: "22px", color: "#1d1b18", padding: "6px 0", borderBottom: "1px solid #ece7df" };
 
-export type AccountantEmailData = { salonName: string; summary: DailySummary; lines: [string, number | string][] };
+/** downloadUrl: WeSend хавсралт дэмждэггүй үед Excel-ийг системээс (нэвтэрч) татах холбоос */
+export type AccountantEmailData = { salonName: string; summary: DailySummary; lines: [string, number | string][]; downloadUrl?: string | null };
 
-export function AccountantEmail({ salonName, summary, lines }: AccountantEmailData) {
+export function AccountantEmail({ salonName, summary, lines, downloadUrl }: AccountantEmailData) {
   return (
     <Html lang="mn">
       <Head />
@@ -37,7 +38,16 @@ export function AccountantEmail({ salonName, summary, lines }: AccountantEmailDa
               </tbody>
             </table>
           </Section>
-          <Text style={{ fontSize: 13, color: "#8a8378", marginTop: 20 }}>{s.attachment}</Text>
+          <Text style={{ fontSize: 13, color: "#8a8378", marginTop: 20 }}>
+            {downloadUrl ? (
+              <>
+                Үйлчилгээ, бүтээгдэхүүний задаргааг Excel-ээр татах (нэвтэрсэн байх шаардлагатай):{" "}
+                <a href={downloadUrl} style={{ color: "#8a6d3b" }}>{downloadUrl}</a>
+              </>
+            ) : (
+              s.attachment
+            )}
+          </Text>
         </Container>
       </Body>
     </Html>

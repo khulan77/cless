@@ -23,3 +23,13 @@ export async function calendarMoney(range: { start: Date; end: Date }, staffId?:
   }
   return { money, cancelled };
 }
+
+/** Тайлан: хугацааны цагуудыг эх сурвалжаар (утас, Instagram, онлайн…) — цуцлагдсаныг оруулахгүй */
+export async function apptSourceBreakdown(range: { start: Date; end: Date }) {
+  const rows = await db.appointment.groupBy({
+    by: ["source"],
+    where: { startsAt: { gte: range.start, lt: range.end }, status: { notIn: ["CANCELLED"] } },
+    _count: true,
+  });
+  return rows.map((r) => ({ source: r.source, count: r._count })).sort((a, b) => b.count - a.count);
+}

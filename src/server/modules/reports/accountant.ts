@@ -17,7 +17,8 @@ import { audit } from "@/server/audit";
 import { db } from "@/server/db";
 import { UserError } from "@/server/errors";
 import { getCurrentBranch } from "@/server/modules/branches/service";
-import { sendEmail } from "@/server/modules/notifications/mailer";
+import { emailSupportsAttachments, sendEmail } from "@/server/modules/notifications/mailer";
+import { SITE_URL } from "@/lib/site-url";
 import { renderAccountantEmail } from "@/server/modules/notifications/accountant-email";
 import { enqueue } from "@/server/modules/outbox/service";
 import { rangeBounds } from "./definitions";
@@ -222,7 +223,9 @@ export async function deliverAccountantReport(jobId: string, dispatchId: string)
     const full = await dailySummary(d.day);
     const summary = headline(full);
     const [salon, excel] = await Promise.all([getCurrentBranch().then((b) => b.name), buildDailyExcel(full)]);
-    const mail = await renderAccountantEmail({ salonName: salon, summary, lines: summaryLines(summary) });
+    // WeSend хавсралт дамжуулдаггүй → Excel-ийг системээс татах холбоос (report:send эрхтэй, нэвтэрсэн)
+    const downloadUrl = emailSupportsAttachments() ? null : `${SITE_URL}/api/admin/reports/accountant/${d.id}`;
+    const mail = await renderAccountantEmail({ salonName: salon, summary, lines: summaryLines(summary), downloadUrl });
     await sendEmail({
       id: jobId,
       to: d.recipients,

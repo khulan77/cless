@@ -50,3 +50,8 @@ export async function mySkin(customerId: string) {
       : null,
   };
 }
+
+/** Админы хонх: сүүлийн 24 цагт сайтаас бүртгүүлсэн үйлчлүүлэгчид */
+export async function newOnlineCustomers(now = new Date()) {
+  return db.customer.count({ where: { registeredVia: "ONLINE", onlineRegisteredAt: { gt: new Date(now.getTime() - 86_400_000) } } });
+}
