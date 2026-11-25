@@ -1265,7 +1265,7 @@ export const mn = {
       rule: "Өөрийн тэмдэглэлийг 24 цагийн дотор засаж, устгана.",
     },
     me: {
-      tabs: { schedule: "Өнөөдрийн хуваарь", customers: "Миний үйлчлүүлэгчид", sales: "Миний борлуулалт" },
+      tabs: { schedule: "Өнөөдрийн хуваарь", customers: "Миний үйлчлүүлэгчид", sales: "Миний борлуулалт", payroll: "Миний цалин" },
       title: "Миний самбар",
       customersTitle: "Миний үйлчлүүлэгчид",
       customersHint: "Таны үйлчилсэн үйлчлүүлэгчид. Утас, имэйл харагдахгүй.",
@@ -1426,7 +1426,7 @@ export const mn = {
     report: {
       title: "Тайлан",
       eyebrow: "Орлогын тайлан",
-      tabs: { overview: "Ерөнхий", products: "Бүтээгдэхүүн", cancellations: "Цуцлалт" },
+      tabs: { overview: "Ерөнхий", products: "Бүтээгдэхүүн", cancellations: "Цуцлалт", payroll: "Цалин" },
       products: {
         title: "Бүтээгдэхүүн",
         eyebrow: "Бүтээгдэхүүний тайлан",

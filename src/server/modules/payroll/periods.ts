@@ -22,7 +22,6 @@ import { getPayrollSettings } from "./settings";
 export { invalidateDay, invalidateFrom, invalidateMonth } from "./locks";
 
 const P = t.admin.payroll;
-type Tx = Prisma.TransactionClient | typeof db;
 
 // ───────────────────────── Нээх, жагсаах ─────────────────────────
 
@@ -105,7 +104,19 @@ export async function getPeriod(id: string) {
 
 // ───────────────────────── Тооцоолох ─────────────────────────
 
-const ZERO_LINE = { baseSalary: 0, serviceCommission: 0, productCommission: 0, adjustments: 0, deductions: 0, gross: 0, siEmployee: 0, pit: 0, siEmployer: 0, net: 0 };
+type LineAmounts = {
+  baseSalary: number;
+  serviceCommission: number;
+  productCommission: number;
+  adjustments: number;
+  deductions: number;
+  gross: number;
+  siEmployee: number;
+  pit: number;
+  siEmployer: number;
+  net: number;
+  advancePaid: number;
+};
 
 export async function calculatePeriod(id: string, actorId: string) {
   const period = await db.payrollPeriod.findUnique({ where: { id } });
@@ -153,7 +164,7 @@ export async function calculatePeriod(id: string, actorId: string) {
     const rates = rateSet ? ratesFor(rateSet, s.siCategory) : null;
     const advLine = advance?.lines.find((l) => l.staffId === s.id) ?? null;
 
-    let line: typeof ZERO_LINE & { advancePaid: number };
+    let line: LineAmounts;
     let warnings: string[];
     let tax: LineDetails["tax"] = null;
     let monthInfo: LineDetails["month"] = null;
@@ -317,4 +328,14 @@ export async function myPayslips(staffId: string) {
     take: 48,
   });
   return lines.map((l) => ({ ...l, from: fromDbDate(l.period.startDate), to: fromDbDate(l.period.endDate), details: l.details as unknown as LineDetails }));
+}
+
+/** Цалингийн хуудасны өгөгдөл (нэг ажилтан, нэг үе) */
+export async function payslipFor(periodId: string, staffId: string) {
+  const line = await db.payrollLine.findUnique({
+    where: { periodId_staffId: { periodId, staffId } },
+    include: { period: true, staff: { select: { name: true, role: true } } },
+  });
+  if (!line) return null;
+  return { ...line, from: fromDbDate(line.period.startDate), to: fromDbDate(line.period.endDate), details: line.details as unknown as LineDetails };
 }

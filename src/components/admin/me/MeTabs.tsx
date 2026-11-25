@@ -2,10 +2,10 @@ import { SegmentedTabs } from "@/components/admin/ui";
 import { t } from "@/i18n";
 
 const M = t.admin.me;
-type MeTab = "schedule" | "customers" | "sales";
-const PATHS: Record<MeTab, string> = { schedule: "/admin/schedule", customers: "/admin/me/customers", sales: "/admin/me/sales" };
+type MeTab = "schedule" | "customers" | "sales" | "payroll";
+const PATHS: Record<MeTab, string> = { schedule: "/admin/schedule", customers: "/admin/me/customers", sales: "/admin/me/sales", payroll: "/admin/me/payroll" };
 
-/** Гоо сайханчийн "Миний самбар" — хуваарь · үйлчлүүлэгчид · борлуулалт */
+/** Гоо сайханчийн "Миний самбар" — хуваарь · үйлчлүүлэгчид · борлуулалт · цалин */
 export function MeTabs({ active }: { active: MeTab }) {
   return <SegmentedTabs label={M.title} value={active} items={(Object.keys(PATHS) as MeTab[]).map((k) => ({ value: k, label: M.tabs[k], href: PATHS[k] }))} />;
 }
