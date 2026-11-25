@@ -142,6 +142,8 @@ enum SkinType {
 }
 
 enum ApptStatus {
+  /// Онлайн захиалга — ресепшн батлахыг хүлээж буй (цагийг түр барина)
+  PENDING
   BOOKED
   CONFIRMED
   /// Ирсэн (POS ноорог нээгдсэн)
@@ -159,6 +161,48 @@ enum ApptSource {
   FACEBOOK
   WALK_IN
   OTHER
+  /// Сайтаар үйлчлүүлэгч өөрөө захиалсан
+  ONLINE
+}
+
+/// Ажилтны бүртгэлийн төлөв: урьсан (код хүлээж буй) → идэвхтэй
+enum UserStatus {
+  INVITED
+  ACTIVE
+}
+
+/// Үйлчлүүлэгч хаанаас бүртгэгдсэн
+enum CustomerOrigin {
+  ADMIN
+  ONLINE
+}
+
+/// Нэг удаагийн кодын зорилго
+enum VerifyPurpose {
+  STAFF_INVITE
+  STAFF_RESET
+  STAFF_PHONE
+  CUSTOMER_LOGIN
+  CUSTOMER_EMAIL
+}
+
+enum VerifyStatus {
+  PENDING
+  APPROVED
+  EXPIRED
+  CANCELED
+}
+
+enum MessageChannel {
+  SMS
+  EMAIL
+  VERIFY
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  FAILED
 }
 
 enum TimeOffReason {
@@ -261,26 +305,34 @@ enum EbarimtType {
 // ──────────────────────── Хэрэглэгч ба эрх ────────────────────────
 
 model User {
-  id                 String    @id @default(cuid())
+  id                 String     @id @default(cuid())
   name               String
-  email              String    @unique
+  /// Сонголтоор (PROMPT 15): утас заавал, имэйл байхгүй байж болно
+  email              String?    @unique
   phone              String?
+  /// Нэвтрэх утас — 8 оронтой, хэвийн болгосон (normalizePhone)
+  loginPhone         String?    @unique
+  status             UserStatus @default(ACTIVE)
+  invitedAt          DateTime?
+  invitedById        String?
+  inviteExpiresAt    DateTime?
+  activatedAt        DateTime?
   passwordHash       String
-  role               Role      @default(STAFF)
-  isActive           Boolean   @default(true)
+  role               Role       @default(STAFF)
+  isActive           Boolean    @default(true)
   /// Календарьт үйлчилгээ хийх ажилтнаар сонгогдох эсэх
-  isBookable         Boolean   @default(false)
+  isBookable         Boolean    @default(false)
   /// ADMIN түр нууц үг өгсөн — анх нэвтрэхэд солихыг шаардана
-  mustChangePassword Boolean   @default(false)
+  mustChangePassword Boolean    @default(false)
   /// Нууц үг солигдсон мөч — үүнээс өмнө олгосон session хүчингүй
   passwordChangedAt  DateTime?
-  baseSalary         Int       @default(0)
+  baseSalary         Int        @default(0)
   /// Ажил олгогчийн НДШ-ийн ангилал (PayrollRateSet.employerRates[].code); null = эхний ангилал
   siCategory         String?
   /// Банкны данс — AES-256-GCM шифрлэгдсэн (src/server/crypto/field.ts). Зөвхөн ADMIN / ACCOUNTANT уншина.
   bankAccountEnc     String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   staffAppointments     Appointment[]       @relation("ApptStaff")
   createdAppointments   Appointment[]       @relation("ApptCreatedBy")
@@ -611,19 +663,30 @@ model ServiceConsumable {
 // ─────────────────────── Үйлчлүүлэгч, цаг, айлчлал ───────────────────────
 
 model Customer {
-  id               String    @id @default(cuid())
-  name             String
-  phone            String    @unique
-  email            String?
-  birthday         DateTime? @db.Date
-  skinType         SkinType?
-  notes            String?
+  id                 String         @id @default(cuid())
+  name               String
+  phone              String         @unique
+  email              String?
+  birthday           DateTime?      @db.Date
+  skinType           SkinType?
+  notes              String?
   /// Маркетингийн имэйл (айлчлалын үйлчилгээний имэйлд хамаарахгүй)
-  marketingConsent Boolean   @default(false)
+  marketingConsent   Boolean        @default(false)
   /// Өмнө/дараах зураг авахыг зөвшөөрсөн огноо (A9) — null бол зураг авахгүй
-  photoConsentAt   DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  photoConsentAt     DateTime?
+  /// PROMPT 15: сайтаар бүртгүүлсэн эсэх, нэвтрэлт, зөвшөөрөл
+  registeredVia      CustomerOrigin @default(ADMIN)
+  onlineRegisteredAt DateTime?
+  lastLoginAt        DateTime?
+  /// Хувийн мэдээлэл ашиглах зөвшөөрөл (сайтаар бүртгүүлэхэд)
+  dataConsentAt      DateTime?
+  /// Айлчлалын тайланг имэйлээр хүлээн авахыг зөвшөөрсөн
+  emailConsentAt     DateTime?
+  emailVerifiedAt    DateTime?
+  /// Ирээгүй 2+ → онлайн захиалга хаагдана; менежер нээхэд энэ огнооноос хойших ирээгүйг л тоолно
+  onlineUnblockedAt  DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   appointments Appointment[]
   visits       Visit[]
@@ -632,6 +695,8 @@ model Customer {
   wallet       Wallet?
   notesLog     CustomerNote[]
   photos       VisitPhoto[]
+  sessions     CustomerSession[]
+  emails       CustomerEmail[]
 
   @@index([email])
   @@index([name])
@@ -1375,6 +1440,78 @@ model PayrollRateSet {
   updatedAt     DateTime  @updatedAt
 
   confirmedBy User? @relation("RateSetConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+}
+
+/// Нэг удаагийн код (WeSend verify эсвэл dev-ийн локал код). target-ийг хэш хэлбэрээр л хадгална (rate limit, хайлт).
+model Verification {
+  id         String         @id @default(cuid())
+  purpose    VerifyPurpose
+  channel    MessageChannel
+  /// HMAC(normalized утас/имэйл) — нээлттэй утгыг хадгалахгүй
+  targetHash String
+  /// Дэлгэцэнд: 99****33 / a***@x.mn
+  targetMask String
+  /// WeSend verify id; локал горимд null
+  providerId String?
+  /// Локал (dev/test) горимд кодын хэш
+  codeHash   String?
+  attempts   Int            @default(0)
+  status     VerifyStatus   @default(PENDING)
+  userId     String?
+  customerId String?
+  ipHash     String?
+  expiresAt  DateTime
+  approvedAt DateTime?
+  createdAt  DateTime       @default(now())
+
+  @@index([targetHash, createdAt])
+  @@index([ipHash, createdAt])
+}
+
+/// Үйлчлүүлэгчийн сайтын session (ажилтны session-оос тусдаа cookie). Токены хэшийг л хадгална.
+model CustomerSession {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  customerId String
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+/// Илгээсэн SMS / имэйл / код — Тохиргоо → Мэдэгдэл дэх "сүүлийн илгээлтүүд". Хүлээн авагчийг маскалж хадгална.
+model MessageLog {
+  id         String         @id @default(cuid())
+  channel    MessageChannel
+  kind       String
+  toMask     String
+  providerId String?
+  status     MessageStatus  @default(QUEUED)
+  error      String?
+  sandbox    Boolean        @default(false)
+  createdAt  DateTime       @default(now())
+
+  @@index([createdAt])
+}
+
+/// Үйлчлүүлэгчид илгээсэн айлчлалын тайлан (имэйл) — дэлгэрэнгүйд түүх
+model CustomerEmail {
+  id         String        @id @default(cuid())
+  customerId String
+  visitId    String?
+  kind       String
+  status     MessageStatus @default(QUEUED)
+  sentById   String?
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime      @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, createdAt])
 }
 
 // ─────────────────────── Аудит, тохиргоо ───────────────────────

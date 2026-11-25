@@ -56,6 +56,13 @@ export async function requirePageOrView(permission: Permission) {
   forbidden();
 }
 
+/** Хуудсанд: хэд хэдэн эрхийн аль нэг */
+export async function requirePageAnyPermission(...permissions: Permission[]) {
+  const user = await requireUser();
+  if (!permissions.some((p) => can(user.role, p))) forbidden();
+  return user;
+}
+
 /** Түр нууц үгтэй хэрэглэгч эхлээд нууц үгээ солино — бусад үйлдэл хориотой */
 function assertPasswordChanged(user: NonNullable<CurrentUser>) {
   if (user.mustChangePassword) throw new ForbiddenError("Эхлээд нууц үгээ солино уу.");

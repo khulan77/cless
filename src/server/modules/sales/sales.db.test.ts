@@ -112,9 +112,9 @@ describe("checkout / lock", () => {
     };
     const asStaff = { id: staff.id, role: staff.role };
     await expect(checkout(cart, asStaff)).rejects.toMatchObject({ code: APPROVAL_REQUIRED });
-    await expect(checkout(cart, asStaff, { email: beautician.email, password: "staff-pass" })).rejects.toThrow(/буруу/);
-    await expect(checkout(cart, asStaff, { email: approver.email, password: "wrong" })).rejects.toThrow(/буруу/);
-    const r = await checkout(cart, asStaff, { email: approver.email, password: "manager-pass" });
+    await expect(checkout(cart, asStaff, { email: beautician.email!, password: "staff-pass" })).rejects.toThrow(/буруу/);
+    await expect(checkout(cart, asStaff, { email: approver.email!, password: "wrong" })).rejects.toThrow(/буруу/);
+    const r = await checkout(cart, asStaff, { email: approver.email!, password: "manager-pass" });
     const sale = await db.sale.findUniqueOrThrow({ where: { id: r.saleId } });
     expect(sale.discountApprovedById).toBe(approver.id);
     expect(await db.auditLog.count({ where: { action: "sale.discount_approved", userId: approver.id } })).toBe(1);
@@ -180,9 +180,17 @@ describe("unlock / cancel", () => {
   });
 });
 
+/** PROMPT 15 §5: айлчлалын имэйл автоматаар — тохиргоо асаалттай + үйлчлүүлэгч зөвшөөрсөн үед л */
+async function consentingCustomer() {
+  const c = await makeCustomer();
+  await db.customer.update({ where: { id: c.id }, data: { emailConsentAt: new Date() } });
+  await db.siteSetting.upsert({ where: { key: "notify" }, create: { key: "notify", value: { autoVisitEmail: true } }, update: { value: { autoVisitEmail: true } } });
+  return c;
+}
+
 describe("applyPayment (finalize)", () => {
   it("partial then full payment; stock deducted once, movement + email job written", async () => {
-    const customer = await makeCustomer();
+    const customer = await consentingCustomer();
     const v = await makeVariant({ price: 10_000, stock: 3, cost: 4_000 });
     const visit = await db.visit.create({
       data: { branchId: (await db.branch.findFirstOrThrow()).id, customerId: customer.id, conductedById: manager.id, recommendations: { create: [{ variantId: v.id }] } },
@@ -203,7 +211,7 @@ describe("applyPayment (finalize)", () => {
   });
 
   it("concurrent applyPayment calls deduct stock and enqueue the email exactly once", async () => {
-    const customer = await makeCustomer();
+    const customer = await consentingCustomer();
     const v = await makeVariant({ price: 10_000, stock: 3 });
     const visit = await db.visit.create({ data: { branchId: (await db.branch.findFirstOrThrow()).id, customerId: customer.id, conductedById: manager.id } });
     const r = await checkout({ customerId: customer.id, visitId: visit.id, items: [{ kind: "PRODUCT", variantId: v.id, qty: 1 }] }, asManager());

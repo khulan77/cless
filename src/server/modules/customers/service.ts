@@ -40,6 +40,8 @@ export const customerSchema = z.object({
   skinType: z.enum(["DRY", "OILY", "COMBINATION", "NORMAL", "SENSITIVE"]).nullish(),
   notes: z.string().trim().max(2000).nullish(),
   marketingConsent: z.boolean().default(false),
+  /** PROMPT 15 §5: айлчлалын тайланг имэйлээр хүлээн авахыг зөвшөөрсөн (огноотой хадгална). undefined = өөрчлөхгүй */
+  emailConsent: z.boolean().optional(),
 });
 export type CustomerInput = z.input<typeof customerSchema>;
 
@@ -76,7 +78,8 @@ export async function createCustomer(raw: CustomerInput, actorId: string) {
   const data = customerSchema.parse(raw);
   try {
     return await db.$transaction(async (tx) => {
-      const c = await tx.customer.create({ data: { ...data, email: data.email ?? null } });
+      const { emailConsent, ...rest } = data;
+      const c = await tx.customer.create({ data: { ...rest, email: rest.email ?? null, emailConsentAt: emailConsent ? new Date() : null } });
       await audit(tx, { userId: actorId, action: "customer.create", entity: "Customer", entityId: c.id, after: { name: c.name } });
       return c;
     });
@@ -94,7 +97,9 @@ export async function updateCustomer(id: string, raw: CustomerInput, actorId: st
     return await db.$transaction(async (tx) => {
       const before = await tx.customer.findUnique({ where: { id } });
       if (!before) throw new UserError("Үйлчлүүлэгч олдсонгүй.");
-      const c = await tx.customer.update({ where: { id }, data: { ...data, email: data.email ?? null } });
+      const { emailConsent, ...rest } = data;
+      const consent = emailConsent === undefined ? {} : { emailConsentAt: emailConsent ? (before.emailConsentAt ?? new Date()) : null };
+      const c = await tx.customer.update({ where: { id }, data: { ...rest, email: rest.email ?? null, ...consent } });
       await audit(tx, { userId: actorId, action: "customer.update", entity: "Customer", entityId: id, before, after: c });
       return c;
     });

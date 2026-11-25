@@ -41,7 +41,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   const wordmark = brand?.wordmark ?? [];
   const siteName = salon.siteName;
   const nav = salon.shopMode === "CATALOG" ? rawNav.filter((i) => !isCheckoutOnlyHref(i.href)) : rawNav;
-  const contact = { phone: salon.phone, instagram: salon.instagram, messenger: salon.messenger, address: salon.address, mapsUrl: salon.mapsUrl, hoursLines: salon.hoursLines };
+  const contact = { phone: salon.phone, instagram: salon.instagram, messenger: salon.messenger, address: salon.address, mapsUrl: salon.mapsUrl, hoursLines: salon.hoursLines, onlineBooking: salon.onlineBooking };
 
   return (
     <StorefrontProvider value={{ mode: salon.shopMode, salon: contact }}>

@@ -34,7 +34,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
       if (code === "rate_limited") {
         return { email, error: "Хэт олон удаа буруу оролдлоо. 15 минутын дараа дахин оролдоно уу." };
       }
-      return { email, error: "Имэйл эсвэл нууц үг буруу байна." };
+      return { email, error: "Утас/имэйл эсвэл нууц үг буруу байна." };
     }
     throw e; // амжилттай үед NEXT_REDIRECT
   }

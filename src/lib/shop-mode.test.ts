@@ -3,10 +3,10 @@ import { isPlaceholderSrc, realImageSrc } from "./placeholder";
 import { isCheckoutOnlyHref } from "./shop-mode";
 
 describe("CATALOG mode hides checkout-only links", () => {
-  it.each(["/cart", "/checkout", "/checkout/pay", "/account", "/account/orders", "/shipping", "/gift-cards", "/giftcard"])("%s → hidden", (h) =>
+  it.each(["/cart", "/checkout", "/checkout/pay", "/shipping", "/gift-cards", "/giftcard"])("%s → hidden", (h) =>
     expect(isCheckoutOnlyHref(h)).toBe(true),
   );
-  it.each(["/collections/gifts", "/collections", "/services", "/salon", "/cartier"])("%s → kept", (h) => expect(isCheckoutOnlyHref(h)).toBe(false));
+  it.each(["/collections/gifts", "/collections", "/services", "/salon", "/cartier", "/account", "/booking"])("%s → kept", (h) => expect(isCheckoutOnlyHref(h)).toBe(false));
 });
 
 describe("placeholders", () => {

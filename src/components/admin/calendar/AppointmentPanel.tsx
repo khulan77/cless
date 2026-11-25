@@ -186,6 +186,13 @@ export function AppointmentPanel({
               {c.edit}
             </Button>
           )}
+          {perms.canStatus && detail.status === "PENDING" && (
+            <>
+              <p className="w-full rounded-xl bg-warn-bg px-3 py-2 text-[13px] text-warn">{c.pendingOnline}</p>
+              <Button disabled={status.pending} onClick={() => void run("approve")}>{c.actions.approve}</Button>
+              <Button variant="danger" disabled={status.pending} onClick={() => setConfirm("reject")}>{c.actions.reject}</Button>
+            </>
+          )}
           {perms.canStatus &&
             actions.map((a) => (
               <Button
@@ -258,6 +265,21 @@ export function AppointmentPanel({
         onConfirm={() => void run("cancel", cancel.note, cancel.category)}
       >
         <CancelReasonFields id="cancel" value={cancel} onChange={setCancel} />
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={confirm === "reject"}
+        title={c.rejectTitle}
+        confirmLabel={c.actions.reject}
+        danger
+        pending={status.pending}
+        confirmDisabled={reason.trim().length < 3}
+        onClose={() => (setConfirm(null), setReason(""))}
+        onConfirm={() => void run("reject", reason)}
+      >
+        <p className="text-[13px] text-ink-soft">{c.rejectHint}</p>
+        <Field label={c.reason} htmlFor="reject-reason">
+          <Textarea id="reject-reason" className="min-h-16" value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
       </ConfirmDialog>
       <ConfirmDialog open={confirm === "noShow"} title={c.noShowTitle} confirmLabel={c.actions.noShow} danger pending={status.pending} onClose={() => setConfirm(null)} onConfirm={() => void run("noShow")}>
         <p className="text-[14px]">{c.noShowHint}</p>

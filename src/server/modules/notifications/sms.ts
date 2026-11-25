@@ -1,21 +1,31 @@
 /**
- * SMS — энэ ээлжинд ИЛГЭЭХГҮЙ. Provider-ийн interface-ийг л бэлдэв.
- * TODO(sms): Монгол SMS gateway (жишээ нь Unitel/Mobicom-ийн API) сонгож, SmsProvider-ийг хэрэгжүүлж,
- * outbox-д SMS job type-ийг (JobType.SMS аль хэдийн бий) ашиглан цагийн сануулга илгээх.
+ * SMS (PROMPT 15): WeSend; түлхүүргүй (dev/test) бол `.emails/sms-<id>.txt` файл руу бичнэ — гадагш илгээхгүй.
+ * Утасны дугаарыг log-д маскаар л (MessageLog).
  */
-export type SmsMessage = { to: string; text: string; id: string };
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { emailDir } from "./mailer";
+import { logMessage } from "./log";
+import * as wesend from "./providers/wesend";
 
-export interface SmsProvider {
-  send(message: SmsMessage): Promise<{ ref: string }>;
-}
+export type SmsMessage = { to: string; text: string; id: string; kind?: string };
 
-/** Одоогоор юу ч илгээхгүй */
-export class NoopSmsProvider implements SmsProvider {
-  async send(message: SmsMessage) {
-    return { ref: `noop:${message.id}` };
+export async function sendSms(m: SmsMessage): Promise<{ provider: "wesend" | "file"; ref: string }> {
+  const kind = m.kind ?? "sms";
+  if (wesend.wesendConfigured()) {
+    try {
+      const r = await wesend.sendSms({ to: m.to, text: m.text, idempotencyKey: m.id.slice(0, 255) });
+      await logMessage({ channel: "SMS", kind, to: m.to, status: "SENT", providerId: r.id, sandbox: r.sandbox });
+      return { provider: "wesend", ref: r.id };
+    } catch (e) {
+      await logMessage({ channel: "SMS", kind, to: m.to, status: "FAILED", error: wesend.wesendMessage(e) });
+      throw new Error(`WeSend: ${wesend.wesendMessage(e)}`);
+    }
   }
-}
-
-export function getSmsProvider(): SmsProvider {
-  return new NoopSmsProvider();
+  const dir = emailDir();
+  await mkdir(dir, { recursive: true });
+  const file = path.join(dir, `sms-${m.id.replace(/[^\w.-]/g, "_")}.txt`);
+  await writeFile(file, `to: ${m.to}\n\n${m.text}\n`, "utf8");
+  await logMessage({ channel: "SMS", kind, to: m.to, status: "SENT", providerId: `file:${path.basename(file)}`, sandbox: true });
+  return { provider: "file", ref: file };
 }

@@ -19,6 +19,12 @@ export type VisitEmailData = {
   notes: string | null;
   recommendations: { name: string; size: string; slug: string; instructions: string | null; purchased: boolean }[];
   sale: { number: string | null; total: number; services: string[] } | null;
+  /** PROMPT 15 §5: авсан бүтээгдэхүүн (нэр, хэмжээ, тоо, үнэ) */
+  products?: { name: string; qty: number; amount: number }[];
+  /** Дараагийн цаг (байвал) */
+  nextAppointment?: { date: string; time: string; service: string } | null;
+  /** Тохиргоо → Мэдэгдэл: оршил (загвар) */
+  intro?: string | null;
 };
 
 const s = t.email.visit;
@@ -37,7 +43,7 @@ export function VisitEmail(d: VisitEmailData) {
             {d.salon.name}
           </Heading>
           <Text style={body}>{s.greeting(d.customerName)}</Text>
-          <Text style={{ ...body, marginTop: 8 }}>{s.intro(d.salon.name)}</Text>
+          <Text style={{ ...body, marginTop: 8 }}>{d.intro || s.intro(d.salon.name)}</Text>
 
           <Section>
             <Text style={label}>{s.date}</Text>
@@ -83,6 +89,19 @@ export function VisitEmail(d: VisitEmailData) {
             </Section>
           )}
 
+          {d.products && d.products.length > 0 && (
+            <Section>
+              <Hr style={{ borderColor: "#e8e2d8", margin: "24px 0 8px" }} />
+              <Text style={label}>Авсан бүтээгдэхүүн</Text>
+              {d.products.map((p, i) => (
+                <Text key={i} style={{ ...body, margin: "4px 0" }}>
+                  {p.name}
+                  {p.qty > 1 ? ` × ${p.qty}` : ""} — {formatMNT(p.amount)}
+                </Text>
+              ))}
+            </Section>
+          )}
+
           {d.sale && (
             <Section>
               <Hr style={{ borderColor: "#e8e2d8", margin: "24px 0 8px" }} />
@@ -99,6 +118,24 @@ export function VisitEmail(d: VisitEmailData) {
               </Text>
             </Section>
           )}
+
+          <Section>
+            <Hr style={{ borderColor: "#e8e2d8", margin: "24px 0 8px" }} />
+            {d.nextAppointment ? (
+              <>
+                <Text style={label}>Дараагийн цаг</Text>
+                <Text style={body}>
+                  {d.nextAppointment.date} {d.nextAppointment.time} · {d.nextAppointment.service}
+                </Text>
+              </>
+            ) : null}
+            <Link
+              href={absoluteUrl("/booking")}
+              style={{ display: "inline-block", marginTop: 16, padding: "12px 24px", backgroundColor: "#0e2243", color: "#ffffff", fontSize: 13, letterSpacing: 1, textDecoration: "none", borderRadius: 999 }}
+            >
+              Цаг захиалах
+            </Link>
+          </Section>
 
           <Hr style={{ borderColor: "#e8e2d8", margin: "24px 0 8px" }} />
           <Text style={body}>{s.outro}</Text>

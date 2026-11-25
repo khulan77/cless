@@ -56,6 +56,7 @@ const MATRIX: Row[] = [
   ["payroll:write", false, false, true, true],
   ["payroll:settings", false, false, true, true],
   ["user:write", false, false, false, true],
+  ["user:write:staff", false, true, false, true],
   ["settings:write", false, true, false, true],
   ["integration:write", false, false, false, true],
 ];

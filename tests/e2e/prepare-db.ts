@@ -24,6 +24,11 @@ await c.query(
    ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value"`,
   [JSON.stringify({ hours: allDay, slotMinutes: 15, minLeadMinutes: 0 })],
 );
+// PROMPT 15 §5: айлчлалын тайланг автоматаар илгээх (анхдагч унтраатай) — POS тест имэйлийг шалгадаг
+await c.query(
+  `INSERT INTO "SiteSetting" ("id", "key", "value", "updatedAt") VALUES ('e2e_notify', 'notify', '{"autoVisitEmail": true}'::jsonb, now())
+   ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value"`,
+);
 await c.query(`DELETE FROM "StaffSchedule"`);
 await c.query(
   `INSERT INTO "StaffSchedule" ("id", "staffId", "weekday", "startTime", "endTime")

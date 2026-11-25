@@ -27,6 +27,10 @@ beforeEach(async () => {
   manager = await makeUser("MANAGER");
 });
 
+/** Имэйлийн файлууд (SMS-ийн sms-*.txt-ийг тоолохгүй) */
+const emails = async () => (await readdir(dir)).filter((f) => f.endsWith(".html")).length;
+const smsFiles = async () => (await readdir(dir)).filter((f) => f.startsWith("sms-")).length;
+
 /** Бүх хугацаа нь болсон ажлыг гүйцэтгэнэ */
 async function runDue(now: Date) {
   const jobs = await claimJobs(50, now);
@@ -47,28 +51,31 @@ describe("appointment e-mails and reminders", () => {
     expect(jobs[1]!.dedupeKey).toBe(`appt-reminder:${a.id}:${at("10:00").toISOString()}`);
 
     expect(await runDue(NOW)).toEqual(["APPT_EMAIL"]); // сануулга хараахан болоогүй
-    expect((await readdir(dir)).length).toBe(1);
+    expect(await emails()).toBe(1);
 
     await moveAppointment({ id: a.id, version: a.version, startsAt: at("14:00"), staffId: staff.id }, { id: manager.id, role: "MANAGER" }, NOW);
     expect(await db.outboxJob.count({ where: { type: "APPT_REMINDER" } })).toBe(2);
 
     // 24 цагийн өмнө: хуучин (10:00) сануулга алгасагдана, шинэ (14:00) илгээгдэнэ, өөрчлөлтийн имэйл
-    const before = (await readdir(dir)).length;
+    const before = await emails();
     await runDue(new Date(at("14:00").getTime() - 23 * 3600_000));
-    expect((await readdir(dir)).length - before).toBe(2); // changed + шинэ сануулга
+    expect((await emails()) - before).toBe(2); // changed + шинэ сануулга
+    expect(await smsFiles()).toBe(1); // PROMPT 15: сануулга SMS-ээр ч (зөвхөн шинэ цагийнх — хуучин алгасагдсан)
     expect(await db.outboxJob.count({ where: { status: "DONE" } })).toBe(4);
 
     await changeStatus({ id: a.id, action: "cancel", category: "CUSTOMER", reason: "Цаг өөрчилсөн" }, { id: manager.id, role: "MANAGER" }, NOW);
     await runDue(NOW);
-    expect((await readdir(dir)).length).toBe(before + 3);
+    expect(await emails()).toBe(before + 3);
   });
 
-  it("no e-mail address → no jobs; appointment soon (inside 24h) → no reminder", async () => {
+  it("no e-mail address → only the SMS reminder; appointment soon (inside 24h) → no reminder", async () => {
     const staff = await makeBookableStaff();
     const service = await makeService({ price: 100_000 });
     const noMail = await makeCustomer({ email: null });
     await createAppointment({ customerId: noMail.id, serviceId: service.id, staffId: staff.id, startsAt: at("10:00") }, { id: manager.id, role: "MANAGER" }, NOW);
-    expect(await db.outboxJob.count()).toBe(0);
+    // Имэйлгүй: имэйл ажил үүсэхгүй, сануулга (SMS) л
+    expect((await db.outboxJob.findMany()).map((j) => j.type)).toEqual(["APPT_REMINDER"]);
+    await db.outboxJob.deleteMany();
     const mail = await makeCustomer({ email: "x@test.mn" });
     await createAppointment({ customerId: mail.id, serviceId: service.id, staffId: staff.id, startsAt: at("12:00") }, { id: manager.id, role: "MANAGER" }, new Date(at("12:00").getTime() - 3 * 3600_000));
     expect((await db.outboxJob.findMany()).map((j) => j.type)).toEqual(["APPT_EMAIL"]);

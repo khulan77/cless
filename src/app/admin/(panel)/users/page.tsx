@@ -8,7 +8,8 @@ import { formatMNT } from "@/lib/money";
 import { ROLES } from "@/lib/validation/user";
 import { db } from "@/server/db";
 import { ROLE_LABELS } from "@/server/auth/permissions";
-import { requirePagePermission } from "@/server/auth/session";
+import { requirePageAnyPermission } from "@/server/auth/session";
+import { assignableRoles } from "@/server/modules/users/policy";
 
 export const metadata = { title: "Хэрэглэгчид" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
@@ -16,7 +17,8 @@ export const instant = false;
 const PAGE_SIZE = 20;
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const me = await requirePagePermission("user:write");
+  const me = await requirePageAnyPermission("user:write", "user:write:staff");
+  const canInvite = assignableRoles(me.role).length > 0;
   const sp = await searchParams;
   const q = str(sp.q);
   const role = ROLES.find((r) => r === str(sp.role));
@@ -36,7 +38,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       orderBy: [{ isActive: "desc" }, { role: "asc" }, { name: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      select: { id: true, name: true, email: true, phone: true, role: true, isActive: true, baseSalary: true },
+      select: { id: true, name: true, email: true, phone: true, loginPhone: true, role: true, isActive: true, baseSalary: true, status: true, inviteExpiresAt: true },
     }),
   ]);
 
@@ -47,9 +49,11 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         title="Хэрэглэгч ба эрх"
         description="Удирдлагад нэвтрэх ажилтнууд, тэдний эрх ба үндсэн цалин"
         actions={
-          <Link href="/admin/users/new" className={btnClass("primary")}>
-            <Plus className="size-[18px]" strokeWidth={2} /> Хэрэглэгч нэмэх
-          </Link>
+          canInvite ? (
+            <Link href="/admin/users/new" className={btnClass("primary")}>
+              <Plus className="size-[18px]" strokeWidth={2} /> Ажилтан урих
+            </Link>
+          ) : null
         }
       />
       <FilterBar action="/admin/users" resetHref={q || role || status ? "/admin/users" : undefined}>
@@ -88,11 +92,15 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                   </Link>
                   {u.id === me.id && <span className="ml-2 text-[13px] text-ink-faint">(та)</span>}
                 </td>
-                <td className={tdClass}>{u.email}</td>
-                <td className={tdClass}>{u.phone ?? "—"}</td>
+                <td className={tdClass}>{u.email ?? "—"}</td>
+                <td className={tdClass}>{u.loginPhone ?? u.phone ?? "—"}</td>
                 <td className={tdClass}><Badge tone={u.role === "ADMIN" ? "navy" : u.role === "MANAGER" ? "champagne" : "neutral"}>{ROLE_LABELS[u.role]}</Badge></td>
                 <td className={`${tdClass} text-right tabular-nums`}>{formatMNT(u.baseSalary)}</td>
-                <td className={tdClass}>{u.isActive ? <Badge tone="green">Идэвхтэй</Badge> : <Badge>Идэвхгүй</Badge>}</td>
+                <td className={tdClass}>
+                  {u.status === "INVITED" && u.isActive ? (
+                    <Badge tone={u.inviteExpiresAt && u.inviteExpiresAt > new Date() ? "amber" : "red"}>{u.inviteExpiresAt && u.inviteExpiresAt > new Date() ? "Урьсан" : "Урилга дууссан"}</Badge>
+                  ) : u.isActive ? <Badge tone="green">Идэвхтэй</Badge> : <Badge>Идэвхгүй</Badge>}
+                </td>
               </tr>
             ))}
           </tbody>

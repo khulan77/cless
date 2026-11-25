@@ -1,4 +1,4 @@
-import { Search, ShoppingBag } from "lucide-react";
+import { Search, ShoppingBag, UserRound } from "lucide-react";
 import Link from "next/link";
 import { t } from "@/i18n";
 import { BookingSheetButton } from "@/components/salon/BookingSheet";
@@ -40,6 +40,10 @@ export function Header({ wordmark, nav, salon, shopMode, cartCount = 0 }: Props)
         </Link>
 
         <div className="flex items-center justify-end gap-6 md:gap-[30px]">
+          {/* Үйлчлүүлэгчийн нэвтрэлт (PROMPT 15) — нэвтрээгүй бол /account → /login (хуудас кэштэй хэвээр) */}
+          <Link href="/account" aria-label="Нэвтрэх / Миний бүртгэл" className={headerIconCls}>
+            <UserRound className={glyph} strokeWidth={1.5} aria-hidden />
+          </Link>
           {shopMode === "CATALOG" ? (
             <BookingSheetButton salon={salon} variant="icon" data-br="header.cartIcon" />
           ) : (

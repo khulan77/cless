@@ -43,7 +43,7 @@ bun run dev:all     # Next dev + worker зэрэг (dev-д үүнийг ашиг
 bun run worker      # зөвхөн worker
 ```
 
-- `RESEND_API_KEY`, `EMAIL_FROM` байхгүй үед имэйл илгээгдэхгүй — `.emails/<job-id>.html` файл болж үүснэ (gitignore), `Visit.emailStatus` = SENT.
+- `WESEND_API_KEY` байхгүй үед SMS, имэйл, код илгээгдэхгүй — `.emails/` хавтсанд файл болно (SMS: `sms-*.txt`, код: `verify-*.txt`). `RESEND_API_KEY`, `EMAIL_FROM` (хуучирсан) байхгүй үед ч мөн адил — `.emails/<job-id>.html` файл болж үүснэ (gitignore), `Visit.emailStatus` = SENT.
 - Production deploy: [deploy/README.md](deploy/README.md)
 
 ### E2E (Playwright)
@@ -99,7 +99,10 @@ Vercel дээр зөвхөн вэб апп ажиллана. Worker (имэйл,
 | `AUTH_SECRET` | ✓ | `openssl rand -base64 32` — локалынхаас өөр |
 | `NEXT_PUBLIC_SITE_URL` | ✓ | `https://<domain>` (төгсгөлийн `/`-гүй) |
 | `INTERNAL_REVALIDATE_SECRET` | ✓ | 32+ тэмдэгт; worker-тэй ИЖИЛ утга |
-| `RESEND_API_KEY`, `EMAIL_FROM` | ✓ | Имэйл (production-д заавал) |
+| `WESEND_API_KEY` | ✓ | WeSend: SMS, имэйл, нэг удаагийн код (production-д заавал) |
+| `WESEND_WEBHOOK_SECRET` |  | WeSend webhook-ийн гарын үсэг (`/api/wesend/webhook`) |
+| `NOTIFY_BRAND` |  | SMS/имэйлийн брэнд (анхдагч `CLÉSS`) |
+| `RESEND_API_KEY`, `EMAIL_FROM` |  | **Хуучирсан** — WeSend тохируулаагүй үед л имэйлд |
 | `DB_POOL_MAX` | | Нэг instance-ийн pg холболт. Default 3 (Vercel) |
 | `NEXT_IMAGE_UNOPTIMIZED` | | `1` — `/_next/image`-ийг алгасаж зургийг шууд өгнө (Hobby-ийн Image Optimization хязгаар дуусаж 402 өгвөл). Default зургууд, upload-ууд sharp-аар webp болсон тул чанар алдагдахгүй; зөвхөн дэлгэцийн өргөнөөр жижигрүүлсэн хувилбар (srcset) байхгүй болно. Build үед уншигдана — өөрчилбөл redeploy |
 | `QPAY_*` | | Зөвхөн CHECKOUT горимд |

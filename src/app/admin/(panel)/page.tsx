@@ -20,6 +20,8 @@ import { countNewInquiries } from "@/server/modules/inquiries/service";
 import { failedEmailCount } from "@/server/modules/outbox/monitor";
 import { change, presetRange, previousRange, rangeFromParams } from "@/server/modules/reports/definitions";
 import { loadReport } from "@/server/modules/reports/queries";
+import { rangeBounds } from "@/server/modules/reports/definitions";
+import { apptSourceBreakdown } from "@/server/modules/appointments/calendar-stats";
 import { readiness } from "@/server/modules/system/readiness";
 
 export const metadata = { title: "Тайлан" };
@@ -38,7 +40,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
   const { range, preset } = rangeFromParams(await searchParams);
 
   const lowStockWhere = { isActive: true, stock: { lte: db.variant.fields.lowStockAt } };
-  const [report, prev, ready, newInquiries, failedEmails, lowList, appts] = await Promise.all([
+  const [report, prev, ready, newInquiries, failedEmails, lowList, appts, sources] = await Promise.all([
     loadReport(range, { canCost }),
     loadReport(previousRange(range), { canCost: false }),
     can(user.role, "settings:write") ? readiness() : null,
@@ -51,7 +53,9 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
       select: { id: true, size: true, stock: true, lowStockAt: true, product: { select: { name: true } } },
     }),
     can(user.role, "appointment:read") ? todayAppointmentStats() : null,
+    can(user.role, "appointment:read") ? apptSourceBreakdown(rangeBounds(range)) : null,
   ]);
+  const sourceTotal = sources?.reduce((s, x) => s + x.count, 0) ?? 0;
   const k = report.kpi;
   const p = prev.kpi;
   const pct = (part: number) => (k.total > 0 ? Math.round((part / k.total) * 100) : 0);
@@ -162,6 +166,24 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
         )}
         <Breakdown byService={report.byService} byStaff={report.byStaff} byProduct={report.byProduct} />
       </div>
+
+      {sources && sourceTotal > 0 && (
+        <Card title="Цагийн эх сурвалж" description="Сонгосон хугацааны цагууд (цуцлагдсаныг оруулаагүй) — утас, Instagram, онлайн…" className="mt-6">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {sources.map((x) => (
+              <li key={x.source}>
+                <div className="flex justify-between gap-3 text-[15px]">
+                  <span>{t.admin.apptSource[x.source] ?? x.source}</span>
+                  <span className="tabular-nums">{x.count} <span className="text-ink-soft">· {Math.round((x.count / sourceTotal) * 100)}%</span></span>
+                </div>
+                <div className="mt-1.5 h-1.5 rounded-full bg-ink/[0.06]">
+                  <div className={`h-full rounded-full ${x.source === "ONLINE" ? "bg-navy" : "bg-champagne"}`} style={{ width: `${Math.max(1, (x.count / sourceTotal) * 100)}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {/* Bottom row */}
       <div className="mt-6 grid gap-6 lg:grid-cols-3">

@@ -18,19 +18,20 @@ async function shopper(browser: Browser, ip: string): Promise<Page> {
   return ctx.newPage();
 }
 
-test("CATALOG: no cart, add-to-cart or account; /cart redirects to the catalog", async ({ browser }) => {
+test("CATALOG: no cart or add-to-cart; /cart redirects to the catalog; /account asks to log in", async ({ browser }) => {
   const page = await shopper(browser, "198.51.100.40");
   for (const path of ["/", "/collections", "/products/serum-biofixine"]) {
     await page.goto(path);
     await expect(page.locator('a[href="/cart"]')).toHaveCount(0);
-    await expect(page.locator('a[href="/account"]')).toHaveCount(0);
+    // PROMPT 15: үйлчлүүлэгчийн нэвтрэлт — header-т бүртгэлийн холбоос
+    await expect(page.locator('header a[href="/account"]')).toHaveCount(1);
     await expect(page.getByRole("button", { name: /Сагсанд нэмэх/ })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /сагсанд нэмэх/ })).toHaveCount(0);
   }
   await page.goto("/cart");
   await expect(page).toHaveURL(/\/collections$/);
   await page.goto("/account");
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/login\?next=(%2F|\/)account$/);
 });
 
 test("header 'Цаг захиалах' opens the booking sheet; Esc closes it and focus returns", async ({ browser }) => {

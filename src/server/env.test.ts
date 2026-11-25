@@ -19,12 +19,18 @@ describe("env check", () => {
     expect(keys(base, "worker")).toEqual([]);
   });
 
-  it("production: required values, https site URL, 32+ char secrets, Resend", () => {
+  it("production: WeSend required unless the legacy Resend e-mail is set (then only a warning)", () => {
+    const noMail = { ...base, RESEND_API_KEY: "", EMAIL_FROM: "" };
+    expect(keys(noMail)).toEqual(["WESEND_API_KEY"]);
+    expect(keys({ ...noMail, WESEND_API_KEY: "ws_" + "x".repeat(48) })).toEqual([]);
+    expect(checkEnv(base, "app").warnings.map((w) => w.key)).toContain("WESEND_API_KEY");
+  });
+
+  it("production: required values, https site URL, 32+ char secrets", () => {
     expect(keys({ ...base, DATABASE_URL: undefined })).toEqual(["DATABASE_URL"]);
     expect(keys({ ...base, DATABASE_URL: "mysql://x" })).toEqual(["DATABASE_URL"]);
     expect(keys({ ...base, AUTH_SECRET: "short" })).toEqual(["AUTH_SECRET"]);
     expect(keys({ ...base, NEXT_PUBLIC_SITE_URL: "http://cless.mn" })).toEqual(["NEXT_PUBLIC_SITE_URL"]);
-    expect(keys({ ...base, RESEND_API_KEY: "" })).toEqual(["RESEND_API_KEY"]);
     expect(keys({ ...base, INTERNAL_REVALIDATE_SECRET: undefined })).toEqual(["INTERNAL_REVALIDATE_SECRET"]);
     expect(keys({ ...base, APP_INTERNAL_URL: undefined }, "worker")).toEqual(["APP_INTERNAL_URL"]);
   });

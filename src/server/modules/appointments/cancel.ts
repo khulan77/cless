@@ -2,7 +2,12 @@
 export const CANCEL_CATEGORIES = ["CUSTOMER", "NO_SHOW", "STAFF_SICK", "DUPLICATE", "OTHER"] as const;
 export type CancelCategory = (typeof CANCEL_CATEGORIES)[number];
 
-export const CANCEL_CATEGORY_LABELS: Record<CancelCategory, string> = {
+/** Системийн ангилал (гараар сонгохгүй): онлайн захиалгыг ресепшн татгалзсан / үйлчлүүлэгч сайтаас цуцалсан */
+export const SYSTEM_CANCEL_CATEGORIES = ["REJECTED", "ONLINE"] as const;
+
+export const CANCEL_CATEGORY_LABELS: Record<CancelCategory | (typeof SYSTEM_CANCEL_CATEGORIES)[number], string> = {
+  REJECTED: "Ресепшн татгалзсан (онлайн)",
+  ONLINE: "Үйлчлүүлэгч сайтаас цуцалсан",
   CUSTOMER: "Үйлчлүүлэгч цуцалсан",
   NO_SHOW: "Ирээгүй",
   STAFF_SICK: "Ажилтан өвчтэй",

@@ -69,6 +69,8 @@ export const PERMISSIONS = [
   "payroll:write",
   "payroll:settings",
   "user:write",
+  // MANAGER: зөвхөн гоо сайханч (STAFF) нэмэх/засах/урих (users/policy.ts)
+  "user:write:staff",
   "settings:write",
   // Интеграцийн нууц тохиргоо (QPay API, Smart Logic, SMS)
   "integration:write",

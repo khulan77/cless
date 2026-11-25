@@ -20,6 +20,7 @@ export type SalonInfo = {
   hours: WeekHours;
   /** "Даваа–Бямба 10:00–20:00", "Ням амарна" — салбарын ажлын цагаас */
   hoursLines: string[];
+  onlineBooking: boolean;
 };
 
 /** Seed / жишээ утга (example.mn, +976 0000 0000) сайтад хэзээ ч гарахгүй */
@@ -66,7 +67,7 @@ export async function getSalonInfo(): Promise<SalonInfo> {
 
   const [branch, rows] = await Promise.all([
     db.branch.findFirst({ where: { code: "CL" }, select: { name: true, address: true, phone: true } }),
-    db.siteSetting.findMany({ where: { key: { in: ["shop", "footer", "brand", "booking"] } }, select: { key: true, value: true } }),
+    db.siteSetting.findMany({ where: { key: { in: ["shop", "footer", "brand", "booking", "online-booking"] } }, select: { key: true, value: true } }),
   ]);
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const footer = get("footer") as FooterSetting | undefined;
@@ -87,5 +88,6 @@ export async function getSalonInfo(): Promise<SalonInfo> {
     messenger: messengerUrl(facebook),
     hours: booking.hours,
     hoursLines: hoursToLines(booking.hours),
+    onlineBooking: Boolean((get("online-booking") as { enabled?: boolean } | undefined)?.enabled),
   };
 }

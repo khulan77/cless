@@ -10,6 +10,8 @@ import { requireUser } from "@/server/auth/session";
 import { logout } from "@/server/actions/auth";
 import { ChangePasswordForm } from "@/components/admin/account/ChangePasswordForm";
 import { t } from "@/i18n";
+import { db } from "@/server/db";
+import { newOnlineCustomers } from "@/server/modules/customer-auth/account";
 
 // Session (cookie)-оос хамаардаг тул энэ хэсэг request бүрт render хийгдэнэ.
 export const instant = false;
@@ -34,14 +36,22 @@ export default async function AdminPanelLayout({ children }: { children: React.R
     );
   }
   const entries = navFor((p) => can(user.role, p));
-  const [salon, newInquiries, failedEmails] = await Promise.all([
+  // Утасгүй/баталгаажаагүй хэрэглэгчид утсаа нэмэхийг санал болгоно (PROMPT 15 §2)
+  const phoneVerified = Boolean((await db.user.findUnique({ where: { id: user.id }, select: { loginPhone: true } }))?.loginPhone);
+  // Онлайн захиалга (батлах хүлээж буй) ба сайтаас шинээр бүртгүүлсэн (24 цаг) — MANAGER, ADMIN (PROMPT 15)
+  const canOnline = can(user.role, "appointment:write");
+  const [salon, newInquiries, failedEmails, pendingOnline, newOnline] = await Promise.all([
     getSalonInfo(),
     can(user.role, "inquiry:manage") ? countNewInquiries() : null,
     can(user.role, "settings:write") ? failedEmailCount() : null,
+    canOnline ? db.appointment.count({ where: { status: "PENDING" } }) : null,
+    canOnline ? newOnlineCustomers() : null,
   ]);
   // Bell: only what already exists — new "Салонд захиалах" requests and unsent e-mails (ADMIN)
   const notices = [
     ...(newInquiries !== null ? [{ key: "inquiries", label: t.admin.bell.inquiries(newInquiries), count: newInquiries, href: "/admin/inquiries?status=NEW" }] : []),
+    ...(pendingOnline ? [{ key: "online", label: `Онлайн захиалга батлахыг хүлээж буй: ${pendingOnline}`, count: pendingOnline, href: "/admin/calendar" }] : []),
+    ...(newOnline ? [{ key: "online-customers", label: `Сайтаас шинээр бүртгүүлсэн (24 цаг): ${newOnline}`, count: newOnline, href: "/admin/customers?origin=online" }] : []),
     ...(failedEmails !== null ? [{ key: "emails", label: t.admin.bell.emails(failedEmails), count: failedEmails, href: "/admin/system" }] : []),
   ];
   const me = { name: user.name, id: user.id, role: t.admin.nav.roles[user.role] ?? user.role };
@@ -54,6 +64,12 @@ export default async function AdminPanelLayout({ children }: { children: React.R
         <Topbar entries={entries} user={me} notices={notices} />
         <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8 lg:p-10">
           {isReadOnly(user.role) && <ReadOnlyBanner />}
+          {!phoneVerified && (
+            <p role="status" className="mb-5 rounded-xl border border-hairline bg-white px-4 py-2.5 text-[14px]">
+              Утсаа баталгаажуулбал утсаараа нэвтэрч, нууц үгээ SMS-ээр сэргээнэ.{" "}
+              <a href="/admin/account" className="font-medium underline underline-offset-4">Баталгаажуулах</a>
+            </p>
+          )}
           {children}
         </main>
       </div>

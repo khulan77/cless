@@ -9,6 +9,8 @@ export type SalonContact = {
   address: string;
   mapsUrl: string | null;
   hoursLines: string[];
+  /** Онлайн захиалга асаалттай бол "Цаг захиалах" нь /booking руу (PROMPT 15) */
+  onlineBooking?: boolean;
 };
 
 const btn = "flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-body transition-colors";

@@ -33,7 +33,7 @@ export function CustomerPicker({
   const [q, setQ] = useState("");
   const [results, setResults] = useState<PickedCustomer[] | null>(null);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", marketingConsent: false });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", marketingConsent: false, emailConsent: false });
   const create = useServerAction(createCustomerAction);
 
   useEffect(() => {
@@ -118,7 +118,7 @@ export function CustomerPicker({
               onSuccess: (c) => {
                 onChange(c);
                 setCreating(false);
-                setForm({ name: "", phone: "", email: "", marketingConsent: false });
+                setForm({ name: "", phone: "", email: "", marketingConsent: false, emailConsent: false });
                 setQ("");
               },
             });
@@ -135,13 +135,14 @@ export function CustomerPicker({
             onSelect={(c) => {
               onChange(c);
               setCreating(false);
-              setForm({ name: "", phone: "", email: "", marketingConsent: false });
+              setForm({ name: "", phone: "", email: "", marketingConsent: false, emailConsent: false });
               setQ("");
             }}
           />
           <Field label={s.email} htmlFor="nc-email" hint={s.emailHint} error={create.fieldErrors.email}>
             <Input id="nc-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </Field>
+          <Checkbox id="nc-email-consent" label="Айлчлалын тайланг имэйлээр хүлээн авахыг зөвшөөрсөн" checked={form.emailConsent} onChange={(e) => setForm({ ...form, emailConsent: e.target.checked })} />
           <Checkbox label={s.marketing} checked={form.marketingConsent} onChange={(e) => setForm({ ...form, marketingConsent: e.target.checked })} />
           <Button type="submit" className="w-full" disabled={create.pending}>
             {s.save}

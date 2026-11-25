@@ -29,6 +29,9 @@ beforeEach(async () => {
 
 async function paidVisitSale() {
   const customer = await makeCustomer({ email: "guest@test.mn" });
+  // PROMPT 15 §5: автоматаар илгээх нь тохиргоо + зөвшөөрөлтэй үед л
+  await db.customer.update({ where: { id: customer.id }, data: { emailConsentAt: new Date() } });
+  await db.siteSetting.upsert({ where: { key: "notify" }, create: { key: "notify", value: { autoVisitEmail: true } }, update: { value: { autoVisitEmail: true } } });
   const v = await makeVariant({ price: 180_000, stock: 2, name: "SÉRUM TEST" });
   const visit = await saveVisit({ customerId: customer.id, skinType: "DRY", diagnosisNotes: "Хуурай", recommendations: [{ variantId: v.id }] }, manager.id);
   const sale = await checkout({ customerId: customer.id, visitId: visit.id, items: [{ kind: "PRODUCT", variantId: v.id, qty: 1 }] }, { id: manager.id, role: "MANAGER" });

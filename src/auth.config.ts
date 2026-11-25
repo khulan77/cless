@@ -12,7 +12,9 @@ export const authConfig = {
   providers: [],
   callbacks: {
     authorized({ auth, request }) {
-      if (request.nextUrl.pathname.startsWith("/admin/login")) return true;
+      // Нэвтрээгүй хандах боломжтой: нэвтрэх, урилга идэвхжүүлэх, нууц үг сэргээх
+      const p = request.nextUrl.pathname;
+      if (p.startsWith("/admin/login") || p.startsWith("/admin/activate") || p.startsWith("/admin/forgot")) return true;
       return Boolean(auth?.user);
     },
     jwt({ token, user }) {
