@@ -1048,6 +1048,7 @@ export const mn = {
       print: "Хэвлэх",
     },
     apptStatus: {
+      PENDING: "Батлах хүлээж буй",
       BOOKED: "Бүртгэсэн",
       CONFIRMED: "Баталгаажсан",
       ARRIVED: "Ирсэн",
@@ -1056,7 +1057,7 @@ export const mn = {
       CANCELLED: "Цуцалсан",
       NO_SHOW: "Ирээгүй",
     },
-    apptSource: { PHONE: "Утас", INSTAGRAM: "Instagram", FACEBOOK: "Facebook", WALK_IN: "Шууд ирсэн", OTHER: "Бусад" },
+    apptSource: { PHONE: "Утас", INSTAGRAM: "Instagram", FACEBOOK: "Facebook", WALK_IN: "Шууд ирсэн", OTHER: "Бусад", ONLINE: "Онлайн" } as Record<string, string>,
     timeOffReason: { VACATION: "Амралт", SICK: "Өвчтэй", TRAINING: "Сургалт", OTHER: "Бусад" },
     calendar: {
       today: "Өнөөдөр",

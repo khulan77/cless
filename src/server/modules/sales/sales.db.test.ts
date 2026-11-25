@@ -112,9 +112,9 @@ describe("checkout / lock", () => {
     };
     const asStaff = { id: staff.id, role: staff.role };
     await expect(checkout(cart, asStaff)).rejects.toMatchObject({ code: APPROVAL_REQUIRED });
-    await expect(checkout(cart, asStaff, { email: beautician.email, password: "staff-pass" })).rejects.toThrow(/буруу/);
-    await expect(checkout(cart, asStaff, { email: approver.email, password: "wrong" })).rejects.toThrow(/буруу/);
-    const r = await checkout(cart, asStaff, { email: approver.email, password: "manager-pass" });
+    await expect(checkout(cart, asStaff, { email: beautician.email!, password: "staff-pass" })).rejects.toThrow(/буруу/);
+    await expect(checkout(cart, asStaff, { email: approver.email!, password: "wrong" })).rejects.toThrow(/буруу/);
+    const r = await checkout(cart, asStaff, { email: approver.email!, password: "manager-pass" });
     const sale = await db.sale.findUniqueOrThrow({ where: { id: r.saleId } });
     expect(sale.discountApprovedById).toBe(approver.id);
     expect(await db.auditLog.count({ where: { action: "sale.discount_approved", userId: approver.id } })).toBe(1);

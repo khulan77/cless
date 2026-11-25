@@ -72,7 +72,7 @@ beforeEach(async () => {
   stored.length = 0;
   fakeFetch.mockClear();
   const admin = await makeUser("ADMIN");
-  session.user = { id: admin.id, name: admin.name, email: admin.email, role: "ADMIN", isActive: true };
+  session.user = { id: admin.id, name: admin.name, email: admin.email!, role: "ADMIN", isActive: true };
   await db.collection.createMany({
     data: [
       { slug: "masks", name: "Маск", kind: "CATEGORY" },
