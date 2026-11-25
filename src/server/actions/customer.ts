@@ -24,7 +24,7 @@ const ip = async () => clientIp(await headers());
 export async function requestCustomerCodeAction(to: string) {
   return runAction(async () => {
     const r = await requestCustomerCode({ to, ip: await ip() });
-    return { id: r.id, message: r.message };
+    return { id: r.id, mask: r.mask, message: r.message };
   });
 }
 

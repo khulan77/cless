@@ -31,7 +31,22 @@ function ws(): WeSend {
   return client;
 }
 
-export const brand = () => (process.env.NOTIFY_BRAND || "CLÉSS").slice(0, 20);
+/**
+ * SMS/verify брэнд: зөвхөн ASCII (É → E), ≤20 тэмдэгт. WeSend verify нь ASCII биш брэндийг
+ * `invalid_request`-ээр буцаадаг (prod: "CLÉSS").
+ */
+export function asciiBrand(raw: string | undefined): string {
+  const ascii = (raw || "CLESS")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .trim();
+  return (ascii || "CLESS").slice(0, 20).trim();
+}
+export const brand = () => asciiBrand(process.env.NOTIFY_BRAND);
+
+/** Имэйлийн from_name — unicode зөвшөөрнө ("CLÉSS") */
+export const emailBrand = () => (process.env.NOTIFY_BRAND || "CLÉSS").trim().slice(0, 60);
 
 // ───────────────────────── Алдаа → Монгол мессеж ─────────────────────────
 
@@ -55,6 +70,27 @@ const MESSAGES: Record<string, string> = {
   timeout: "WeSend хариу өгсөнгүй. Дахин оролдоно уу.",
   connection_error: "WeSend-тэй холбогдож чадсангүй.",
 };
+
+export const SEND_FAILED = "Код илгээж чадсангүй. Түр хүлээгээд дахин оролдоно уу.";
+
+/** Утас/имэйл/кодыг алдааны текстээс арилгана (log, MessageLog-д) */
+export function scrubSecrets(text: string): string {
+  return text.replace(/[^\s@"']+@[^\s@"']+/g, "[email]").replace(/\+?\d[\d\s-]{4,}\d/g, "[num]");
+}
+
+/** Log/MessageLog-д: код + requestId + мессеж (утас, имэйл, кодгүй) */
+export function describeError(e: unknown): string {
+  if (e instanceof WeSendError) return scrubSecrets([e.code, e.status, e.requestId ? `req=${e.requestId}` : null, e.message].filter((x) => x !== null && x !== "").join(" · "));
+  return scrubSecrets(e instanceof Error ? e.message : String(e));
+}
+
+export function logWeSendError(op: string, e: unknown) {
+  if (e instanceof WeSendError) {
+    console.error("[wesend]", { op, code: e.code, status: e.status, requestId: e.requestId, message: scrubSecrets(e.message) });
+  } else {
+    console.error("[wesend]", { op, message: scrubSecrets(e instanceof Error ? e.message : String(e)) });
+  }
+}
 
 export function wesendMessage(e: unknown): string {
   if (e instanceof WeSendError) {
@@ -85,7 +121,7 @@ export async function sendSms(p: { to: string; text: string; idempotencyKey?: st
 
 export async function sendEmail(p: { to: string; subject: string; html: string; text: string; replyTo?: string; idempotencyKey?: string }): Promise<Sent> {
   const r = await ws().email.send(
-    { to: p.to, subject: p.subject, html: p.html, text: p.text, from_name: brand(), ...(p.replyTo ? { reply_to: p.replyTo } : {}) },
+    { to: p.to, subject: p.subject, html: p.html, text: p.text, from_name: emailBrand(), ...(p.replyTo ? { reply_to: p.replyTo } : {}) },
     p.idempotencyKey ? { idempotencyKey: p.idempotencyKey } : undefined,
   );
   return { id: r.id, sandbox: Boolean(r.sandbox) };
@@ -97,6 +133,9 @@ export async function startVerification(p: { to: string; ttl?: number }) {
     const r = await ws().verify.create({ to: p.to, locale: "mn", brand: brand(), code_length: 6, code_type: "digits", ttl: p.ttl ?? 300 });
     return { id: r.id, channel: r.channel, expiresAt: new Date(r.expires_at), sandbox: Boolean(r.sandbox) };
   } catch (e) {
+    logWeSendError("verify.create", e);
+    // Хэрэглэгчид техникийн код харуулахгүй (зөвхөн log-д): invalid_request, серверийн алдаа гэх мэт
+    if (e instanceof WeSendError && !MESSAGES[e.code] && e.status !== 429) throw new UserError(SEND_FAILED, undefined, `WESEND_${e.code}`);
     toUserError(e);
   }
 }
@@ -109,6 +148,8 @@ export async function checkVerification(id: string, code: string): Promise<true>
     return true;
   } catch (e) {
     if (e instanceof UserError) throw e;
+    // Буруу код бол энгийн хариу — зөвхөн системийн алдааг log-д
+    if (!(e instanceof WeSendError && ["invalid_code", "verification_expired", "max_attempts_reached"].includes(e.code))) logWeSendError("verify.check", e);
     toUserError(e);
   }
 }

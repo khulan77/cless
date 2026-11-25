@@ -18,7 +18,8 @@ export async function sendSms(m: SmsMessage): Promise<{ provider: "wesend" | "fi
       await logMessage({ channel: "SMS", kind, to: m.to, status: "SENT", providerId: r.id, sandbox: r.sandbox });
       return { provider: "wesend", ref: r.id };
     } catch (e) {
-      await logMessage({ channel: "SMS", kind, to: m.to, status: "FAILED", error: wesend.wesendMessage(e) });
+      await logMessage({ channel: "SMS", kind, to: m.to, status: "FAILED", error: wesend.describeError(e) });
+      wesend.logWeSendError("sms.send", e);
       throw new Error(`WeSend: ${wesend.wesendMessage(e)}`);
     }
   }

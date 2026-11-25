@@ -3,7 +3,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UserError } from "@/server/errors";
-import { checkVerification, getBalance, sendEmail, sendSms, setWeSendFetchForTests, startVerification, wesendMessage } from "./wesend";
+import { asciiBrand, brand, checkVerification, describeError, getBalance, sendEmail, sendSms, setWeSendFetchForTests, startVerification, wesendMessage } from "./wesend";
 
 type Call = { url: string; method: string; body: unknown; headers: Headers };
 let calls: Call[] = [];
@@ -23,10 +23,24 @@ beforeEach(() => {
 });
 afterEach(() => {
   delete process.env.WESEND_API_KEY;
+  delete process.env.NOTIFY_BRAND;
+  vi.restoreAllMocks();
   setWeSendFetchForTests(undefined);
 });
 
 const err = (status: number, code: string, extra: object = {}) => ({ status, body: { error: { code, message: code, ...extra } } });
+
+describe("brand", () => {
+  it.each([
+    ["CLÉSS", "CLESS"],
+    ["Café Ölgii", "Cafe Olgii"],
+    ["A".repeat(25), "A".repeat(20)],
+    ["", "CLESS"],
+    ["Клэсс", "CLESS"],
+  ])("%s → %s", (raw, out) => expect(asciiBrand(raw)).toBe(out));
+
+  it("defaults to CLESS", () => expect(brand()).toBe("CLESS"));
+});
 
 describe("WeSend adapter", () => {
   it("SMS: POST /v1/sms with Bearer key and an idempotency key", async () => {
@@ -57,6 +71,34 @@ describe("WeSend adapter", () => {
     expect(await checkVerification("ver_1", "123456")).toBe(true);
     expect(calls[1]!.url).toBe("https://api.wesend.mn/v1/verify/ver_1/check");
     expect(calls[1]!.body).toEqual({ code: "123456" });
+  });
+
+  it("verify: brand is ASCII even when NOTIFY_BRAND has É (prod invalid_request)", async () => {
+    process.env.NOTIFY_BRAND = "CLÉSS";
+    reply = () => ({ status: 200, body: { id: "ver_2", status: "pending", channel: "sms", to: "85563793", sandbox: true, expires_at: "2030-01-01T00:00:00Z" } });
+    await startVerification({ to: "85563793" });
+    const body = calls[0]!.body as { brand: string };
+    expect(body.brand).toBe("CLESS");
+    expect(/^[\x20-\x7E]+$/.test(body.brand)).toBe(true);
+  });
+
+  it("verify: invalid_request → clear Mongolian message; details only in the log (no phone)", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    reply = () => ({ status: 400, body: { error: { code: "invalid_request", message: "to 85563793 is invalid" } } });
+    const e = await startVerification({ to: "85563793" }).catch((x) => x);
+    expect(e).toBeInstanceOf(UserError);
+    expect(e.message).toBe("Код илгээж чадсангүй. Түр хүлээгээд дахин оролдоно уу.");
+    expect(e.message).not.toMatch(/invalid_request/);
+    expect(log).toHaveBeenCalledWith("[wesend]", expect.objectContaining({ op: "verify.create", code: "invalid_request", status: 400 }));
+    expect(JSON.stringify(log.mock.calls)).not.toContain("85563793");
+  });
+
+  it("describeError: code + status + message, phone/email scrubbed", async () => {
+    reply = () => ({ status: 400, body: { error: { code: "invalid_request", message: "bad to: +976 8556-3793 / a@b.mn" } } });
+    const e = await sendSms({ to: "85563793", text: "x" }).catch((x) => x);
+    const d = describeError(e);
+    expect(d).toMatch(/^invalid_request · 400/);
+    expect(d).not.toMatch(/8556|a@b\.mn/);
   });
 
   it.each([

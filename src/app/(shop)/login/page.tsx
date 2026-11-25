@@ -4,7 +4,7 @@ import { Container } from "@/components/ui/Container";
 import { getCurrentCustomer } from "@/server/modules/customer-auth/session";
 import { LoginClient } from "./LoginClient";
 
-export const metadata = { title: "Нэвтрэх", robots: { index: false } };
+export const metadata = { title: "Нэвтрэх / Бүртгүүлэх", robots: { index: false } };
 // Үйлчлүүлэгчийн session (cookie) уншдаг — request бүрт render
 export const instant = false;
 
@@ -21,8 +21,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <Container as="section" className="py-16 md:py-24">
       <div className="mx-auto max-w-[420px]">
-        <h1 className="text-section text-center">Нэвтрэх</h1>
-        <p className="mt-4 text-center text-muted">Нууц үг хэрэггүй — утсандаа ирсэн кодоор нэвтэрнэ. Цаг захиалах, өмнөх айлчлал, арьсны зөвлөмжөө харна.</p>
+        <h1 className="text-section text-center">Нэвтрэх / Бүртгүүлэх</h1>
+        <p className="mt-4 text-center text-muted">Утасны дугаараа оруулна уу. Анх удаа бол автоматаар бүртгэл үүснэ. Нууц үг хэрэггүй — утсандаа ирсэн кодоор нэвтэрнэ.</p>
         <div className="mt-10">
           <LoginClient next={next} />
         </div>

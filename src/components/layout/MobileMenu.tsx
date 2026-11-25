@@ -154,6 +154,12 @@ export function MobileMenu({ items, salon }: { items: ResolvedNavItem[]; salon: 
                 </Link>
               </li>
             ))}
+            {/* Үйлчлүүлэгчийн нэвтрэлт / бүртгэл (PROMPT 16) — нэвтэрсэн бол /account шууд нээгдэнэ */}
+            <li>
+              <Link href="/account" onClick={close} className="block py-3 text-body uppercase tracking-[0.6px]">
+                Нэвтрэх
+              </Link>
+            </li>
           </ul>
           {(tel || salon.instagram) && (
             <div className="mt-8 space-y-1 border-t border-line pt-6 text-body">

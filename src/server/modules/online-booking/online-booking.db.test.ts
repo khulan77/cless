@@ -77,6 +77,16 @@ describe("үйлчлүүлэгчийн нэвтрэлт", () => {
     await completeCustomerProfile({ verificationId: v.verificationId, to: "88776655", name: "Нэр Нэр", consent: true });
     await expect(completeCustomerProfile({ verificationId: v.verificationId, to: "88776655", name: "Нэр Нэр", consent: true })).rejects.toThrow(/хугацаа дууссан|ашиглагдсан/);
   });
+
+  it("Бүртгүүлэх (PROMPT 16): маскийг буцаана; сонголттой имэйл хадгалагдана, буруу имэйл татгалзана", async () => {
+    const r = await requestCustomerCode({ to: "+97685563793", ip: "9.9.9.9" });
+    expect(r.mask).toBe("85****93");
+    const v = await verifyCustomerCode({ id: r.id, to: "85563793", code: r.devCode! });
+    if (v.status !== "needs-profile") throw new Error("expected profile");
+    await expect(completeCustomerProfile({ verificationId: v.verificationId, to: "85563793", name: "Бат Болд", email: "буруу", consent: true })).rejects.toThrow();
+    const { customerId } = await completeCustomerProfile({ verificationId: v.verificationId, to: "85563793", name: "Бат Болд", email: "Bat@Example.mn", consent: true });
+    expect(await db.customer.findUniqueOrThrow({ where: { id: customerId } })).toMatchObject({ phone: "85563793", email: "bat@example.mn", registeredVia: "ONLINE", emailVerifiedAt: null, emailConsentAt: null });
+  });
 });
 
 describe("онлайн захиалга", () => {

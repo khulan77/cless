@@ -41,7 +41,7 @@ export function Header({ wordmark, nav, salon, shopMode, cartCount = 0 }: Props)
 
         <div className="flex items-center justify-end gap-6 md:gap-[30px]">
           {/* Үйлчлүүлэгчийн нэвтрэлт (PROMPT 15) — нэвтрээгүй бол /account → /login (хуудас кэштэй хэвээр) */}
-          <Link href="/account" aria-label="Нэвтрэх / Миний бүртгэл" className={headerIconCls}>
+          <Link href="/account" aria-label="Нэвтрэх / Бүртгүүлэх" title="Нэвтрэх / Бүртгүүлэх" className={headerIconCls}>
             <UserRound className={glyph} strokeWidth={1.5} aria-hidden />
           </Link>
           {shopMode === "CATALOG" ? (

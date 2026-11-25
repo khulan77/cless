@@ -9,6 +9,7 @@ import { audit } from "@/server/audit";
 import { db } from "@/server/db";
 import { UserError } from "@/server/errors";
 import { normalizePhone } from "@/server/modules/customers/service";
+import { maskTarget } from "@/server/modules/notifications/mask";
 import { assertSendAllowed, checkCode, startCode } from "@/server/modules/verification/service";
 
 const GENERIC = "Код илгээгдлээ.";
@@ -28,14 +29,14 @@ export async function requestCustomerCode(p: { to: string; ip: string }) {
     if (!c) {
       // Бүртгэл байгаа эсэхийг задруулахгүй — хязгаарыг тоолоод ижил хариу
       await assertSendAllowed(to, p.ip);
-      return { id: `c${Date.now().toString(36)}x`, message: "Хэрэв энэ имэйлээр бүртгэлтэй бол код илгээгдлээ. Анх удаа бол утсаараа нэвтэрнэ үү." };
+      return { id: `c${Date.now().toString(36)}x`, mask: maskTarget(to), message: "Хэрэв энэ имэйлээр бүртгэлтэй бол код илгээгдлээ. Анх удаа бол утсаараа нэвтэрнэ үү." };
     }
     const s = await startCode({ purpose: "CUSTOMER_LOGIN", to, ip: p.ip, customerId: c.id });
-    return { id: s.id, message: GENERIC, devCode: (s as { devCode?: string }).devCode };
+    return { id: s.id, mask: s.mask, message: GENERIC, devCode: (s as { devCode?: string }).devCode };
   }
   const existing = await db.customer.findUnique({ where: { phone: to }, select: { id: true } });
   const s = await startCode({ purpose: "CUSTOMER_LOGIN", to, ip: p.ip, customerId: existing?.id ?? null });
-  return { id: s.id, message: GENERIC, devCode: (s as { devCode?: string }).devCode };
+  return { id: s.id, mask: s.mask, message: GENERIC, devCode: (s as { devCode?: string }).devCode };
 }
 
 export type CodeResult = { status: "signed-in"; customerId: string } | { status: "needs-profile"; verificationId: string };
@@ -58,7 +59,16 @@ export async function verifyCustomerCode(p: { id: string; to: string; code: stri
 export const profileSchema = z.object({
   verificationId: z.string().min(1),
   to: z.string().min(3),
-  name: z.string().trim().min(2, "Нэрээ оруулна уу.").max(120),
+  name: z.string().trim().min(2, "Овог нэрээ оруулна уу.").max(120),
+  /** Бүртгүүлэхэд сонголттой (баталгаажаагүй — emailVerifiedAt хоосон) */
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(200)
+    .transform((v) => v || null)
+    .pipe(z.email("Имэйл буруу байна.").nullable())
+    .nullish(),
   consent: z.literal(true, { error: "Хувийн мэдээлэл ашиглахыг зөвшөөрнө үү." }),
   emailConsent: z.boolean().default(false),
 });
@@ -83,14 +93,14 @@ export async function completeCustomerProfile(raw: z.input<typeof profileSchema>
       // Ресепшний бүртгэлтэй нэгтгэнэ — нэрийг дарж бичихгүй (ресепшн зассан байж болно)
       await tx.customer.update({
         where: { id: existing.id },
-        data: { dataConsentAt: now, lastLoginAt: now, onlineRegisteredAt: existing.onlineRegisteredAt ?? now, ...(v.emailConsent && !existing.emailConsentAt ? { emailConsentAt: now } : {}) },
+        data: { dataConsentAt: now, lastLoginAt: now, onlineRegisteredAt: existing.onlineRegisteredAt ?? now, ...(v.emailConsent && !existing.emailConsentAt ? { emailConsentAt: now } : {}), ...(v.email && !existing.email ? { email: v.email } : {}) },
       });
       await audit(tx, { userId: null, action: "customer.online_link", entity: "Customer", entityId: existing.id, after: { consent: true } });
       return { customerId: existing.id, created: false };
     }
     if (to.includes("@")) throw new UserError("Анх удаа бол утсаараа нэвтэрнэ үү.");
     const c = await tx.customer.create({
-      data: { name: v.name, phone: to, registeredVia: "ONLINE", onlineRegisteredAt: now, lastLoginAt: now, dataConsentAt: now, emailConsentAt: v.emailConsent ? now : null },
+      data: { name: v.name, phone: to, email: v.email ?? null, registeredVia: "ONLINE", onlineRegisteredAt: now, lastLoginAt: now, dataConsentAt: now, emailConsentAt: v.emailConsent ? now : null },
     });
     await audit(tx, { userId: null, action: "customer.online_register", entity: "Customer", entityId: c.id, after: { registeredVia: "ONLINE" } });
     return { customerId: c.id, created: true };

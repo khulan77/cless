@@ -48,7 +48,8 @@ export async function sendEmail(mail: OutgoingEmail): Promise<SendResult> {
         refs.push(r.id);
         await logMessage({ channel: "EMAIL", kind, to, status: "SENT", providerId: r.id, sandbox: r.sandbox });
       } catch (e) {
-        await logMessage({ channel: "EMAIL", kind, to, status: "FAILED", error: wesend.wesendMessage(e) });
+        await logMessage({ channel: "EMAIL", kind, to, status: "FAILED", error: wesend.describeError(e) });
+        wesend.logWeSendError("email.send", e);
         throw new Error(`WeSend: ${wesend.wesendMessage(e)}`);
       }
     }
