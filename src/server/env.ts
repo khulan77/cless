@@ -49,12 +49,13 @@ export function checkEnv(env: Record<string, string | undefined>, target: EnvTar
     need("NEXT_PUBLIC_SITE_URL", strict ? "Production-д https:// байх ёстой." : "http(s):// хэлбэрийн URL байх ёстой.");
   }
 
-  // Имэйл: production-д Resend заавал (эс тэгвээс имэйл файл руу бичигдэж хэнд ч очихгүй)
+  // Мэдэгдэл (PROMPT 15): WeSend — SMS, имэйл, нэг удаагийн код. Resend — хуучирсан (зөвхөн имэйл).
+  const legacyEmail = set("RESEND_API_KEY") && set("EMAIL_FROM");
   if (strict) {
-    if (!set("RESEND_API_KEY")) need("RESEND_API_KEY", "Production-д заавал (айлчлал, цагийн имэйл).");
-    if (!set("EMAIL_FROM")) need("EMAIL_FROM", 'Production-д заавал, жишээ: "CLÉSS <no-reply@domain.mn>".');
-  } else if (!set("RESEND_API_KEY")) {
-    warn("RESEND_API_KEY", "Байхгүй — имэйл .emails/ хавтас руу файл болж бичигдэнэ.");
+    if (!set("WESEND_API_KEY") && !legacyEmail) need("WESEND_API_KEY", "Production-д заавал (SMS, имэйл, нэвтрэх код).");
+    else if (!set("WESEND_API_KEY")) warn("WESEND_API_KEY", "Байхгүй — SMS, нэвтрэх/урилгын код илгээгдэхгүй (имэйл хуучирсан Resend-ээр).");
+  } else if (!set("WESEND_API_KEY") && !set("RESEND_API_KEY")) {
+    warn("WESEND_API_KEY", "Байхгүй — SMS, имэйл, код .emails/ хавтас руу файл болж бичигдэнэ.");
   }
 
   // QPay: аль нэг нь тохируулагдсан бол бүгд заавал (хагас тохиргоо = API горим ажиллахгүй)

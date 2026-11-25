@@ -115,8 +115,8 @@ export function BookingWizard({
     });
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <div>
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="min-w-0">
         <ol className="mb-8 flex flex-wrap gap-x-6 gap-y-2 text-[13px] uppercase tracking-[0.12em]" aria-label="Алхам">
           {STEPS.map((s, i) => (
             <li key={s} aria-current={i === step ? "step" : undefined} className={i === step ? "text-navy" : i < step ? "text-navy/60" : "text-muted"}>

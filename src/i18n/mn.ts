@@ -1145,6 +1145,10 @@ export const mn = {
       completeTitle: "Цагийг гараар дуусгах",
       completeHint: "POS-оор төлбөр аваагүй үйлчилгээнд л. Шалтгаан заавал.",
       historyActions: {
+        "appointment.online_create": "Сайтаар захиалсан",
+        "appointment.approve": "Баталсан",
+        "appointment.reject": "Татгалзсан",
+        "appointment.customer_cancel": "Үйлчлүүлэгч сайтаас цуцалсан",
         "appointment.create": "Бүртгэсэн",
         "appointment.update": "Засварласан",
         "appointment.move": "Зөөсөн",

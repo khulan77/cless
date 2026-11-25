@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CancelAppointmentButton, EmailForm, NameForm, SignOutButton } from "@/components/customer/AccountActions";
@@ -39,6 +40,8 @@ function Section({ title, children, action }: { title: string; children: React.R
 
 /** Миний бүртгэл (сайт): цагууд, худалдан авалт, арьсны мэдээлэл, профайл. Дотоод тэмдэглэл, зураг харагдахгүй. */
 export default async function AccountPage() {
+  // Үйлчлүүлэгчийн session, одоогийн цаг — request бүрт (prerender хийхгүй)
+  await connection();
   const me = await getCurrentCustomer();
   if (!me) redirect("/login?next=/account");
   const [appts, purchases, skin] = await Promise.all([myAppointments(me.id), myPurchases(me.id), mySkin(me.id)]);

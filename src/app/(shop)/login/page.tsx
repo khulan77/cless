@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { getCurrentCustomer } from "@/server/modules/customer-auth/session";
@@ -13,6 +14,8 @@ function safeNext(raw: string | undefined) {
 }
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  // Үйлчлүүлэгчийн session, одоогийн цаг — request бүрт (prerender хийхгүй)
+  await connection();
   const next = safeNext((await searchParams).next);
   if (await getCurrentCustomer()) redirect(next);
   return (

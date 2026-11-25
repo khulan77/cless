@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { BookingSheetButton } from "@/components/salon/BookingSheet";
 import { BookingWizard } from "@/components/customer/BookingWizard";
 import { Container } from "@/components/ui/Container";
@@ -11,6 +12,8 @@ export const metadata = { title: "Цаг захиалах" };
 export const instant = false;
 
 export default async function BookingPage({ searchParams }: { searchParams: Promise<{ service?: string }> }) {
+  // Үйлчлүүлэгчийн session, одоогийн цаг — request бүрт (prerender хийхгүй)
+  await connection();
   const [settings, salon, customer, sp] = await Promise.all([getOnlineBookingSettings(), getSalonInfo(), getCurrentCustomer(), searchParams]);
   const contact = { phone: salon.phone, instagram: salon.instagram, messenger: salon.messenger, address: salon.address, mapsUrl: salon.mapsUrl, hoursLines: salon.hoursLines, onlineBooking: false };
   if (!settings.enabled) {
