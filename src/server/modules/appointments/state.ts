@@ -1,6 +1,7 @@
 /**
  * Цагийн төлөвийн машин. Шилжилт бүр энэ функцээр — хориотойг алдаа болгоно.
  *
+ *   PENDING (онлайн) ─approve─► CONFIRMED;  PENDING ─reject (шалтгаан)─► CANCELLED
  *   BOOKED ─confirm─► CONFIRMED ─arrive─► ARRIVED ─start─► IN_PROGRESS ─complete─► DONE
  *     └──────────────arrive───────────────┘
  *   BOOKED/CONFIRMED ─cancel (шалтгаан)─► CANCELLED
@@ -11,7 +12,7 @@
  */
 import type { ApptStatus } from "@/generated/prisma/enums";
 
-export type ApptAction = "confirm" | "arrive" | "start" | "complete" | "cancel" | "noShow";
+export type ApptAction = "confirm" | "arrive" | "start" | "complete" | "cancel" | "noShow" | "approve" | "reject";
 
 export class ApptStateError extends Error {
   constructor(
@@ -29,8 +30,11 @@ const TRANSITIONS: Record<ApptAction, { from: readonly ApptStatus[]; to: ApptSta
   arrive: { from: ["BOOKED", "CONFIRMED"], to: "ARRIVED", message: "Энэ цагийг 'Ирсэн' болгох боломжгүй." },
   start: { from: ["ARRIVED"], to: "IN_PROGRESS", message: "Эхлээд 'Ирсэн' болгоно уу." },
   complete: { from: ["ARRIVED", "IN_PROGRESS"], to: "DONE", message: "Зөвхөн ирсэн эсвэл үйлчилгээнд байгаа цагийг гараар дуусгана." },
+  // Онлайн захиалга (PROMPT 15): PENDING → ресепшн батлах / татгалзах (шалтгаантай)
+  approve: { from: ["PENDING"], to: "CONFIRMED", message: "Зөвхөн батлахыг хүлээж буй онлайн захиалгыг батална." },
+  reject: { from: ["PENDING"], to: "CANCELLED", message: "Зөвхөн батлахыг хүлээж буй онлайн захиалгыг татгалзана." },
   cancel: {
-    from: ["BOOKED", "CONFIRMED"],
+    from: ["PENDING", "BOOKED", "CONFIRMED"],
     to: "CANCELLED",
     message: "Ирсэн эсвэл эхэлсэн цагийг цуцлах боломжгүй — POS-оор шийднэ үү.",
   },
@@ -38,11 +42,11 @@ const TRANSITIONS: Record<ApptAction, { from: readonly ApptStatus[]; to: ApptSta
 };
 
 /** Идэвхтэй (давхцлын constraint-д тооцогдох) төлөвүүд */
-export const ACTIVE_STATUSES: readonly ApptStatus[] = ["BOOKED", "CONFIRMED", "ARRIVED", "IN_PROGRESS", "DONE"];
+export const ACTIVE_STATUSES: readonly ApptStatus[] = ["PENDING", "BOOKED", "CONFIRMED", "ARRIVED", "IN_PROGRESS", "DONE"];
 
 /** Цаг/ажилтан/үйлчилгээг засах, зөөх боломжтой эсэх */
 export function isEditable(status: ApptStatus): boolean {
-  return status === "BOOKED" || status === "CONFIRMED";
+  return status === "PENDING" || status === "BOOKED" || status === "CONFIRMED";
 }
 
 export function canApply(from: ApptStatus, action: ApptAction): boolean {
@@ -56,7 +60,7 @@ export function nextApptStatus(
 ): ApptStatus {
   const rule = TRANSITIONS[action];
   if (!rule.from.includes(from)) throw new ApptStateError(from, action, rule.message);
-  if (action === "cancel" && !ctx.reason?.trim()) throw new ApptStateError(from, action, "Цуцлах шалтгааныг сонгоно уу.");
+  if ((action === "cancel" || action === "reject") && !ctx.reason?.trim()) throw new ApptStateError(from, action, "Цуцлах шалтгааныг сонгоно уу.");
   if (action === "noShow" || action === "complete") {
     if (!ctx.now || !ctx.startsAt) throw new ApptStateError(from, action, "Цаг шаардлагатай.");
     if (ctx.now < ctx.startsAt) {
@@ -69,5 +73,5 @@ export function nextApptStatus(
 
 /** UI: тухайн төлөвөөс хийж болох үйлдлүүд */
 export function availableActions(from: ApptStatus): ApptAction[] {
-  return (Object.keys(TRANSITIONS) as ApptAction[]).filter((a) => a !== "complete" && canApply(from, a));
+  return (Object.keys(TRANSITIONS) as ApptAction[]).filter((a) => a !== "complete" && a !== "approve" && a !== "reject" && canApply(from, a));
 }

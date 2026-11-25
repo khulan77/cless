@@ -423,11 +423,14 @@ function ApptCard({ a, byRoom, top, h, bufferH, extraH = 0, draggable, onOpen, o
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
-  const color = pastelFor(a.staffId);
+  // Онлайн, батлахыг хүлээж буй — шар тасархай хүрээ, "?" тэмдэг
+  const pending = a.status === "PENDING";
+  const color = pending ? { bg: "#FFF6E0", bar: "#B7791F" } : pastelFor(a.staffId);
   const short = h < 60;
   const done = a.status === "DONE";
   const noShow = a.status === "NO_SHOW";
   const mark =
+    pending ? <span className="text-[12px] font-bold" aria-hidden>?</span> :
     a.status === "CONFIRMED" ? <Check className="size-3.5" strokeWidth={2.5} aria-hidden /> :
     a.status === "ARRIVED" ? <span className="size-2 rounded-full bg-ok" aria-hidden /> :
     a.status === "IN_PROGRESS" ? <span className="size-2 rounded-full bg-[#C08A2E]" aria-hidden /> : null;
@@ -445,7 +448,7 @@ function ApptCard({ a, byRoom, top, h, bufferH, extraH = 0, draggable, onOpen, o
         title={t.admin.apptStatus[a.status]}
         className={`relative flex w-full flex-col items-stretch justify-start overflow-hidden rounded-xl ${short ? "py-1" : "py-1.5"} pl-3 pr-2.5 text-left text-ink shadow-[0_1px_2px_rgba(28,34,48,0.06)] transition-[filter] duration-150 hover:brightness-[0.97] ${
           done ? "opacity-55" : ""
-        } ${noShow ? "border border-dashed border-err/50 bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,rgba(140,53,48,0.07)_6px,rgba(140,53,48,0.07)_12px)]" : ""} ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
+        } ${pending ? "border-2 border-dashed border-[#B7791F]/70" : ""} ${noShow ? "border border-dashed border-err/50 bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,rgba(140,53,48,0.07)_6px,rgba(140,53,48,0.07)_12px)]" : ""} ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
         style={{ height: Math.max(h - 4, 22), background: noShow ? undefined : color.bg, boxShadow: `inset 3px 0 0 ${color.bar}` }}
       >
         <span className="flex items-center gap-1.5 font-mono text-[13px] leading-4 tabular-nums" style={{ color: color.bar }}>

@@ -8,7 +8,8 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
-const ACTION_GUARD = /\b(requirePermission|requireAnyPermission|requireUser|requireSignedIn|requirePagePermission)\s*\(/;
+// requireCustomer — сайтын үйлчлүүлэгчийн тусдаа session (PROMPT 15)
+const ACTION_GUARD = /\b(requirePermission|requireAnyPermission|requireUser|requireSignedIn|requirePagePermission|requireCustomer)\s*\(/;
 const ROUTE_GUARD = /\b(getCurrentUser|requirePermission|requireAnyPermission|requireUser)\s*\(/;
 
 /** Нийтийн server action-ууд — шалтгаантай */
@@ -22,6 +23,12 @@ const PUBLIC_ACTIONS: Record<string, string> = {
   "staff-auth.ts#activateAccountAction": "Урилга + код + шинэ нууц үг (код нэг удаа, 5 оролдлого)",
   "staff-auth.ts#requestResetCodeAction": "Нууц үг сэргээх код (хязгаартай, бүртгэл задруулахгүй)",
   "staff-auth.ts#resetPasswordWithCodeAction": "Код + шинэ нууц үг (код нэг удаа, 5 оролдлого)",
+  // PROMPT 15 §3–4: үйлчлүүлэгчийн нууц үггүй нэвтрэлт ба онлайн захиалгын уншилт
+  "customer.ts#requestCustomerCodeAction": "Үйлчлүүлэгчийн нэвтрэх код (хязгаартай)",
+  "customer.ts#verifyCustomerCodeAction": "Код шалгах (нэг удаа, 5 оролдлого) → үйлчлүүлэгчийн session",
+  "customer.ts#completeCustomerProfileAction": "Баталгаажсан кодоор (15 мин, нэг удаа) нэр + зөвшөөрөл",
+  "customer.ts#onlineStaffAction": "Нийтийн: үйлчилгээний ажилтнуудын нэр",
+  "customer.ts#onlineSlotsAction": "Нийтийн: сул цаг (захиалга асаалттай үед)",
 };
 /** Нэвтрэлтгүй route handler-ууд — өөрийн хамгаалалттай */
 const PUBLIC_ROUTES: Record<string, RegExp> = {

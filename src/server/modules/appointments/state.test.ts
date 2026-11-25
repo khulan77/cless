@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ApptStatus } from "@/generated/prisma/enums";
 import { ApptStateError, availableActions, isEditable, nextApptStatus, type ApptAction } from "./state";
 
-const ALL: ApptStatus[] = ["BOOKED", "CONFIRMED", "ARRIVED", "IN_PROGRESS", "DONE", "CANCELLED", "NO_SHOW"];
+const ALL: ApptStatus[] = ["PENDING", "BOOKED", "CONFIRMED", "ARRIVED", "IN_PROGRESS", "DONE", "CANCELLED", "NO_SHOW"];
 const now = new Date("2026-12-02T05:00:00Z");
 const started = new Date("2026-12-02T04:00:00Z");
 const future = new Date("2026-12-02T06:00:00Z");
@@ -13,8 +13,10 @@ describe("appointment state machine", () => {
     arrive: ["BOOKED", "CONFIRMED"],
     start: ["ARRIVED"],
     complete: ["ARRIVED", "IN_PROGRESS"],
-    cancel: ["BOOKED", "CONFIRMED"],
+    cancel: ["PENDING", "BOOKED", "CONFIRMED"],
     noShow: ["BOOKED", "CONFIRMED"],
+    approve: ["PENDING"],
+    reject: ["PENDING"],
   };
   const ctx = { now, startsAt: started, reason: "Үйлчлүүлэгч цуцалсан" };
 

@@ -6,6 +6,7 @@
  */
 import type { OutboxJob } from "@/generated/prisma/client";
 import { db } from "@/server/db";
+import { deliverAppointmentSms, type ApptSmsPayload } from "@/server/modules/notifications/appointment-sms";
 import { deliverAppointmentEmail, type ApptJobPayload } from "@/server/modules/notifications/appointment-delivery";
 import { deliverInquiryEmail } from "@/server/modules/notifications/inquiry-delivery";
 import { deliverVisitEmail, markVisitEmailFailed } from "@/server/modules/notifications/service";
@@ -30,8 +31,15 @@ export const handlers: Partial<Record<OutboxJob["type"], Handler>> = {
     },
   },
   APPT_REMINDER: {
+    // Имэйл (имэйлтэй бол) + SMS. Аль аль нь idempotency key-тэй тул дахин оролдлогод давхардахгүй.
     run: async (job) => {
       await deliverAppointmentEmail(job.id, job.payload as unknown as ApptJobPayload);
+      await deliverAppointmentSms(`${job.id}:sms`, job.payload as unknown as ApptSmsPayload);
+    },
+  },
+  SMS: {
+    run: async (job) => {
+      await deliverAppointmentSms(job.id, job.payload as unknown as ApptSmsPayload);
     },
   },
   INQUIRY_EMAIL: {

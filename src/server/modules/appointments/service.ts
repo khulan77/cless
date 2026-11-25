@@ -32,6 +32,7 @@ import {
 import { CANCEL_CATEGORY_LABELS } from "./cancel";
 import { isEditable, nextApptStatus, ApptStateError } from "./state";
 import type { ApptEmailKind } from "@/server/modules/notifications/appointment-email";
+import type { ApptSmsKind } from "@/server/modules/notifications/appointment-sms";
 export { completeForSale } from "./complete";
 import { getBookingSettings } from "@/server/modules/settings/pos-settings";
 import { addDays, ubWeekday } from "@/lib/time";
@@ -194,6 +195,60 @@ export async function createAppointment(raw: ApptInput, actor: Actor, now = new 
   );
 }
 
+/**
+ * Онлайн захиалга (PROMPT 15 §4) — үйлчлүүлэгч өөрөө, ажилтан actor-гүй (audit userId = null).
+ * APPROVAL горимд PENDING (цагийг түр барина — EXCLUDE constraint PENDING-ийг ч тооцно), INSTANT горимд CONFIRMED.
+ */
+export async function createOnlineAppointment(
+  input: { customerId: string; serviceId: string; staffId: string; startsAt: Date; note: string | null; status: "PENDING" | "CONFIRMED" },
+  now = new Date(),
+) {
+  return withOverlapGuard(() =>
+    db.$transaction(async (tx) => {
+      const v = await validatePlacement(tx, input, { now });
+      const branch = await getCurrentBranch(tx);
+      const appt = await tx.appointment.create({
+        data: {
+          branchId: branch.id,
+          customerId: input.customerId,
+          staffId: input.staffId,
+          serviceId: input.serviceId,
+          roomId: v.roomId,
+          startsAt: input.startsAt,
+          endsAt: v.endsAt,
+          blockedUntil: v.blockedUntil,
+          extraMin: 0,
+          status: input.status,
+          source: "ONLINE",
+          note: input.note,
+          priceSnapshot: v.service.price,
+          createdById: null,
+        },
+      });
+      await audit(tx, { userId: null, action: "appointment.online_create", entity: "Appointment", entityId: appt.id, after: snapshot(appt) });
+      await notify(tx, appt.id, "created", now);
+      return appt;
+    }, TX_OPTS),
+  );
+}
+
+/** Үйлчлүүлэгч сайтаас өөрийн цагийг цуцлах (цуцлах эрхийн хугацааг дуудагч шалгана) */
+export async function cancelByCustomer(appointmentId: string, customerId: string, now = new Date()) {
+  return db.$transaction(async (tx) => {
+    const current = await lockAppt(tx, appointmentId);
+    if (current.customerId !== customerId) throw new UserError("Цаг олдсонгүй.");
+    if (!["PENDING", "BOOKED", "CONFIRMED"].includes(current.status)) throw new UserError("Энэ цагийг цуцлах боломжгүй.");
+    const reason = CANCEL_CATEGORY_LABELS.ONLINE;
+    const updated = await tx.appointment.update({
+      where: { id: current.id },
+      data: { status: "CANCELLED", cancelReason: reason, cancelCategory: "ONLINE", cancelledById: null, cancelledAt: now, version: { increment: 1 } },
+    });
+    await audit(tx, { userId: null, action: "appointment.customer_cancel", entity: "Appointment", entityId: current.id, before: { status: current.status }, after: { status: "CANCELLED" } });
+    await notify(tx, current.id, "cancelled", now);
+    return updated;
+  }, TX_OPTS);
+}
+
 function snapshot(a: { startsAt: Date; endsAt: Date; staffId: string; serviceId: string; roomId: string | null; status: string; note?: string | null; source?: string }) {
   return {
     startsAt: a.startsAt.toISOString(),
@@ -350,6 +405,10 @@ export async function changeStatus(raw: ApptStatusInput, actor: Actor, now = new
     if (input.category === "OTHER" && !input.reason?.trim()) throw new UserError("\"Бусад\" шалтгааны тайлбарыг бичнэ үү.", { reason: ["Тайлбар заавал."] });
     input.reason = input.reason?.trim() || CANCEL_CATEGORY_LABELS[input.category];
   }
+  if (input.action === "reject") {
+    if (!input.reason?.trim()) throw new UserError("Татгалзах шалтгааныг бичнэ үү.", { reason: ["Шалтгаан заавал."] });
+    input.category = "REJECTED" as never;
+  }
   if (input.action === "complete") {
     if (!can(actor.role, "appointment:done-manual")) throw new ForbiddenError("Цагийг гараар дуусгах эрх зөвхөн админ, менежерт.");
     if (!input.reason?.trim()) throw new UserError("Гараар дуусгах шалтгааныг бичнэ үү.", { reason: ["Шалтгаан заавал."] });
@@ -368,7 +427,7 @@ export async function changeStatus(raw: ApptStatusInput, actor: Actor, now = new
       where: { id: current.id },
       data: {
         status,
-        ...(input.action === "cancel"
+        ...(input.action === "cancel" || input.action === "reject"
           ? { cancelReason: input.reason!.trim(), cancelCategory: input.category, cancelledById: actor.id, cancelledAt: now }
           : {}),
         version: { increment: 1 },
@@ -383,6 +442,8 @@ export async function changeStatus(raw: ApptStatusInput, actor: Actor, now = new
       after: { status, reason: input.reason ?? null, ...(input.category ? { category: input.category } : {}) },
     });
     if (input.action === "cancel") await notify(tx, current.id, "cancelled", now);
+    if (input.action === "approve") await notify(tx, current.id, "approved", now);
+    if (input.action === "reject") await notify(tx, current.id, "rejected", now);
     return updated;
   }, TX_OPTS);
 }
@@ -460,24 +521,33 @@ export async function openInPos(appointmentId: string, actor: Actor, now = new D
 // ─────────────────────────── Имэйл (outbox) ───────────────────────────
 
 
-/** Үйлчлүүлэгч имэйлтэй бол мэдэгдэл + (идэвхтэй цагт) сануулгыг дараалалд оруулна */
-async function notify(tx: Tx, appointmentId: string, kind: Exclude<ApptEmailKind, "reminder">, now: Date) {
+export type NotifyKind = Exclude<ApptEmailKind, "reminder"> | "approved" | "rejected";
+
+/**
+ * Мэдэгдэл (outbox): имэйл (имэйлтэй бол), SMS (онлайн захиалга, батлах/татгалзах), 24 цагийн өмнөх сануулга
+ * (имэйл + SMS). PENDING онлайн захиалгад "баталгаажлаа" имэйл явуулахгүй — батлагдах үед.
+ */
+export async function notify(tx: Tx, appointmentId: string, kind: NotifyKind, now: Date) {
   const a = await tx.appointment.findUniqueOrThrow({
     where: { id: appointmentId },
-    select: { id: true, startsAt: true, version: true, customer: { select: { email: true } } },
+    select: { id: true, startsAt: true, version: true, status: true, source: true, customer: { select: { email: true, phone: true } } },
   });
-  if (!a.customer.email) return;
   const startsAt = a.startsAt.toISOString();
-  await enqueue(tx, {
-    type: "APPT_EMAIL",
-    payload: { appointmentId: a.id, kind, startsAt },
-    dedupeKey: `appt-email:${a.id}:${kind}:${a.version}`,
-  });
-  if (kind === "cancelled") return;
+  const emailKind: Exclude<ApptEmailKind, "reminder"> | null =
+    kind === "approved" ? "created" : kind === "rejected" ? "cancelled" : kind === "created" && a.status === "PENDING" ? null : kind;
+  if (a.customer.email && emailKind) {
+    await enqueue(tx, { type: "APPT_EMAIL", payload: { appointmentId: a.id, kind: emailKind, startsAt }, dedupeKey: `appt-email:${a.id}:${kind}:${a.version}` });
+  }
+  const smsKind: ApptSmsKind | null =
+    kind === "approved" ? "confirmed" : kind === "rejected" ? "rejected" : a.source === "ONLINE" ? (kind === "created" ? (a.status === "PENDING" ? "received" : "confirmed") : kind === "cancelled" ? "cancelled" : null) : null;
+  if (a.customer.phone && smsKind) {
+    await enqueue(tx, { type: "SMS", payload: { appointmentId: a.id, kind: smsKind, startsAt }, dedupeKey: `appt-sms:${a.id}:${kind}:${a.version}` });
+  }
+  if (kind === "cancelled" || kind === "rejected" || kind === "approved") return;
   const { reminderHours } = await getBookingSettings(tx);
   const runAfter = new Date(a.startsAt.getTime() - reminderHours * 3600_000);
-  // Цаг ойрхон бол (сануулгын хугацаа өнгөрсөн) сануулга илгээхгүй — баталгаажуулах имэйл хангалттай
+  // Цаг ойрхон бол (сануулгын хугацаа өнгөрсөн) сануулга илгээхгүй
   if (runAfter <= now) return;
-  // Цаг зөөгдвөл startsAt өөр тул шинэ ажил үүснэ; хуучныг worker илгээхээс өмнө хүчингүй гэж үзнэ
+  // Цаг зөөгдвөл startsAt өөр тул шинэ ажил үүснэ; хуучныг worker хүчингүй гэж үзнэ (давхар илгээхгүй)
   await enqueue(tx, { type: "APPT_REMINDER", payload: { appointmentId: a.id, kind: "reminder", startsAt }, dedupeKey: `appt-reminder:${a.id}:${startsAt}`, runAfter });
 }

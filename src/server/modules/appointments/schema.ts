@@ -43,7 +43,7 @@ export type ApptMoveInput = z.input<typeof apptMoveSchema>;
 
 export const apptStatusSchema = z.object({
   id,
-  action: z.enum(["confirm", "arrive", "start", "complete", "cancel", "noShow"]),
+  action: z.enum(["confirm", "arrive", "start", "complete", "cancel", "noShow", "approve", "reject"]),
   reason: z.string().trim().max(300).nullish(),
   /** Цуцлахад заавал (A6) */
   category: z.enum(CANCEL_CATEGORIES).nullish(),
