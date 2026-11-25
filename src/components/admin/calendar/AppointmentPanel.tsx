@@ -6,29 +6,37 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useServerAction } from "@/components/admin/use-action";
-import { Badge, Button, Field, Select, Textarea } from "@/components/admin/ui";
+import { Badge, Button, Field, Textarea } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { formatDateLabel, formatDateTime, formatTime, ubDateKey } from "@/lib/time";
-import { apptDetail, apptNote, apptOpenPos, apptStatus } from "@/server/actions/appointments";
+import { apptDetail, apptExtraTime, apptNote, apptOpenPos, apptStatus } from "@/server/actions/appointments";
+import { CANCEL_CATEGORY_LABELS, isCancelCategory } from "@/server/modules/appointments/cancel";
 import { availableActions, type ApptAction } from "@/server/modules/appointments/state";
 import type { ApptDialogInit } from "./AppointmentDialog";
+import { CancelReasonFields, cancelReady, emptyCancel, type CancelValue } from "./CancelReasonFields";
+import { ExtraTimePicker } from "./ExtraTimePicker";
 import type { CalPerms } from "./types";
 import { saleLabel, statusTone } from "./status";
 
 const c = t.admin.calendar;
+
+/** "Нэр · 24/11 14:05 · Ажилтан өвчтэй — тайлбар" (older cancellations: just the reason) */
+function cancelLine(d: { cancelReason: string | null; cancelCategory: string | null; cancelledAt: Date | string | null; cancelledBy: { name: string } | null }) {
+  const label = isCancelCategory(d.cancelCategory) ? CANCEL_CATEGORY_LABELS[d.cancelCategory] : null;
+  const why = label ? (d.cancelReason && d.cancelReason !== label ? `${label} — ${d.cancelReason}` : label) : d.cancelReason;
+  return [d.cancelledBy?.name, d.cancelledAt ? formatDateTime(new Date(d.cancelledAt)) : null, why].filter(Boolean).join(" · ");
+}
 type Detail = Extract<Awaited<ReturnType<typeof apptDetail>>, { ok: true }>["data"] & { loadedAt: number };
 
 export function AppointmentPanel({
   id,
   perms,
-  cancelReasons,
   onClose,
   onEdit,
 }: {
   id: string;
   perms: CalPerms;
-  cancelReasons: string[];
   onClose: () => void;
   onEdit: (init: ApptDialogInit) => void;
 }) {
@@ -36,8 +44,10 @@ export function AppointmentPanel({
   const [detail, setDetail] = useState<Detail | null>(null);
   const [confirm, setConfirm] = useState<ApptAction | null>(null);
   const [reason, setReason] = useState("");
+  const [cancel, setCancel] = useState<CancelValue>(emptyCancel);
   const status = useServerAction(apptStatus);
   const openPos = useServerAction(apptOpenPos);
+  const extra = useServerAction(apptExtraTime);
 
   const [reloadKey, setReloadKey] = useState(0);
   const load = useCallback(() => setReloadKey((k) => k + 1), []);
@@ -59,8 +69,11 @@ export function AppointmentPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const run = (action: ApptAction, why?: string) =>
-    status.run({ id, action, reason: why ?? null }, { onSuccess: () => (setConfirm(null), setReason(""), load(), router.refresh()) });
+  const run = (action: ApptAction, why?: string, category?: CancelValue["category"]) =>
+    status.run(
+      { id, action, reason: why ?? null, category: category || null },
+      { onSuccess: () => (setConfirm(null), setReason(""), setCancel(emptyCancel), load(), router.refresh()) },
+    );
 
   if (!detail) {
     return (
@@ -93,10 +106,11 @@ export function AppointmentPanel({
     [c.service, `${detail.service.name} · ${detail.service.durationMin}′${detail.service.bufferMin ? ` (+${detail.service.bufferMin}′ ${c.buffer.toLowerCase()})` : ""}`],
     [c.staff, detail.staff.name],
     ...(detail.room ? [[c.room, detail.room.name] as [string, React.ReactNode]] : []),
+    ...(detail.extraMin ? [[c.extraTime, c.extraLabel(detail.extraMin)] as [string, React.ReactNode]] : []),
     [c.source, t.admin.apptSource[detail.source as keyof typeof t.admin.apptSource] ?? detail.source],
     [c.price, formatMNT(detail.priceSnapshot)],
     ...(detail.note ? [[c.note, <span key="n" className="whitespace-pre-line">{detail.note}</span>] as [string, React.ReactNode]] : []),
-    ...(detail.cancelReason ? [[c.cancelReason, detail.cancelReason] as [string, React.ReactNode]] : []),
+    ...(detail.status === "CANCELLED" ? [[c.cancelledBy, cancelLine(detail)] as [string, React.ReactNode]] : []),
     ...(detail.sales.length ? [[c.sale, (
       <span key="s" className="flex flex-col">
         {detail.sales.map((s) => (
@@ -163,6 +177,7 @@ export function AppointmentPanel({
                   date: ubDateKey(startsAt),
                   time: formatTime(startsAt),
                   roomId: detail.roomId,
+                  extraMin: detail.extraMin,
                   source: detail.source as ApptDialogInit["source"],
                   note: detail.note,
                 })
@@ -189,6 +204,32 @@ export function AppointmentPanel({
           )}
         </div>
 
+        {detail.notes.length > 0 && (
+          <section className="rounded-xl border border-champagne/30 bg-champagne/[0.06] px-4 py-3">
+            <h3 className="mb-1.5 text-[13px] font-medium text-champagne-ink">{t.admin.notes.recent}</h3>
+            <ul className="space-y-1.5 text-[14px]">
+              {detail.notes.map((n) => (
+                <li key={n.id}>
+                  <span className="text-ink-soft">{formatDateTime(new Date(n.createdAt))} · {n.author.name}: </span>
+                  <span className="whitespace-pre-line">{n.body}</span>
+                </li>
+              ))}
+            </ul>
+            <Link href={`/admin/customers/${detail.customer.id}?tab=notes`} className="mt-2 inline-block text-[13px] underline underline-offset-4">
+              {t.admin.notes.title} →
+            </Link>
+          </section>
+        )}
+
+        {/* "+ Нэмэлт цаг" — also after arrival: it only moves the end of the block */}
+        {perms.canWrite && ["BOOKED", "CONFIRMED", "ARRIVED", "IN_PROGRESS"].includes(detail.status) && (
+          <ExtraTimePicker
+            value={detail.extraMin}
+            disabled={extra.pending}
+            onChange={(extraMin) => extra.run({ id, extraMin }, { onSuccess: () => (load(), router.refresh()) })}
+          />
+        )}
+
         {perms.canWrite && locked && detail.status !== "DONE" && <NoteEditor key={detail.note ?? ""} id={id} initial={detail.note ?? ""} onSaved={() => (load(), router.refresh())} />}
 
         {detail.history.length > 0 && (
@@ -212,20 +253,11 @@ export function AppointmentPanel({
         confirmLabel={c.actions.cancel}
         danger
         pending={status.pending}
-        confirmDisabled={!reason}
-        onClose={() => (setConfirm(null), setReason(""))}
-        onConfirm={() => void run("cancel", reason)}
+        confirmDisabled={!cancelReady(cancel)}
+        onClose={() => (setConfirm(null), setCancel(emptyCancel))}
+        onConfirm={() => void run("cancel", cancel.note, cancel.category)}
       >
-        <Field label={c.reason} htmlFor="cancel-reason">
-          <Select id="cancel-reason" value={reason} onChange={(e) => setReason(e.target.value)} autoFocus>
-            <option value="">{c.chooseReason}</option>
-            {cancelReasons.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <CancelReasonFields id="cancel" value={cancel} onChange={setCancel} />
       </ConfirmDialog>
       <ConfirmDialog open={confirm === "noShow"} title={c.noShowTitle} confirmLabel={c.actions.noShow} danger pending={status.pending} onClose={() => setConfirm(null)} onConfirm={() => void run("noShow")}>
         <p className="text-[14px]">{c.noShowHint}</p>

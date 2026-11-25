@@ -7,6 +7,7 @@ import { useServerAction } from "@/components/admin/use-action";
 import { Button, Checkbox, Field, Input, Select, Textarea } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { createCustomerAction, updateCustomerAction } from "@/server/actions/pos";
+import { DuplicatePhoneHint } from "./DuplicatePhoneHint";
 
 const s = t.admin.customers;
 type SkinType = keyof typeof t.admin.skinTypes;
@@ -61,6 +62,16 @@ export function CustomerFormButton({ id, initial, label }: { id?: string; initia
               <Input id="cf-bday" type="date" value={v.birthday} onChange={(e) => setV({ ...v, birthday: e.target.value })} />
             </Field>
           </div>
+          {/* Already registered with this number → open that profile instead of a duplicate */}
+          <DuplicatePhoneHint
+            phone={v.phone}
+            excludeId={id}
+            selectLabel={t.admin.customers.duplicateOpen}
+            onSelect={(c) => {
+              setOpen(false);
+              router.push(`/admin/customers/${c.id}`);
+            }}
+          />
           <Field label={s.email} htmlFor="cf-email" error={fe.email}>
             <Input id="cf-email" type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
           </Field>

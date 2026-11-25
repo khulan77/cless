@@ -1,13 +1,18 @@
 /**
  * POS, борлуулалтын жагсаалт, хянах самбарын уншилтууд (бичихгүй).
  */
+import { normBarcode } from "@/lib/validation/product";
 import type { Prisma, SaleStatus } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 import { ubDayRange } from "@/lib/time";
 
-/** POS хайлт: бүтээгдэхүүн (нэр/SKU) ба үйлчилгээ. Яг SKU таарвал эхэнд (barcode scanner). */
+/**
+ * POS search. A barcode scanner (keyboard wedge) types the code and presses Enter — an exact SKU or
+ * barcode match comes back as `exactSku` and the terminal adds it straight to the cart.
+ */
 export async function searchPosCatalog(q: string) {
   const term = q.trim();
+  const code = normBarcode(term);
   const [variants, services] = await Promise.all([
     db.variant.findMany({
       where: {
@@ -16,6 +21,7 @@ export async function searchPosCatalog(q: string) {
           ? {
               OR: [
                 { sku: { equals: term, mode: "insensitive" } },
+                ...(code ? [{ barcode: code }] : []),
                 { sku: { contains: term, mode: "insensitive" } },
                 { product: { name: { contains: term, mode: "insensitive" } } },
               ],
@@ -24,7 +30,7 @@ export async function searchPosCatalog(q: string) {
       },
       orderBy: [{ product: { name: "asc" } }, { sortOrder: "asc" }],
       take: 20,
-      select: { id: true, sku: true, size: true, price: true, stock: true, reserved: true, product: { select: { name: true, howToUse: true } } },
+      select: { id: true, sku: true, barcode: true, size: true, price: true, stock: true, reserved: true, product: { select: { name: true, howToUse: true } } },
     }),
     db.service.findMany({
       where: { isActive: true, ...(term ? { name: { contains: term, mode: "insensitive" } } : {}) },
@@ -33,8 +39,9 @@ export async function searchPosCatalog(q: string) {
       select: { id: true, name: true, price: true, durationMin: true },
     }),
   ]);
-  const exact = variants.filter((v) => v.sku.toLowerCase() === term.toLowerCase());
-  const rest = variants.filter((v) => v.sku.toLowerCase() !== term.toLowerCase());
+  const isExact = (v: { sku: string; barcode: string | null }) => v.sku.toLowerCase() === term.toLowerCase() || (code !== "" && v.barcode === code);
+  const exact = variants.filter(isExact);
+  const rest = variants.filter((v) => !isExact(v));
   return {
     products: [...exact, ...rest].map((v) => ({
       id: v.id,

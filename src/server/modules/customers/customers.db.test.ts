@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/server/db";
 import { saveVisit } from "@/server/modules/visits/service";
 import { makeUser, makeVariant, resetDb } from "../../../../tests/db-helpers";
-import { createCustomer, customerProfile, normalizePhone, searchCustomers } from "./service";
+import { createCustomer, customerProfile, findCustomerByPhone, normalizePhone, searchCustomers } from "./service";
 
 let manager: Awaited<ReturnType<typeof makeUser>>;
 beforeEach(async () => {
@@ -29,6 +29,19 @@ describe("customers + visits", () => {
     await expect(createCustomer({ name: "Өөр", phone: "88112233" }, manager.id)).rejects.toThrow(/бүртгэлтэй/);
     expect((await searchCustomers("8811")).map((x) => x.id)).toEqual([c.id]);
     expect((await searchCustomers("болор")).map((x) => x.id)).toEqual([c.id]);
+  });
+
+  it("search starts at 3 characters; duplicate lookup accepts any phone format", async () => {
+    const c = await createCustomer({ name: "Болормаа", phone: "88112233" }, manager.id);
+    expect(await searchCustomers("бо")).toEqual([]);
+    expect(await searchCustomers("88")).toEqual([]);
+    expect((await searchCustomers("бол")).map((x) => x.id)).toEqual([c.id]);
+    expect((await searchCustomers("881")).map((x) => x.id)).toEqual([c.id]);
+    for (const typed of ["88112233", "8811-2233", "8811 2233", "+976 8811 2233"]) {
+      expect(await findCustomerByPhone(typed), typed).toMatchObject({ id: c.id, name: "Болормаа" });
+    }
+    expect(await findCustomerByPhone("8811223")).toBeNull(); // not a full number yet
+    expect(await findCustomerByPhone("88112233", c.id)).toBeNull(); // editing itself
   });
 
   it("saves a visit without a sale, prefilling instructions from howToUse", async () => {

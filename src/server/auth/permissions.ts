@@ -36,6 +36,13 @@ export const PERMISSIONS = [
   "customer:read",
   "customer:write",
   "visit:write",
+  // Үйлчлүүлэгчийн тэмдэглэл, айлчлалын өмнө/дараах зураг. STAFF-д: зөвхөн өөрөө үйлчилсэн
+  // үйлчлүүлэгч дээр (service давхаргад шалгана — src/server/modules/customers/access.ts)
+  "customer-note:write",
+  "visit-photo:read",
+  "visit-photo:write",
+  // Гоо сайханчийн "Миний самбар" — зөвхөн өөрийн хуваарь, үйлчлүүлэгч, борлуулалт
+  "me:read",
   // Кассын ээлж
   "shift:own",
   "shift:all",
@@ -47,36 +54,28 @@ export const PERMISSIONS = [
   "price:write",
   "cost:read",
   "report:read",
+  // Өдрийн тайланг нягтланд имэйлээр илгээх
+  "report:send",
   "payroll:write",
   "user:write",
   "settings:write",
+  // Интеграцийн нууц тохиргоо (QPay API, Smart Logic, SMS)
+  "integration:write",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
 
-const STAFF: readonly Permission[] = ["schedule:own"];
+/**
+ * Эрхийн тодорхойлолт — role бүр нэг мөр. Шинэ role (жишээ нь ACCOUNTANT) нэмэхэд:
+ * schema-ийн Role enum + энд нэг мөр + ROLE_LABELS + permissions.test.ts-ийн хүснэгтэд багана.
+ */
+const STAFF: readonly Permission[] = ["schedule:own", "me:read", "customer-note:write", "visit-photo:read", "visit-photo:write"];
 
-const MANAGER: readonly Permission[] = [
-  ...STAFF,
-  "schedule:all",
-  "appointment:read",
-  "appointment:write",
-  "appointment:status",
-  "customer:contact:read",
-  "inquiry:manage",
-  "pos:use",
-  "sale:create",
-  "sale:read",
-  "payment:cash",
-  "payment:card",
-  "payment:qpay",
-  // discount:over-limit — үгүй: ADMIN-ий имэйл+нууц үгээр тухайн борлуулалтад баталгаажуулна
-  "customer:read",
-  "customer:write",
-  "visit:write",
-  "shift:own",
-  "stock:read",
-];
+/** Зөвхөн ADMIN: хэрэглэгч нэмэх/хасах, интеграцийн нууц тохиргоо */
+const ADMIN_ONLY: readonly Permission[] = ["user:write", "integration:write"];
+
+/** MANAGER = ADMIN-аас ADMIN_ONLY-г хассан (11/24: менежер бүгдийг харж, засна; 10%-иас дээш хөнгөлөлт ч өгнө) */
+const MANAGER: readonly Permission[] = PERMISSIONS.filter((p) => !ADMIN_ONLY.includes(p));
 
 const ADMIN: readonly Permission[] = PERMISSIONS;
 

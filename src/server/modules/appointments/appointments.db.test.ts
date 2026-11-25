@@ -6,7 +6,7 @@ import { createPayment } from "@/server/modules/payments/service";
 import { applyPayment } from "@/server/modules/sales/finalize";
 import { checkout } from "@/server/modules/sales/service";
 import { makeBookableStaff, makeCustomer, makeService, makeUser, resetDb } from "../../../../tests/db-helpers";
-import { changeStatus, createAppointment, listSlots, moveAppointment, openInPos, overlapError, updateAppointment, updateApptNote } from "./service";
+import { changeStatus, createAppointment, listSlots, moveAppointment, openInPos, overlapError, setExtraTime, updateAppointment, updateApptNote } from "./service";
 
 // 2026-12-02 = Лхагва; салбар 10–20 (default), ажилтан 10–19
 const DAY = "2026-12-02";
@@ -30,6 +30,49 @@ async function setup(svc: { bufferMin?: number; requiresRoom?: boolean } = {}) {
 }
 const book = (s: Awaited<ReturnType<typeof setup>>, hm: string, extra: { staffId?: string; roomId?: string | null } = {}) =>
   createAppointment({ customerId: s.customer.id, serviceId: s.service.id, staffId: extra.staffId ?? s.staff.id, roomId: extra.roomId, startsAt: at(hm) }, asManager(), NOW);
+
+describe("extra time (A5)", () => {
+  it("blockedUntil = endsAt + buffer + extra; the next booking must wait for it", async () => {
+    const s = await setup({ bufferMin: 15 });
+    const a = await createAppointment({ customerId: s.customer.id, serviceId: s.service.id, staffId: s.staff.id, startsAt: at("10:00"), extraMin: 15 }, asManager(), NOW);
+    expect(a.extraMin).toBe(15);
+    expect(a.blockedUntil.toISOString()).toBe(at("11:30").toISOString()); // 11:00 + 15 buffer + 15 extra
+    await expect(book(s, "11:15")).rejects.toThrow(/өөр үйлчлүүлэгчтэй/);
+    await expect(book(s, "11:30")).resolves.toBeTruthy();
+    // Free slots leave room for the extra time too: staff works until 19:00, 60 min + 15 buffer
+    const has = async (extraMin: number, hm: string) =>
+      (await listSlots({ serviceId: s.service.id, date: DAY, staffId: s.staff.id, extraMin }, NOW)).slots.some((x) => x.startsAt.getTime() === at(hm).getTime());
+    expect(await has(0, "17:45")).toBe(true); // ends 18:45 + 15 = 19:00
+    expect(await has(30, "17:45")).toBe(false); // + 30 extra → 19:30
+  });
+
+  it("set from the calendar: grows/shrinks the block, refuses a collision, kept when moved", async () => {
+    const s = await setup();
+    const a = await book(s, "10:00");
+    await book(s, "11:15");
+    await expect(setExtraTime({ id: a.id, extraMin: 30 }, asManager())).rejects.toThrow(/давхц|дүүрсэн/); // 11:00 + 30 hits 11:15
+    const ok = await setExtraTime({ id: a.id, extraMin: 15 }, asManager());
+    expect(ok.blockedUntil.toISOString()).toBe(at("11:15").toISOString());
+    expect(await db.auditLog.count({ where: { action: "appointment.extra_time", entityId: a.id } })).toBe(1);
+    const moved = await moveAppointment({ id: a.id, version: ok.version, startsAt: at("13:00"), staffId: s.staff.id }, asManager(), NOW);
+    expect(moved.extraMin).toBe(15);
+    expect(moved.blockedUntil.toISOString()).toBe(at("14:15").toISOString());
+    const back = await setExtraTime({ id: a.id, extraMin: 0 }, asManager());
+    expect(back.blockedUntil.toISOString()).toBe(at("14:00").toISOString());
+    await expect(setExtraTime({ id: a.id, extraMin: 20 }, asManager())).rejects.toThrow();
+  });
+
+  it("the DB constraint uses blockedUntil including the extra time", async () => {
+    const s = await setup();
+    const a = await createAppointment({ customerId: s.customer.id, serviceId: s.service.id, staffId: s.staff.id, startsAt: at("10:00"), extraMin: 30 }, asManager(), NOW);
+    const err = await db.appointment
+      .create({
+        data: { branchId: a.branchId, customerId: s.customer.id, staffId: s.staff.id, serviceId: s.service.id, startsAt: at("11:15"), endsAt: at("12:15"), blockedUntil: at("12:15") },
+      })
+      .catch((e) => e);
+    expect(overlapError(err)?.code).toBe("APPT_OVERLAP");
+  });
+});
 
 describe("create / overlap", () => {
   it("creates with endsAt/blockedUntil/price snapshot and rejects an overlapping time for the same staff", async () => {
@@ -66,7 +109,7 @@ describe("create / overlap", () => {
   it("a cancelled appointment frees the time", async () => {
     const s = await setup();
     const a = await book(s, "10:00");
-    await changeStatus({ id: a.id, action: "cancel", reason: "Үйлчлүүлэгч цуцалсан" }, asManager(), NOW);
+    await changeStatus({ id: a.id, action: "cancel", category: "CUSTOMER" }, asManager(), NOW);
     await expect(book(s, "10:00")).resolves.toBeTruthy();
   });
 
@@ -140,6 +183,20 @@ describe("update / move / status", () => {
     expect(await db.auditLog.count({ where: { entity: "Appointment", action: "appointment.move" } })).toBe(1);
   });
 
+  it("cancel (A6): category required, a note for \"Бусад\"; who and when are recorded", async () => {
+    const s = await setup();
+    const a = await book(s, "10:00");
+    await expect(changeStatus({ id: a.id, action: "cancel", reason: "чөлөөт текст" }, asManager(), NOW)).rejects.toThrow(/шалтгааныг сонгоно/);
+    await expect(changeStatus({ id: a.id, action: "cancel", category: "OTHER" }, asManager(), NOW)).rejects.toThrow(/тайлбар/);
+    await changeStatus({ id: a.id, action: "cancel", category: "STAFF_SICK" }, asManager(), NOW);
+    const row = await db.appointment.findUniqueOrThrow({ where: { id: a.id } });
+    expect(row).toMatchObject({ status: "CANCELLED", cancelCategory: "STAFF_SICK", cancelReason: "Ажилтан өвчтэй", cancelledById: manager.id });
+    expect(row.cancelledAt?.toISOString()).toBe(NOW.toISOString());
+    const b = await book(s, "12:00");
+    await changeStatus({ id: b.id, action: "cancel", category: "OTHER", reason: "Цасан шуурга" }, asManager(), NOW);
+    expect(await db.appointment.findUniqueOrThrow({ where: { id: b.id } })).toMatchObject({ cancelCategory: "OTHER", cancelReason: "Цасан шуурга" });
+  });
+
   it("status: cancel needs a reason, no-show only after start", async () => {
     const s = await setup();
     const a = await book(s, "10:00");
@@ -150,11 +207,12 @@ describe("update / move / status", () => {
     await expect(book(s, "10:00")).resolves.toBeTruthy(); // NO_SHOW чөлөөлнө
   });
 
-  it("manual DONE: ADMIN only, only ARRIVED/IN_PROGRESS, only after the start time, reason required", async () => {
+  it("manual DONE: ADMIN/MANAGER only, only ARRIVED/IN_PROGRESS, only after the start time, reason required", async () => {
     const s = await setup();
     const a = await book(s, "10:00");
     const asAdmin = { id: admin.id, role: "ADMIN" as const };
-    await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, asManager(), at("10:30"))).rejects.toThrow(/админ/);
+    await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, { id: admin.id, role: "STAFF" as const }, at("10:30"))).rejects.toThrow(/админ/);
+    await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, asManager(), at("10:30"))).rejects.toThrow(/ирсэн/); // BOOKED — MANAGER passes the role check
     await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, asAdmin, at("10:30"))).rejects.toThrow(/ирсэн/); // BOOKED
     await changeStatus({ id: a.id, action: "arrive" }, asManager(), at("09:50"));
     await expect(changeStatus({ id: a.id, action: "complete", reason: "x" }, asAdmin, at("09:55"))).rejects.toThrow(/эхлээгүй/);

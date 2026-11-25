@@ -8,7 +8,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { can } from "@/server/auth/permissions";
 import { requireAnyPermission, requirePermission } from "@/server/auth/session";
 import { addCashMovement, closeShift, openShift } from "@/server/modules/cash-shifts/service";
-import { createCustomer, searchCustomers, updateCustomer, type CustomerInput } from "@/server/modules/customers/service";
+import { createCustomer, findCustomerByPhone, searchCustomers, updateCustomer, type CustomerInput } from "@/server/modules/customers/service";
 import { resendVisitEmail } from "@/server/modules/notifications/service";
 import { cancelPayment, createPayment, verifyQPayPayment, type CreatePaymentInput } from "@/server/modules/payments/service";
 import { createRefund, type RefundInput } from "@/server/modules/refunds/service";
@@ -37,6 +37,14 @@ export async function posSearchCustomers(q: string) {
   return runAction(async () => {
     await requirePermission("customer:read");
     return searchCustomers(String(q ?? "").slice(0, 100));
+  });
+}
+
+/** "Энэ дугаартай үйлчлүүлэгч бүртгэлтэй" — шинээр бүртгэх/засах үед давхардлаас сэргийлнэ */
+export async function findCustomerByPhoneAction(phone: string, excludeId?: string) {
+  return runAction(async () => {
+    await requirePermission("customer:read");
+    return findCustomerByPhone(String(phone ?? "").slice(0, 40), excludeId ? String(excludeId) : undefined);
   });
 }
 

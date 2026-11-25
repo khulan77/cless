@@ -15,6 +15,7 @@ import { saveProduct } from "@/server/actions/products";
 import { receiveStock } from "@/server/actions/stock";
 import { storage } from "@/server/storage";
 import { infra } from "@/i18n/mn.infra";
+import { normBarcode } from "@/lib/validation/product";
 import type { ParsedWorkbook } from "./parse";
 import { ImageFetchError, fetchImage } from "./images";
 import { buildImportPlan, type ExistingProduct, type ImportContext, type ImportPlan } from "./validate";
@@ -24,8 +25,9 @@ const W = infra.import.warn;
 export async function loadImportContext(parsed: ParsedWorkbook): Promise<ImportContext> {
   const slugs = [...new Set(parsed.products.map((p) => p.values.slug.trim().toLowerCase()).filter(Boolean))];
   const skus = [...new Set(parsed.variants.map((v) => v.values.sku.trim().toUpperCase()).filter(Boolean))];
+  const barcodes = [...new Set(parsed.variants.map((v) => normBarcode(v.values.barcode)).filter(Boolean))];
 
-  const [collections, rows, owners] = await Promise.all([
+  const [collections, rows, owners, codeOwners] = await Promise.all([
     db.collection.findMany({ select: { id: true, slug: true, kind: true } }),
     db.product.findMany({
       where: { slug: { in: slugs } },
@@ -38,6 +40,7 @@ export async function loadImportContext(parsed: ParsedWorkbook): Promise<ImportC
       },
     }),
     db.variant.findMany({ where: { sku: { in: skus } }, select: { sku: true, product: { select: { slug: true } } } }),
+    db.variant.findMany({ where: { barcode: { in: barcodes } }, select: { sku: true, barcode: true } }),
   ]);
 
   const products = new Map<string, ExistingProduct>(
@@ -65,8 +68,8 @@ export async function loadImportContext(parsed: ParsedWorkbook): Promise<ImportC
         isPublished: p.isPublished,
         sortOrder: p.sortOrder,
         images: p.images,
-        variants: p.variants.map(({ id, sku, size, price, costPrice, lowStockAt, isActive }) => ({
-          id, sku, size, price, costPrice, lowStockAt, isActive,
+        variants: p.variants.map(({ id, sku, barcode, size, price, costPrice, lowStockAt, isActive }) => ({
+          id, sku, barcode, size, price, costPrice, lowStockAt, isActive,
         })),
         collectionIds: p.collections.map((c) => c.collectionId),
         relations: p.relations,
@@ -74,7 +77,12 @@ export async function loadImportContext(parsed: ParsedWorkbook): Promise<ImportC
       },
     ]),
   );
-  return { collections, products, skuOwners: new Map(owners.map((o) => [o.sku, o.product.slug])) };
+  return {
+    collections,
+    products,
+    skuOwners: new Map(owners.map((o) => [o.sku, o.product.slug])),
+    barcodeOwners: new Map(codeOwners.map((o) => [o.barcode!, o.sku])),
+  };
 }
 
 export async function planImport(parsed: ParsedWorkbook): Promise<ImportPlan> {

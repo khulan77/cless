@@ -5,11 +5,13 @@ import { Breakdown } from "@/components/admin/reports/Breakdown";
 import { CsvButton } from "@/components/admin/reports/CsvButton";
 import { DailyChart } from "@/components/admin/reports/DailyChart";
 import { RangePicker } from "@/components/admin/reports/RangePicker";
+import { ReportTabs } from "@/components/admin/reports/ReportTabs";
+import { SendToAccountant } from "@/components/admin/accountant/SendToAccountant";
 import { LaunchButton } from "@/components/admin/system/LaunchButton";
 import { Badge, ButtonLink, Card, EmptyState, PageHeader } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
-import { formatTime } from "@/lib/time";
+import { formatTime, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requireUser } from "@/server/auth/session";
 import { db } from "@/server/db";
@@ -56,6 +58,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
   const missing = ready && !ready.launchedAt ? ready.items.filter((i) => !i.ok) : [];
   const payTotal = report.payments.reduce((s, x) => s + x.amount, 0);
   const presets = { today: presetRange("today"), week: presetRange("week"), month: presetRange("month"), lastMonth: presetRange("lastMonth") };
+  const today = ubDateKey();
 
   return (
     <>
@@ -100,16 +103,33 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
         </p>
       )}
 
+      {can(user.role, "report:read") && (
+        <div className="mb-5">
+          <ReportTabs active="overview" from={range.from} to={range.to} />
+        </div>
+      )}
       <PageHeader
         eyebrow={R.eyebrow}
         title={R.title}
-        actions={<RangePicker from={range.from} to={range.to} preset={preset} presets={presets} />}
+        actions={
+          <div className="flex flex-wrap items-end gap-2">
+            <RangePicker from={range.from} to={range.to} preset={preset} presets={presets} />
+            {can(user.role, "report:send") && <SendToAccountant defaultDay={range.to > today ? today : range.to} maxDay={today} />}
+          </div>
+        }
       />
 
       {/* KPI row 1 — the money */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.35fr_1fr_1fr_1fr]">
         <Kpi dark label={R.total} value={formatMNT(k.total)} hint={R.totalHint(k.sales)} title={R.netTitle(formatMNT(k.net))} delta={change(k.total, p.total)} big />
-        <Kpi label={R.service} value={formatMNT(k.service)} hint={R.serviceHint(k.serviceQty, pct(k.service))} delta={change(k.service, p.service)} big />
+        <Kpi
+          label={R.service}
+          value={formatMNT(k.service)}
+          hint={R.serviceHint(k.serviceQty, pct(k.service))}
+          sub={R.serviceSplit(formatMNT(k.serviceOneTime), formatMNT(k.serviceCourse))}
+          delta={change(k.service, p.service)}
+          big
+        />
         <Kpi label={R.product} value={formatMNT(k.product)} hint={R.productHint(k.productQty, pct(k.product))} delta={change(k.product, p.product)} big />
         <Kpi accent label={R.pending} value={formatMNT(k.pending)} hint={R.pendingHint(k.pendingCount)} big />
       </div>
@@ -230,10 +250,12 @@ function MoreLink({ href, label }: { href: string; label: string }) {
 }
 
 /** KPI tile; first one dark navy, "Хүлээгдэж буй" with a champagne border; ▲/▼ vs the previous period */
-function Kpi({ label, value, hint, delta, dark, accent, big, upIsBad, title }: {
+function Kpi({ label, value, hint, sub, delta, dark, accent, big, upIsBad, title }: {
   label: string;
   value: React.ReactNode;
   hint?: string;
+  /** Нэмэлт задаргааны мөр (A12: нэг удаагийн / курс) */
+  sub?: string;
   delta?: number | null;
   dark?: boolean;
   accent?: boolean;
@@ -260,6 +282,7 @@ function Kpi({ label, value, hint, delta, dark, accent, big, upIsBad, title }: {
           </span>
         )}
       </div>
+      {sub && <p className={`mt-1.5 text-[13px] ${dark ? "text-white/65" : "text-ink-soft"}`}>{sub}</p>}
     </div>
   );
 }

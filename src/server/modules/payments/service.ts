@@ -94,7 +94,7 @@ export function callbackUrl(paymentId: string) {
 export async function createPayment(raw: CreatePaymentInput, actor: Actor): Promise<PaymentView> {
   const input = createPaymentSchema.parse(raw);
   if (!can(actor.role, METHOD_PERMISSION[input.method])) {
-    throw new ForbiddenError(input.method === "TRANSFER" ? "Дансны төлбөрийг зөвхөн админ баталгаажуулна." : undefined);
+    throw new ForbiddenError(input.method === "TRANSFER" ? "Дансны төлбөрийг зөвхөн админ, менежер баталгаажуулна." : undefined);
   }
 
   const existing = await db.payment.findUnique({ where: { idempotencyKey: input.idempotencyKey }, select: { id: true, saleId: true } });

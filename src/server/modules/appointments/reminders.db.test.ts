@@ -58,7 +58,7 @@ describe("appointment e-mails and reminders", () => {
     expect((await readdir(dir)).length - before).toBe(2); // changed + шинэ сануулга
     expect(await db.outboxJob.count({ where: { status: "DONE" } })).toBe(4);
 
-    await changeStatus({ id: a.id, action: "cancel", reason: "Цаг өөрчилсөн" }, { id: manager.id, role: "MANAGER" }, NOW);
+    await changeStatus({ id: a.id, action: "cancel", category: "CUSTOMER", reason: "Цаг өөрчилсөн" }, { id: manager.id, role: "MANAGER" }, NOW);
     await runDue(NOW);
     expect((await readdir(dir)).length).toBe(before + 3);
   });

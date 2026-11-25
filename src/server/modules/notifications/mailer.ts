@@ -7,7 +7,9 @@ import path from "node:path";
 import { Resend } from "resend";
 import { getEmailSettings } from "@/server/modules/settings/pos-settings";
 
-export type OutgoingEmail = { id: string; to: string; subject: string; html: string; text: string };
+export type Attachment = { filename: string; content: Uint8Array; contentType?: string };
+/** `to` — нэг хаяг эсвэл жагсаалт (нягтлангийн тайлан олон хүлээн авагчтай) */
+export type OutgoingEmail = { id: string; to: string | string[]; subject: string; html: string; text: string; attachments?: Attachment[] };
 export type SendResult = { provider: "resend" | "file"; ref: string };
 
 let client: Resend | null = null;
@@ -28,7 +30,17 @@ export async function sendEmail(mail: OutgoingEmail): Promise<SendResult> {
   if (key && from) {
     client ??= new Resend(key);
     const { data, error } = await client.emails.send(
-      { from, to: mail.to, subject: mail.subject, html: mail.html, text: mail.text, ...(replyTo ? { replyTo } : {}) },
+      {
+        from,
+        to: mail.to,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+        ...(replyTo ? { replyTo } : {}),
+        ...(mail.attachments?.length
+          ? { attachments: mail.attachments.map((a) => ({ filename: a.filename, content: Buffer.from(a.content), contentType: a.contentType })) }
+          : {}),
+      },
       // Давтан оролдлогод давхар илгээхгүй
       { idempotencyKey: mail.id },
     );
@@ -38,7 +50,10 @@ export async function sendEmail(mail: OutgoingEmail): Promise<SendResult> {
   const dir = emailDir();
   await mkdir(dir, { recursive: true });
   const file = path.join(dir, `${mail.id.replace(/[^\w.-]/g, "_")}.html`);
-  const header = `<!-- to: ${mail.to.replace(/--/g, "")} | subject: ${mail.subject.replace(/--/g, "")} -->\n`;
+  const to = Array.isArray(mail.to) ? mail.to.join(", ") : mail.to;
+  const header = `<!-- to: ${to.replace(/--/g, "")} | subject: ${mail.subject.replace(/--/g, "")} -->\n`;
   await writeFile(file, header + mail.html, "utf8");
+  // Хавсралт: <id>__<filename> (dev-д нээж шалгахад)
+  for (const a of mail.attachments ?? []) await writeFile(`${file.slice(0, -5)}__${a.filename.replace(/[^\w.-]/g, "_")}`, a.content);
   return { provider: "file", ref: file };
 }

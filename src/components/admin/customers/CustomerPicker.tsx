@@ -8,8 +8,12 @@ import { useServerAction } from "@/components/admin/use-action";
 import { Button, Card, Checkbox, Field, Input } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { createCustomerAction, posSearchCustomers } from "@/server/actions/pos";
+import { DuplicatePhoneHint } from "./DuplicatePhoneHint";
 
 const s = t.admin.pos;
+const C = t.admin.customers;
+/** Search starts at 3 characters (same as the server — CUSTOMER_SEARCH_MIN) */
+const MIN = 3;
 
 export type PickedCustomer = { id: string; name: string; phone: string; email: string | null };
 
@@ -27,13 +31,13 @@ export function CustomerPicker({
   plain?: boolean;
 }) {
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<PickedCustomer[]>([]);
+  const [results, setResults] = useState<PickedCustomer[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", email: "", marketingConsent: false });
   const create = useServerAction(createCustomerAction);
 
   useEffect(() => {
-    if (q.trim().length < 2) return;
+    if (q.trim().length < MIN) return;
     let stale = false;
     const id = setTimeout(async () => {
       const res = await posSearchCustomers(q);
@@ -83,17 +87,19 @@ export function CustomerPicker({
       ) : (
         <div className="space-y-2">
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={s.customerSearch} aria-label={s.customerSearch} />
-          {q.trim().length >= 2 && results.length > 0 && (
+          {q.trim().length > 0 && q.trim().length < MIN && <p className="text-[13px] text-ink-soft">{C.searchHint}</p>}
+          {q.trim().length >= MIN && results && results.length > 0 && (
             <ul className="divide-y divide-hairline overflow-hidden rounded-xl border border-hairline">
               {results.map((c) => (
                 <li key={c.id}>
-                  <button type="button" className="min-h-11 w-full px-4 py-2.5 text-left text-[15px] hover:bg-canvas" onClick={() => (onChange(c), setQ(""), setResults([]))}>
+                  <button type="button" className="min-h-11 w-full px-4 py-2.5 text-left text-[15px] hover:bg-canvas" onClick={() => (onChange(c), setQ(""), setResults(null))}>
                     {c.name} <span className="text-ink-soft">· {c.phone}</span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
+          {q.trim().length >= MIN && results && results.length === 0 && <p className="text-[13px] text-ink-soft">{C.noResults}</p>}
           {extra}
           <div className="flex items-center justify-between">
             <span className="text-[13px] text-ink-soft">{s.walkIn}</span>
@@ -124,6 +130,15 @@ export function CustomerPicker({
           <Field label={s.phone} htmlFor="nc-phone" error={create.fieldErrors.phone}>
             <Input id="nc-phone" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Field>
+          <DuplicatePhoneHint
+            phone={form.phone}
+            onSelect={(c) => {
+              onChange(c);
+              setCreating(false);
+              setForm({ name: "", phone: "", email: "", marketingConsent: false });
+              setQ("");
+            }}
+          />
           <Field label={s.email} htmlFor="nc-email" hint={s.emailHint} error={create.fieldErrors.email}>
             <Input id="nc-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </Field>

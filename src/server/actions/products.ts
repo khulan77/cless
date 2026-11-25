@@ -53,6 +53,16 @@ export async function saveProduct(input: ProductInput) {
         if (owner && owner.id !== v.id) skuErrors[`variants.${i}.sku`] = ["Энэ SKU өөр хувилбарт ашиглагдсан."];
       });
       if (Object.keys(skuErrors).length) throw new UserError("SKU давхардсан байна.", skuErrors);
+      const barcodes = data.variants.map((v) => v.barcode).filter((b): b is string => Boolean(b));
+      if (barcodes.length) {
+        const owners = await tx.variant.findMany({ where: { barcode: { in: barcodes } }, select: { id: true, barcode: true } });
+        const errors: Record<string, string[]> = {};
+        data.variants.forEach((v, i) => {
+          const owner = owners.find((o) => o.barcode === v.barcode);
+          if (owner && owner.id !== v.id) errors[`variants.${i}.barcode`] = ["Энэ баркод өөр хувилбарт ашиглагдсан."];
+        });
+        if (Object.keys(errors).length) throw new UserError("Баркод давхардсан байна.", errors);
+      }
 
       const fields = {
         name: data.name,
@@ -144,6 +154,7 @@ export async function saveProduct(input: ProductInput) {
       for (const [sortOrder, v] of data.variants.entries()) {
         const vf = {
           sku: v.sku,
+          barcode: v.barcode,
           size: v.size,
           price: v.price,
           costPrice: v.costPrice,

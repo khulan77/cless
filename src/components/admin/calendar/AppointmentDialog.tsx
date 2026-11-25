@@ -10,6 +10,8 @@ import { useServerAction } from "@/components/admin/use-action";
 import { Badge, Button, Field, Input, Select, Textarea } from "@/components/admin/ui";
 import type { ApptStatus } from "@/generated/prisma/enums";
 import { t } from "@/i18n";
+import { CancelReasonFields, cancelReady, emptyCancel, type CancelValue } from "./CancelReasonFields";
+import { ExtraTimePicker } from "./ExtraTimePicker";
 import { formatMNT } from "@/lib/money";
 import { formatTime, ubDateKey } from "@/lib/time";
 import { apptCreate, apptSlots, apptStatus, apptUpdate } from "@/server/actions/appointments";
@@ -33,6 +35,8 @@ export type ApptDialogInit = {
   /** "HH:MM" — preselect this slot if it is available */
   time?: string;
   roomId?: string | null;
+  /** "+ Нэмэлт цаг" in minutes */
+  extraMin?: number;
   source?: Source;
   note?: string | null;
 };
@@ -40,11 +44,10 @@ export type ApptDialogInit = {
 type SlotsResult = Extract<Awaited<ReturnType<typeof apptSlots>>, { ok: true }>["data"];
 type Slot = SlotsResult["slots"][number];
 
-export function AppointmentDialog({ open, init, services, cancelReasons, canCancel, onClose }: {
+export function AppointmentDialog({ open, init, services, canCancel, onClose }: {
   open: boolean;
   init: ApptDialogInit | null;
   services: CalService[];
-  cancelReasons: string[];
   canCancel: boolean;
   onClose: () => void;
 }) {
@@ -56,12 +59,12 @@ export function AppointmentDialog({ open, init, services, cancelReasons, canCanc
       badge={init?.status ? <Badge tone={statusTone(init.status)}>{t.admin.apptStatus[init.status]}</Badge> : undefined}
       wide
     >
-      {init && <DialogBody key={JSON.stringify(init)} init={init} services={services} cancelReasons={cancelReasons} canCancel={canCancel} onClose={onClose} />}
+      {init && <DialogBody key={JSON.stringify(init)} init={init} services={services} canCancel={canCancel} onClose={onClose} />}
     </Dialog>
   );
 }
 
-function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { init: ApptDialogInit; services: CalService[]; cancelReasons: string[]; canCancel: boolean; onClose: () => void }) {
+function DialogBody({ init, services, canCancel, onClose }: { init: ApptDialogInit; services: CalService[]; canCancel: boolean; onClose: () => void }) {
   const router = useRouter();
   const [customer, setCustomer] = useState<PickedCustomer | null>(init.customer ?? null);
   const [serviceId, setServiceId] = useState(init.serviceId ?? "");
@@ -71,10 +74,11 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
   const [loading, setLoading] = useState(false);
   const [picked, setPicked] = useState<Slot | null>(null);
   const [roomId, setRoomId] = useState<string>(init.roomId ?? "");
+  const [extraMin, setExtraMin] = useState(init.extraMin ?? 0);
   const [source, setSource] = useState<Source>(init.source ?? "PHONE");
   const [note, setNote] = useState(init.note ?? "");
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [reason, setReason] = useState("");
+  const [cancel, setCancel] = useState<CancelValue>(emptyCancel);
   const create = useServerAction(apptCreate);
   const update = useServerAction(apptUpdate);
   const status = useServerAction(apptStatus);
@@ -86,7 +90,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
     let stale = false;
     const run = async () => {
       setLoading(true);
-      const res = await apptSlots({ serviceId, date, staffId: staffId || null, excludeId: init.id ?? null });
+      const res = await apptSlots({ serviceId, date, staffId: staffId || null, excludeId: init.id ?? null, extraMin });
       if (stale) return;
       setLoading(false);
       if (!res.ok) return setResult(null);
@@ -101,7 +105,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
     return () => {
       stale = true;
     };
-  }, [serviceId, date, staffId, init.id, init.time, init.date]);
+  }, [serviceId, date, staffId, extraMin, init.id, init.time, init.date]);
 
   // "Anyone": one chip per time (first free staff member)
   const chips = useMemo(() => {
@@ -139,6 +143,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
       staffId: picked.staffId,
       roomId: needsRoom ? roomId || picked.roomId : null,
       startsAt: picked.startsAt,
+      extraMin,
       source,
       note: note || null,
     };
@@ -149,7 +154,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
     } else if (res.code === "APPT_OVERLAP" || res.code?.startsWith("SLOT_")) {
       // The slot was just taken — reload the free slots
       setPicked(null);
-      const again = await apptSlots({ serviceId, date, staffId: staffId || null, excludeId: init.id ?? null });
+      const again = await apptSlots({ serviceId, date, staffId: staffId || null, excludeId: init.id ?? null, extraMin });
       if (again.ok) setResult(again.data);
     }
   };
@@ -246,6 +251,8 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
         </fieldset>
       )}
 
+      {serviceId && <ExtraTimePicker value={extraMin} onChange={setExtraMin} />}
+
       <div className="grid gap-4 sm:grid-cols-2">
         {needsRoom && (
           <Field label={d.room} htmlFor="ad-room" error={save.fieldErrors.roomId}>
@@ -307,10 +314,10 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
           confirmLabel={c.actions.cancel}
           danger
           pending={status.pending}
-          confirmDisabled={!reason}
-          onClose={() => (setCancelOpen(false), setReason(""))}
+          confirmDisabled={!cancelReady(cancel)}
+          onClose={() => (setCancelOpen(false), setCancel(emptyCancel))}
           onConfirm={() =>
-            void status.run({ id: init.id!, action: "cancel", reason }, {
+            void status.run({ id: init.id!, action: "cancel", category: cancel.category || null, reason: cancel.note || null }, {
               onSuccess: () => {
                 setCancelOpen(false);
                 onClose();
@@ -320,16 +327,7 @@ function DialogBody({ init, services, cancelReasons, canCancel, onClose }: { ini
           }
         >
           <p className="text-[15px] text-ink-soft">{c.cancelExplain}</p>
-          <Field label={c.reason} htmlFor="dlg-cancel-reason">
-            <Select id="dlg-cancel-reason" value={reason} onChange={(e) => setReason(e.target.value)} autoFocus>
-              <option value="">{c.chooseReason}</option>
-              {cancelReasons.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <CancelReasonFields id="dlg-cancel" value={cancel} onChange={setCancel} />
         </ConfirmDialog>
       )}
     </div>

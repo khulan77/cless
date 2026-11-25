@@ -1,27 +1,42 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CustomerFormButton } from "@/components/admin/customers/CustomerForm";
+import { CustomerNotes } from "@/components/admin/customers/CustomerNotes";
 import { ResendEmailButton } from "@/components/admin/sales/SaleActions";
-import { Badge, Card, PageHeader, btnClass } from "@/components/admin/ui";
+import { Badge, Card, EmptyState, PageHeader, SegmentedTabs, Table, btnClass, tdClass, thClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { saleStatusTone } from "@/lib/sale-status";
-import { ubDateKey } from "@/lib/time";
+import { formatDateLabel, formatTime, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
+import { customerHistory } from "@/server/modules/customers/history";
+import { noteViews } from "@/server/modules/customers/notes";
+import { photoPanel } from "@/server/modules/visits/photos";
 import { customerProfile } from "@/server/modules/customers/service";
 import { concernNames } from "@/server/modules/visits/service";
+import { VisitPhotos } from "@/components/admin/visits/VisitPhotos";
 import { VisitSummary } from "@/components/admin/visits/VisitSummary";
 
 export const metadata = { title: "Үйлчлүүлэгч" };
 export const instant = false;
 
-export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
+const H = t.admin.customers.history;
+const TABS = ["services", "products", "visits", "photos", "notes", "sales"] as const;
+type Tab = (typeof TABS)[number];
+
+export default async function CustomerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const user = await requirePagePermission("customer:read");
   const { id } = await params;
-  const profile = await customerProfile(id);
+  const tab: Tab = (TABS as readonly string[]).includes((await searchParams).tab ?? "") ? ((await searchParams).tab as Tab) : "services";
+  const [profile, history, notes, photos] = await Promise.all([
+    customerProfile(id),
+    customerHistory(id),
+    tab === "notes" ? noteViews(id, user) : null,
+    tab === "photos" && can(user.role, "visit-photo:read") ? photoPanel(id, user) : null,
+  ]);
   if (!profile) notFound();
-  const { customer: c, visits, sales, totalSpent, paidSalesCount } = profile;
+  const { customer: c, visits, sales } = profile;
   const slugs = [...new Set(visits.flatMap((v) => v.concerns))];
   const concernName = new Map((await concernNames(slugs)).map((name, i) => [slugs[i]!, name]));
 
@@ -56,23 +71,104 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           </>
         }
       />
-      <div className="mb-5 grid gap-3 sm:grid-cols-4">
+      {/* Net of refunds (same rules as the reports) */}
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
-          ["Нийт зарцуулалт", formatMNT(totalSpent)],
-          ["Төлсөн борлуулалт", String(paidSalesCount)],
-          ["Айлчлал", String(visits.length)],
-          ["Арьсны төрөл", c.skinType ? t.admin.skinTypes[c.skinType] : "—"],
-        ].map(([k, v]) => (
-          <div key={k} className="rounded-2xl border border-hairline bg-white p-4">
+          [H.totalProduct, formatMNT(history.totals.product)],
+          [H.totalService, formatMNT(history.totals.service)],
+          [H.total, formatMNT(history.totals.total)],
+          [H.visits, String(visits.length)],
+          [H.skinType, c.skinType ? t.admin.skinTypes[c.skinType] : "—"],
+        ].map(([k, v], i) => (
+          <div key={k} className={`rounded-2xl border p-4 ${i === 2 ? "border-navy/20 bg-navy/[0.03]" : "border-hairline bg-white"}`}>
             <p className="text-[13px] text-ink-soft">{k}</p>
-            <p className="mt-1.5 text-[20px] font-light tabular-nums">{v}</p>
+            <p className={`mt-1.5 text-[20px] tabular-nums ${i === 2 ? "font-semibold" : "font-light"}`}>{v}</p>
           </div>
         ))}
       </div>
       {c.notes && <p className="mb-5 whitespace-pre-line rounded-2xl border border-hairline bg-white p-4 text-[14px]">{c.notes}</p>}
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card title="Айлчлалууд">
+      <div className="mb-4">
+        <SegmentedTabs
+          label={H.tabsLabel}
+          value={tab}
+          items={TABS.map((k) => ({ value: k, label: H.tabs[k], href: `/admin/customers/${c.id}?tab=${k}` }))}
+        />
+      </div>
+
+      {tab === "services" &&
+        (history.services.length === 0 ? (
+          <EmptyState title={H.noServices} />
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <th className={thClass}>{H.date}</th>
+                <th className={thClass}>{H.service}</th>
+                <th className={thClass}>{H.staff}</th>
+                <th className={`${thClass} text-right`}>{H.amount}</th>
+                <th className={thClass}>{H.status}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.services.map((r) => (
+                <tr key={r.appointmentId ?? `${r.saleId}-${r.service}`}>
+                  <td className={`${tdClass} whitespace-nowrap tabular-nums`}>
+                    {formatDateLabel(r.at)} {formatTime(r.at)}
+                  </td>
+                  <td className={tdClass}>{r.service}</td>
+                  <td className={tdClass}>{r.staff ?? "—"}</td>
+                  <td className={`${tdClass} text-right tabular-nums`}>{r.amount === null ? "—" : formatMNT(r.amount)}</td>
+                  <td className={tdClass}>
+                    {r.status === "SOLD" ? <Badge tone="green">{H.sold}</Badge> : <Badge tone={r.status === "DONE" ? "green" : r.status === "CANCELLED" || r.status === "NO_SHOW" ? "red" : "neutral"}>{t.admin.apptStatus[r.status as keyof typeof t.admin.apptStatus]}</Badge>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ))}
+
+      {tab === "products" &&
+        (history.products.length === 0 ? (
+          <EmptyState title={H.noProducts} />
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <th className={thClass}>{H.date}</th>
+                <th className={thClass}>{H.code}</th>
+                <th className={thClass}>{H.product}</th>
+                <th className={thClass}>{H.size}</th>
+                <th className={`${thClass} text-right`}>{H.qty}</th>
+                <th className={`${thClass} text-right`}>{H.amount}</th>
+                <th className={thClass}>{H.soldBy}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.products.map((r, i) => (
+                <tr key={`${r.saleId}-${i}`}>
+                  <td className={`${tdClass} whitespace-nowrap tabular-nums`}>
+                    <Link href={`/admin/sales/${r.saleId}`} className="hover:underline">
+                      {formatDateLabel(r.at)}
+                    </Link>
+                  </td>
+                  <td className={`${tdClass} font-mono text-[13px]`}>
+                    {r.sku ?? "—"}
+                    {r.barcode && <span className="block text-ink-soft">{r.barcode}</span>}
+                  </td>
+                  <td className={tdClass}>{r.name}</td>
+                  <td className={tdClass}>{r.size ?? "—"}</td>
+                  <td className={`${tdClass} text-right tabular-nums`}>{r.qty}</td>
+                  <td className={`${tdClass} text-right tabular-nums`}>{formatMNT(r.amount)}</td>
+                  <td className={tdClass}>{r.staff ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ))}
+
+      {tab === "visits" && (
+        <Card title={H.tabs.visits}>
           {visits.length === 0 ? (
             <p className="text-[14px] text-ink-soft">Айлчлал алга.</p>
           ) : (
@@ -108,7 +204,26 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             </ul>
           )}
         </Card>
-        <Card title="Борлуулалт">
+      )}
+
+      {tab === "photos" && photos && (
+        <VisitPhotos
+          customerId={c.id}
+          consented={photos.consented}
+          groups={photos.groups}
+          targets={photos.targets.map((x) => ({ appointmentId: x.appointmentId, label: `${formatDateLabel(x.startsAt)} ${formatTime(x.startsAt)} · ${x.service}` }))}
+          canWrite={can(user.role, "visit-photo:write")}
+        />
+      )}
+
+      {tab === "notes" && notes && (
+        <Card title={t.admin.notes.title} description={t.admin.notes.rule}>
+          <CustomerNotes customerId={c.id} notes={notes} canWrite={can(user.role, "customer-note:write")} />
+        </Card>
+      )}
+
+      {tab === "sales" && (
+        <Card title={H.tabs.sales}>
           {sales.length === 0 ? (
             <p className="text-[14px] text-ink-soft">Борлуулалт алга.</p>
           ) : (
@@ -126,7 +241,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             </ul>
           )}
         </Card>
-      </div>
+      )}
     </>
   );
 }

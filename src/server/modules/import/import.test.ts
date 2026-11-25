@@ -14,6 +14,7 @@ const emptyCtx = (over: Partial<ImportContext> = {}): ImportContext => ({
   collections: COLLECTIONS,
   products: new Map(),
   skuOwners: new Map(),
+  barcodeOwners: new Map(),
   ...over,
 });
 
@@ -42,8 +43,8 @@ const existing = (over: Partial<ExistingProduct> = {}): ExistingProduct => ({
   sortOrder: 5,
   images: [{ id: "i1", url: "/uploads/products/a.jpg", alt: "a" }],
   variants: [
-    { id: "v1", sku: "MQ-50", size: "50 мл", price: 100000, costPrice: 50000, lowStockAt: 3, isActive: true },
-    { id: "v2", sku: "MQ-100", size: "100 мл", price: 180000, costPrice: 90000, lowStockAt: 3, isActive: true },
+    { id: "v1", sku: "MQ-50", barcode: "4600000000050", size: "50 мл", price: 100000, costPrice: 50000, lowStockAt: 3, isActive: true },
+    { id: "v2", sku: "MQ-100", barcode: null, size: "100 мл", price: 180000, costPrice: 90000, lowStockAt: 3, isActive: true },
   ],
   collectionIds: ["c-masks", "c-acne"],
   relations: [{ relatedId: "p9", type: "SIMILAR" }],
@@ -139,6 +140,18 @@ describe("buildImportPlan — шалгалт", () => {
     expect(p.products[1]!.errors).toContain("Хувилбар 3-р мөр: SKU «X-1» давхардсан (2-р мөртэй)");
   });
 
+  it("баркод: зайг хасна; давхар, буруу, өөр хувилбарт ашиглагдсан", async () => {
+    const ok = await plan([product("a")], [{ ...variant("a", "X-1"), barcode: "460 0000 1234 56" }]);
+    expect(ok.products[0]!.errors).toEqual([]);
+    expect(ok.products[0]!.input!.variants[0]!.barcode).toBe("4600000123456");
+    const dup = await plan([product("a"), product("b")], [{ ...variant("a", "X-1"), barcode: "123456" }, { ...variant("b", "X-2"), barcode: "123456" }]);
+    expect(dup.products[1]!.errors.join()).toContain("баркод «123456» давхардсан");
+    const bad = await plan([product("a")], [{ ...variant("a", "X-1"), barcode: "12" }]);
+    expect(bad.products[0]!.errors.join()).toContain("Баркод");
+    const owned = await plan([product("a")], [{ ...variant("a", "X-1"), barcode: "123456" }], emptyCtx({ barcodeOwners: new Map([["123456", "OTHER-SKU"]]) }));
+    expect(owned.products[0]!.errors.join()).toContain("өөр хувилбарт (OTHER-SKU)");
+  });
+
   it("SKU өөр бүтээгдэхүүнд DB-д ашиглагдсан", async () => {
     const p = await plan([product("a")], [variant("a", "X-1")], emptyCtx({ skuOwners: new Map([["X-1", "other"]]) }));
     expect(p.products[0]!.errors.join()).toContain("өөр бүтээгдэхүүнд («other»)");
@@ -206,8 +219,9 @@ describe("buildImportPlan — байгаа бүтээгдэхүүн", () => {
       collectionIds: ["c-masks", "c-acne"],
     });
     expect(prod.input!.variants).toEqual([
-      { id: "v1", sku: "MQ-50", size: "50 мл", price: 120000, costPrice: 50000, lowStockAt: 3, isActive: true },
-      { id: "v2", sku: "MQ-100", size: "100 мл", price: 180000, costPrice: 90000, lowStockAt: 3, isActive: true },
+      // Баркод Excel-д хоосон — хуучин нь хэвээр
+      { id: "v1", sku: "MQ-50", barcode: "4600000000050", size: "50 мл", price: 120000, costPrice: 50000, lowStockAt: 3, isActive: true },
+      { id: "v2", sku: "MQ-100", barcode: null, size: "100 мл", price: 180000, costPrice: 90000, lowStockAt: 3, isActive: true },
     ]);
     // байгаа хувилбарын үлдэгдэлд хүрэхгүй
     expect(prod.variants[0]!.initialStock).toBe(0);

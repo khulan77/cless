@@ -7,7 +7,7 @@ export type NavIcon =
   | "people" | "customers" | "inquiries"
   | "shop" | "product" | "stock" | "collection" | "content"
   | "spa" | "service" | "staffSchedule" | "room"
-  | "settings" | "salon" | "storefront" | "discount" | "email" | "payments" | "users" | "system";
+  | "settings" | "salon" | "storefront" | "discount" | "email" | "accountant" | "payments" | "users" | "system";
 
 export type NavLeaf = {
   href: string;
@@ -31,6 +31,8 @@ export const ADMIN_NAV: NavEntry[] = [
   { href: "/admin/calendar", label: n.calendar, icon: "calendar", permission: "appointment:read" },
   // STAFF: their own schedule + account (no groups)
   { href: "/admin/schedule", label: n.schedule, icon: "schedule", permission: "schedule:own", hiddenWith: "schedule:all" },
+  { href: "/admin/me/customers", label: n.myCustomers, icon: "customers", permission: "me:read", hiddenWith: "schedule:all" },
+  { href: "/admin/me/sales", label: n.mySales, icon: "orders", permission: "me:read", hiddenWith: "schedule:all" },
   { href: "/admin/account", label: n.account, icon: "account", permission: "schedule:own", hiddenWith: "schedule:all" },
   {
     id: "cash",
@@ -69,7 +71,6 @@ export const ADMIN_NAV: NavEntry[] = [
     children: [
       { href: "/admin/services", label: n.services, icon: "service", permission: "service:write" },
       { href: "/admin/staff-schedules", label: n.staffSchedules, icon: "staffSchedule", permission: "staff-schedule:write" },
-      { href: "/admin/rooms", label: n.rooms, icon: "room", permission: "room:write" },
     ],
   },
   {
@@ -81,8 +82,10 @@ export const ADMIN_NAV: NavEntry[] = [
       { href: "/admin/settings/salon", label: n.settingsSalon, icon: "salon", permission: "settings:write" },
       { href: "/admin/settings/shop", label: n.settingsShop, icon: "storefront", permission: "settings:write" },
       { href: "/admin/settings/pos", label: n.settingsPos, icon: "discount", permission: "settings:write" },
+      { href: "/admin/rooms", label: n.rooms, icon: "room", permission: "room:write" },
       { href: "/admin/settings/email", label: n.settingsEmail, icon: "email", permission: "settings:write" },
-      { href: "/admin/settings/payments", label: n.settingsPayments, icon: "payments", permission: "settings:write" },
+      { href: "/admin/settings/accountant", label: n.settingsAccountant, icon: "accountant", permission: "report:send" },
+      { href: "/admin/settings/payments", label: n.settingsPayments, icon: "payments", permission: "integration:write" },
       { href: "/admin/users", label: n.users, icon: "users", permission: "user:write" },
       { href: "/admin/system", label: n.system, icon: "system", permission: "settings:write" },
     ],

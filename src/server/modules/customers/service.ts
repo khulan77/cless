@@ -43,9 +43,12 @@ export const customerSchema = z.object({
 });
 export type CustomerInput = z.input<typeof customerSchema>;
 
+/** Search starts at this many characters (name or phone) */
+export const CUSTOMER_SEARCH_MIN = 3;
+
 export async function searchCustomers(q: string, take = 10) {
   const term = q.trim();
-  if (term.length < 2) return [];
+  if (term.length < CUSTOMER_SEARCH_MIN) return [];
   const digits = term.replace(/\D/g, "");
   return db.customer.findMany({
     where: {
@@ -59,6 +62,14 @@ export async function searchCustomers(q: string, take = 10) {
     take,
     select: { id: true, name: true, phone: true, email: true, skinType: true },
   });
+}
+
+/** Existing customer with this phone (any format: "9911-0001", "+976 9911 0001") — for the duplicate hint */
+export async function findCustomerByPhone(raw: string, excludeId?: string) {
+  const phone = normalizePhone(raw);
+  if (!phone) return null;
+  const c = await db.customer.findUnique({ where: { phone }, select: { id: true, name: true, phone: true, email: true } });
+  return c && c.id !== excludeId ? c : null;
 }
 
 export async function createCustomer(raw: CustomerInput, actorId: string) {

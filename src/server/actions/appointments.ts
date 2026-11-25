@@ -18,7 +18,7 @@ import {
   saveSchedule,
   saveStaffServices,
 } from "@/server/modules/appointments/schedules";
-import type { ApptInput, ApptMoveInput, ApptStatusInput, ApptUpdateInput, SlotQuery } from "@/server/modules/appointments/schema";
+import type { ApptExtraInput, ApptInput, ApptMoveInput, ApptStatusInput, ApptUpdateInput, SlotQuery } from "@/server/modules/appointments/schema";
 import {
   changeStatus,
   createAppointment,
@@ -28,6 +28,7 @@ import {
   searchFreeSlots,
   updateAppointment,
   updateApptNote,
+  setExtraTime,
 } from "@/server/modules/appointments/service";
 import { runAction } from "./result";
 
@@ -100,6 +101,15 @@ export async function apptMove(input: ApptMoveInput) {
     refreshCalendar();
     return { id: a.id, version: a.version };
   }, "Цаг зөөгдлөө.");
+}
+
+/** "+ Нэмэлт цаг" — календарийн дэлгэрэнгүйгээс */
+export async function apptExtraTime(input: ApptExtraInput) {
+  return runAction(async () => {
+    const user = await requirePermission("appointment:write");
+    await setExtraTime(input, user);
+    revalidatePath("/admin/calendar");
+  }, "Нэмэлт цаг хадгалагдлаа.");
 }
 
 export async function apptStatus(input: ApptStatusInput) {

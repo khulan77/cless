@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { inventoryAccess, inventoryVariantSelect, redactCost, stockMovementSelect } from "./visibility";
 
 describe("inventory cost visibility", () => {
-  it("MANAGER reads stock but never selects cost", () => {
-    expect(inventoryAccess("MANAGER")).toEqual({ canRead: true, canWrite: false, canSeeCost: false });
-    expect(inventoryVariantSelect("MANAGER").costPrice).toBe(false);
-    expect(stockMovementSelect("MANAGER").unitCost).toBe(false);
+  it("MANAGER reads, writes and sees cost (11/24: same as ADMIN)", () => {
+    expect(inventoryAccess("MANAGER")).toEqual({ canRead: true, canWrite: true, canSeeCost: true });
+    expect(inventoryVariantSelect("MANAGER").costPrice).toBe(true);
+    expect(stockMovementSelect("MANAGER").unitCost).toBe(true);
   });
 
   it("ADMIN reads, writes and sees cost", () => {
@@ -21,12 +21,12 @@ describe("inventory cost visibility", () => {
 
   it("redacts cost fields for roles without cost:read", () => {
     const row = { sku: "X", costPrice: 40000, unitCost: 39000 };
-    expect(redactCost(row, "MANAGER")).toEqual({ sku: "X", costPrice: null, unitCost: null });
     expect(redactCost(row, "STAFF")).toEqual({ sku: "X", costPrice: null, unitCost: null });
+    expect(redactCost(row, "MANAGER")).toEqual(row);
     expect(redactCost(row, "ADMIN")).toEqual(row);
   });
 
   it("does not add cost keys that were not selected", () => {
-    expect(redactCost({ sku: "X" }, "MANAGER")).toEqual({ sku: "X" });
+    expect(redactCost({ sku: "X" }, "STAFF")).toEqual({ sku: "X" });
   });
 });

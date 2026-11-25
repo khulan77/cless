@@ -204,6 +204,14 @@ enum JobType {
   APPT_REMINDER
   /// Сайтаас ирсэн нөөцлүүлэх хүсэлт → ресепшнд имэйл
   INQUIRY_EMAIL
+  /// Өдрийн тайлан → нягтлан (Excel хавсралттай)
+  ACCOUNTANT_REPORT
+}
+
+enum DispatchStatus {
+  PENDING
+  SENT
+  FAILED
 }
 
 /// Сайтын "Салонд захиалах" → нөөцлүүлэх хүсэлтийн төлөв
@@ -241,30 +249,34 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  staffAppointments   Appointment[]    @relation("ApptStaff")
-  createdAppointments Appointment[]    @relation("ApptCreatedBy")
-  conductedVisits     Visit[]
-  createdSales        Sale[]           @relation("SaleCreatedBy")
-  closedSales         Sale[]           @relation("SaleClosedBy")
-  discountApprovals   Sale[]           @relation("SaleDiscountApprovedBy")
-  saleItems           SaleItem[]
-  createdPayments     Payment[]        @relation("PaymentCreatedBy")
-  confirmedPayments   Payment[]        @relation("PaymentConfirmedBy")
-  cashMovements       CashMovement[]
-  requestedRefunds    Refund[]         @relation("RefundRequestedBy")
-  approvedRefunds     Refund[]         @relation("RefundApprovedBy")
-  priceChanges        PriceHistory[]
-  stockMovements      StockMovement[]
-  openedShifts        CashShift[]      @relation("ShiftOpenedBy")
-  closedShifts        CashShift[]      @relation("ShiftClosedBy")
-  commissionRules     CommissionRule[]
-  payrollLines        PayrollLine[]
-  auditLogs           AuditLog[]
-  schedules           StaffSchedule[]  @relation("StaffSchedules")
-  timeOffs            StaffTimeOff[]   @relation("StaffTimeOffs")
-  createdTimeOffs     StaffTimeOff[]   @relation("TimeOffCreatedBy")
-  services            ServiceStaff[]   @relation("ServiceStaff")
-  handledInquiries    ProductInquiry[] @relation("InquiryHandledBy")
+  staffAppointments     Appointment[]    @relation("ApptStaff")
+  createdAppointments   Appointment[]    @relation("ApptCreatedBy")
+  cancelledAppointments Appointment[]    @relation("ApptCancelledBy")
+  customerNotes         CustomerNote[]   @relation("CustomerNoteAuthor")
+  visitPhotos           VisitPhoto[]     @relation("VisitPhotoCreatedBy")
+  reportDispatches      ReportDispatch[] @relation("ReportDispatchSentBy")
+  conductedVisits       Visit[]
+  createdSales          Sale[]           @relation("SaleCreatedBy")
+  closedSales           Sale[]           @relation("SaleClosedBy")
+  discountApprovals     Sale[]           @relation("SaleDiscountApprovedBy")
+  saleItems             SaleItem[]
+  createdPayments       Payment[]        @relation("PaymentCreatedBy")
+  confirmedPayments     Payment[]        @relation("PaymentConfirmedBy")
+  cashMovements         CashMovement[]
+  requestedRefunds      Refund[]         @relation("RefundRequestedBy")
+  approvedRefunds       Refund[]         @relation("RefundApprovedBy")
+  priceChanges          PriceHistory[]
+  stockMovements        StockMovement[]
+  openedShifts          CashShift[]      @relation("ShiftOpenedBy")
+  closedShifts          CashShift[]      @relation("ShiftClosedBy")
+  commissionRules       CommissionRule[]
+  payrollLines          PayrollLine[]
+  auditLogs             AuditLog[]
+  schedules             StaffSchedule[]  @relation("StaffSchedules")
+  timeOffs              StaffTimeOff[]   @relation("StaffTimeOffs")
+  createdTimeOffs       StaffTimeOff[]   @relation("TimeOffCreatedBy")
+  services              ServiceStaff[]   @relation("ServiceStaff")
+  handledInquiries      ProductInquiry[] @relation("InquiryHandledBy")
 
   @@index([role, isActive])
 }
@@ -329,6 +341,10 @@ model Variant {
   id         String   @id @default(cuid())
   productId  String
   sku        String   @unique
+  /// Баркод (EAN/UPC эсвэл дотоод код) — POS-ийн баркод уншигч
+  barcode    String?  @unique
+  /// Smart Logic-ийн барааны код (интеграц — дараагийн шат)
+  slItemId   String?
   size       String
   price      Int
   costPrice  Int      @default(0)
@@ -504,6 +520,8 @@ model Service {
   /// Цэвэрлэгээ/бэлтгэлийн хугацаа — дараагийн цаг эхлэх хүртэл
   bufferMin        Int      @default(0)
   requiresRoom     Boolean  @default(false)
+  /// Smart Logic-ийн үйлчилгээний код (интеграц — дараагийн шат)
+  slItemId         String?
   /// Цагийн календарьт захиалж болох эсэх
   bookable         Boolean  @default(true)
   /// Сайтад харагдах эсэх (дотоод үйлчилгээ = false)
@@ -562,6 +580,8 @@ model Customer {
   notes            String?
   /// Маркетингийн имэйл (айлчлалын үйлчилгээний имэйлд хамаарахгүй)
   marketingConsent Boolean   @default(false)
+  /// Өмнө/дараах зураг авахыг зөвшөөрсөн огноо (A9) — null бол зураг авахгүй
+  photoConsentAt   DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -570,6 +590,8 @@ model Customer {
   sales        Sale[]
   giftCards    GiftCard[]
   wallet       Wallet?
+  notesLog     CustomerNote[]
+  photos       VisitPhoto[]
 
   @@index([email])
   @@index([name])
@@ -584,42 +606,52 @@ model Customer {
 ///   WHERE status NOT IN ('CANCELLED','NO_SHOW')
 /// POS-тэй холбоо: Sale.appointmentId (идэвхтэй нэг л Sale — partial unique index), Visit.appointmentId.
 model Appointment {
-  id            String     @id @default(cuid())
-  branchId      String
-  customerId    String
+  id             String     @id @default(cuid())
+  branchId       String
+  customerId     String
   /// Үйлчилгээ хийх хүн (STAFF/MANAGER/ADMIN — isBookable)
-  staffId       String
-  serviceId     String
-  roomId        String?
-  startsAt      DateTime   @db.Timestamptz(3)
+  staffId        String
+  serviceId      String
+  roomId         String?
+  startsAt       DateTime   @db.Timestamptz(3)
   /// startsAt + service.durationMin (buffer ОРОХГҮЙ)
-  endsAt        DateTime   @db.Timestamptz(3)
-  /// endsAt + service.bufferMin — давхцлын constraint үүн дээр
-  blockedUntil  DateTime   @db.Timestamptz(3)
-  status        ApptStatus @default(BOOKED)
-  source        ApptSource @default(PHONE)
-  note          String?
-  cancelReason  String?
+  endsAt         DateTime   @db.Timestamptz(3)
+  /// endsAt + service.bufferMin + extraMin — давхцлын constraint үүн дээр
+  blockedUntil   DateTime   @db.Timestamptz(3)
+  /// "Нэмэлт цаг": өрөө бэлдэх, цэвэрлэх (0 / 10 / 15 / 30 мин) — buffer-ээс гадна
+  extraMin       Int        @default(0)
+  status         ApptStatus @default(BOOKED)
+  source         ApptSource @default(PHONE)
+  note           String?
+  cancelReason   String?
+  /// Цуцалсан ангилал (CANCEL_CATEGORIES — appointments/cancel.ts); cancelReason нь тайлбар
+  cancelCategory String?
+  /// Хэн, хэзээ цуцалсан
+  cancelledById  String?
+  cancelledAt    DateTime?  @db.Timestamptz(3)
   /// Захиалах үеийн үнэ (мэдээлэл) — POS дээр үнэ дахин тооцогдоно
-  priceSnapshot Int        @default(0)
-  createdById   String?
-  version       Int        @default(0)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  priceSnapshot  Int        @default(0)
+  createdById    String?
+  version        Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  staff     User     @relation("ApptStaff", fields: [staffId], references: [id], onDelete: Restrict)
-  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  room      Room?    @relation(fields: [roomId], references: [id], onDelete: Restrict)
-  createdBy User?    @relation("ApptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  visit     Visit?
-  sales     Sale[]
+  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  staff       User         @relation("ApptStaff", fields: [staffId], references: [id], onDelete: Restrict)
+  service     Service      @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  room        Room?        @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  createdBy   User?        @relation("ApptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  cancelledBy User?        @relation("ApptCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  visit       Visit?
+  sales       Sale[]
+  photos      VisitPhoto[]
 
   @@index([branchId, startsAt])
   @@index([staffId, startsAt])
   @@index([customerId, startsAt])
   @@index([startsAt])
+  @@index([cancelledAt])
 }
 
 /// Эмчилгээний өрөө. Идэвхтэй өрөө 0 бол өрөөний логик бүхэлдээ унтарна.
@@ -682,6 +714,56 @@ model ServiceStaff {
   @@index([staffId])
 }
 
+/// Үйлчлүүлэгчийн тэмдэглэл (A8): гоо сайханч, менежер бичнэ — "Үйлчлүүлэгч ингэж хэлсэн", мэдрэг
+/// байдал, дуртай/дургүй зүйл. Зохиогч 24 цагийн дотор засна/устгана; ADMIN, MANAGER бүгдийг.
+model CustomerNote {
+  id         String   @id @default(cuid())
+  customerId String
+  authorId   String
+  visitId    String?
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author   User     @relation("CustomerNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  visit    Visit?   @relation(fields: [visitId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+}
+
+enum PhotoKind {
+  BEFORE
+  AFTER
+}
+
+/// Айлчлалын өмнө/дараах зураг (A9). Файл нь public/-д БИШ — хувийн хавтас (STORAGE_PRIVATE_DIR),
+/// зөвхөн /api/media/visit/[id]-аар эрхтэй хэрэглэгчид. EXIF устгасан, 2048px webp.
+model VisitPhoto {
+  id            String    @id @default(cuid())
+  customerId    String
+  appointmentId String?
+  visitId       String?
+  kind          PhotoKind
+  /// Хувийн хавтас дахь түлхүүр (visit-photos/2026/12/<uuid>.webp)
+  storageKey    String    @unique
+  width         Int
+  height        Int
+  bytes         Int
+  note          String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  visit       Visit?       @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  createdBy   User         @relation("VisitPhotoCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+  @@index([appointmentId])
+  @@index([visitId])
+}
+
 model Visit {
   id             String      @id @default(cuid())
   branchId       String
@@ -707,6 +789,8 @@ model Visit {
   appointment     Appointment?          @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   sale            Sale?                 @relation(fields: [saleId], references: [id], onDelete: SetNull)
   recommendations VisitRecommendation[]
+  customerNotes   CustomerNote[]
+  photos          VisitPhoto[]
 
   @@index([customerId, createdAt])
   @@index([branchId, createdAt])
@@ -1214,4 +1298,24 @@ model ProductInquiry {
   @@index([status, createdAt])
   @@index([phone, createdAt])
   @@index([ip, createdAt])
+}
+
+/// Нягтланд илгээсэн өдрийн тайлан (A11): нэг мөр = нэг илгээлт (дахин илгээвэл шинэ мөр)
+model ReportDispatch {
+  id         String         @id @default(cuid())
+  /// УБ өдөр "YYYY-MM-DD"
+  day        String
+  recipients String[]
+  status     DispatchStatus @default(PENDING)
+  sentById   String?
+  /// Илгээх үеийн дүн (түүхэнд харуулах)
+  summary    Json
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  sentBy User? @relation("ReportDispatchSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+
+  @@index([day, createdAt])
 }
