@@ -2,6 +2,8 @@
  * Төлбөр SUCCEEDED болох бүрт дуудагдана (transaction дотор).
  * Idempotent: хэдэн ч удаа (зэрэг ч) дуудсан үлдэгдэл, имэйл нэг л удаа.
  */
+import { getNotifySettings } from "@/server/modules/notifications/settings";
+import { queueVisitReport } from "@/server/modules/notifications/service";
 import type { Prisma } from "@/generated/prisma/client";
 import { audit } from "@/server/audit";
 import { completeForSale } from "@/server/modules/appointments/complete";
@@ -60,7 +62,7 @@ export async function applyPayment(tx: Tx, saleId: string, actorId: string | nul
     select: {
       branchId: true,
       appointmentId: true,
-      customer: { select: { email: true } },
+      customer: { select: { id: true, email: true } },
       visit: { select: { id: true } },
       items: { where: { kind: "PRODUCT" }, select: { variantId: true, qty: true, unitCostSnapshot: true } },
     },
@@ -99,9 +101,10 @@ export async function applyPayment(tx: Tx, saleId: string, actorId: string | nul
     if (purchased.length) {
       await tx.visitRecommendation.updateMany({ where: { visitId: full.visit.id, variantId: { in: purchased } }, data: { purchased: true } });
     }
-    if (full.customer?.email) {
-      await enqueue(tx, { type: "VISIT_EMAIL", payload: { visitId: full.visit.id }, dedupeKey: `visit-email:${full.visit.id}` });
-      await tx.visit.update({ where: { id: full.visit.id }, data: { emailStatus: "QUEUED" } });
+    // PROMPT 15 §5: автоматаар илгээх нь тохиргоогоор (анхдагч — унтраатай) бөгөөд үйлчлүүлэгчийн зөвшөөрөлтэй үед л
+    const customer = full.customer ? await tx.customer.findUnique({ where: { id: full.customer.id }, select: { email: true, emailConsentAt: true } }) : null;
+    if (customer?.email && customer.emailConsentAt && (await getNotifySettings(tx)).autoVisitEmail) {
+      await queueVisitReport({ visitId: full.visit.id, actorId }, tx);
     }
   }
 

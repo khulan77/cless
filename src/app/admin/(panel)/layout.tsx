@@ -37,14 +37,20 @@ export default async function AdminPanelLayout({ children }: { children: React.R
   const entries = navFor((p) => can(user.role, p));
   // Утасгүй/баталгаажаагүй хэрэглэгчид утсаа нэмэхийг санал болгоно (PROMPT 15 §2)
   const phoneVerified = Boolean((await db.user.findUnique({ where: { id: user.id }, select: { loginPhone: true } }))?.loginPhone);
-  const [salon, newInquiries, failedEmails] = await Promise.all([
+  // Онлайн захиалга (батлах хүлээж буй) ба сайтаас шинээр бүртгүүлсэн (24 цаг) — MANAGER, ADMIN (PROMPT 15)
+  const canOnline = can(user.role, "appointment:write");
+  const [salon, newInquiries, failedEmails, pendingOnline, newOnline] = await Promise.all([
     getSalonInfo(),
     can(user.role, "inquiry:manage") ? countNewInquiries() : null,
     can(user.role, "settings:write") ? failedEmailCount() : null,
+    canOnline ? db.appointment.count({ where: { status: "PENDING" } }) : null,
+    canOnline ? db.customer.count({ where: { registeredVia: "ONLINE", onlineRegisteredAt: { gt: new Date(Date.now() - 86_400_000) } } }) : null,
   ]);
   // Bell: only what already exists — new "Салонд захиалах" requests and unsent e-mails (ADMIN)
   const notices = [
     ...(newInquiries !== null ? [{ key: "inquiries", label: t.admin.bell.inquiries(newInquiries), count: newInquiries, href: "/admin/inquiries?status=NEW" }] : []),
+    ...(pendingOnline ? [{ key: "online", label: `Онлайн захиалга батлахыг хүлээж буй: ${pendingOnline}`, count: pendingOnline, href: "/admin/calendar" }] : []),
+    ...(newOnline ? [{ key: "online-customers", label: `Сайтаас шинээр бүртгүүлсэн (24 цаг): ${newOnline}`, count: newOnline, href: "/admin/customers?origin=online" }] : []),
     ...(failedEmails !== null ? [{ key: "emails", label: t.admin.bell.emails(failedEmails), count: failedEmails, href: "/admin/system" }] : []),
   ];
   const me = { name: user.name, id: user.id, role: t.admin.nav.roles[user.role] ?? user.role };

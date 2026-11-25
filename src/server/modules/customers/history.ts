@@ -32,6 +32,8 @@ export type RankedCustomer = {
   service: number;
   visits: number;
   lastVisit: Date | null;
+  /** PROMPT 15: сайтаас бүртгүүлсэн (ONLINE) эсэх */
+  registeredVia: "ADMIN" | "ONLINE";
 };
 
 const ORDER: Record<CustomerSort, Prisma.Sql> = {
@@ -44,16 +46,18 @@ const ORDER: Record<CustomerSort, Prisma.Sql> = {
 };
 
 /** Жагсаалт: нийт / бүтээгдэхүүн / үйлчилгээний дүн, айлчлал, сүүлд ирсэн — сонгосон баганаар эрэмбэлнэ (default: нийт ↓) */
-export async function listCustomersRanked(opts: { q?: string; sort?: string; dir?: string; page?: number; pageSize?: number; all?: boolean } = {}) {
+export async function listCustomersRanked(opts: { q?: string; sort?: string; dir?: string; page?: number; pageSize?: number; all?: boolean; online?: boolean } = {}) {
   const sort: CustomerSort = (CUSTOMER_SORTS as readonly string[]).includes(opts.sort ?? "") ? (opts.sort as CustomerSort) : "total";
   const dir = opts.dir === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
   const pageSize = opts.pageSize ?? 30;
   const page = Math.max(1, opts.page ?? 1);
   const term = opts.q?.trim() ?? "";
   const digits = term.replace(/\D/g, "");
-  const where = term
-    ? Prisma.sql`WHERE (c."name" ILIKE ${`%${term}%`} OR c."email" ILIKE ${`%${term}%`}${digits.length >= 3 ? Prisma.sql` OR c."phone" LIKE ${`%${digits}%`}` : Prisma.empty})`
-    : Prisma.empty;
+  const conds: Prisma.Sql[] = [];
+  if (term) conds.push(Prisma.sql`(c."name" ILIKE ${`%${term}%`} OR c."email" ILIKE ${`%${term}%`}${digits.length >= 3 ? Prisma.sql` OR c."phone" LIKE ${`%${digits}%`}` : Prisma.empty})`);
+  // "Сайтаас бүртгүүлсэн" шүүлтүүр (нэг жагсаалт — тусдаа биш)
+  if (opts.online) conds.push(Prisma.sql`c."registeredVia"::text = 'ONLINE'`);
+  const where = conds.length ? Prisma.sql`WHERE ${Prisma.join(conds, " AND ")}` : Prisma.empty;
   const limit = opts.all ? Prisma.empty : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
 
   const [rows, count] = await Promise.all([
@@ -74,7 +78,7 @@ export async function listCustomersRanked(opts: { q?: string; sort?: string; dir
         SELECT "customerId", ("startsAt" AT TIME ZONE 'Asia/Ulaanbaatar')::date, "startsAt" FROM "Appointment" WHERE "status"::text = 'DONE'
       ),
       visits AS (SELECT id, COUNT(DISTINCT d)::int AS visits, MAX(at) AS "lastVisit" FROM days GROUP BY 1)
-      SELECT c."id", c."name", c."phone", c."email",
+      SELECT c."id", c."name", c."phone", c."email", c."registeredVia"::text AS "registeredVia",
         (COALESCE(m.product, 0) + COALESCE(m.service, 0))::int AS total,
         COALESCE(m.product, 0)::int AS product,
         COALESCE(m.service, 0)::int AS service,

@@ -21,9 +21,9 @@ const payload = (job: OutboxJob) => (job.payload ?? {}) as Record<string, string
 export const handlers: Partial<Record<OutboxJob["type"], Handler>> = {
   VISIT_EMAIL: {
     run: async (job) => {
-      await deliverVisitEmail(job.id, payload(job).visitId!);
+      await deliverVisitEmail(job.id, payload(job).visitId!, payload(job).customerEmailId);
     },
-    onFinalFailure: (job, error) => markVisitEmailFailed(payload(job).visitId!, error),
+    onFinalFailure: (job, error) => markVisitEmailFailed(payload(job).visitId!, error, payload(job).customerEmailId),
   },
   APPT_EMAIL: {
     run: async (job) => {

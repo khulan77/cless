@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CustomerFormButton } from "@/components/admin/customers/CustomerForm";
 import { FilterBar } from "@/components/admin/FilterBar";
 import { Pagination, parsePage, str } from "@/components/admin/Pagination";
-import { Avatar, EmptyState, PageHeader, Table, btnClass, inputClass, tdClass, thClass } from "@/components/admin/ui";
+import { Avatar, Badge, EmptyState, PageHeader, Table, btnClass, inputClass, tdClass, thClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { formatDateLabel } from "@/lib/time";
@@ -20,12 +20,13 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const user = await requirePagePermission("customer:read");
   const sp = await searchParams;
   const q = str(sp.q);
-  const { rows, count, page, pageSize, sort, dir } = await listCustomersRanked({ q, sort: str(sp.sort), dir: str(sp.dir), page: parsePage(sp.page) });
+  const online = str(sp.origin) === "online" ? "online" : undefined;
+  const { rows, count, page, pageSize, sort, dir } = await listCustomersRanked({ q, sort: str(sp.sort), dir: str(sp.dir), page: parsePage(sp.page), online: Boolean(online) });
   const showContact = can(user.role, "customer:contact:read");
 
   const params = (over: Record<string, string | undefined>) => {
     const s = new URLSearchParams();
-    for (const [k, v] of Object.entries({ q, sort, dir, ...over })) if (v) s.set(k, v);
+    for (const [k, v] of Object.entries({ q, sort, dir, origin: online, ...over })) if (v) s.set(k, v);
     return `/admin/customers?${s.toString()}`;
   };
   /** Clicking the active column flips the direction; a new column starts high → low (names A → Я) */
@@ -58,10 +59,14 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           </div>
         }
       />
-      <FilterBar action="/admin/customers" resetHref={q ? "/admin/customers" : undefined}>
+      <FilterBar action="/admin/customers" resetHref={q || online ? "/admin/customers" : undefined}>
         <input type="hidden" name="sort" value={sort} />
         <input type="hidden" name="dir" value={dir} />
         <input name="q" defaultValue={q} placeholder="Нэр, утас, имэйлээр хайх" aria-label="Хайх" className={`${inputClass} w-80`} />
+        <select name="origin" defaultValue={online ?? ""} aria-label="Бүртгэл" className={`${inputClass} w-56`}>
+          <option value="">Бүх үйлчлүүлэгч</option>
+          <option value="online">Сайтаас бүртгүүлсэн</option>
+        </select>
       </FilterBar>
       {rows.length === 0 ? (
         <EmptyState title={q ? "Хайлтад тохирох үйлчлүүлэгч алга" : "Одоогоор үйлчлүүлэгч алга"}>Цаг захиалах эсвэл касс дээр шинэ үйлчлүүлэгч нэмэгдэнэ.</EmptyState>
@@ -86,6 +91,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                     <Avatar name={c.name} id={c.id} size={32} />
                     {c.name}
                   </Link>
+                  {c.registeredVia === "ONLINE" && <span className="ml-11 mt-0.5 inline-block"><Badge tone="info">Онлайн</Badge></span>}
                 </td>
                 {showContact && <td className={`${tdClass} tabular-nums`}>{c.phone}</td>}
                 <td className={`${tdClass} text-right font-semibold tabular-nums`}>{formatMNT(c.total)}</td>
@@ -98,7 +104,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           </tbody>
         </Table>
       )}
-      <Pagination page={page} pageSize={pageSize} total={count} basePath="/admin/customers" params={{ q, sort, dir }} />
+      <Pagination page={page} pageSize={pageSize} total={count} basePath="/admin/customers" params={{ q, sort, dir, origin: online }} />
     </>
   );
 }

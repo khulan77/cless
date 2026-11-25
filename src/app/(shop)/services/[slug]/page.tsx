@@ -105,7 +105,7 @@ async function ServiceView({ params }: Props) {
               </section>
             )}
             <div className="mt-8">
-              <BookingSheetButton salon={salon} className="w-full sm:w-auto" />
+              <BookingSheetButton salon={salon} serviceSlug={s.slug} className="w-full sm:w-auto" />
               <p className="mt-3 text-meta text-muted">{S.bookingNote}</p>
             </div>
           </div>
