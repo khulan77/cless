@@ -14,13 +14,13 @@ import { assertDayOpen, invalidateDay } from "./locks";
 
 export const WORK_STATUSES = ["WORKED", "HALF_DAY", "PAID_LEAVE", "UNPAID_LEAVE", "SICK", "ABSENT", "OFF"] as const satisfies readonly WorkDayStatus[];
 
-/** Цалин/ирцэд орох ажилтнууд: идэвхтэй, ADMIN бол зөвхөн цалинтай (эзэн гэх мэтийг оруулахгүй) */
+/** Цалин/ирцэд орох ажилтнууд: идэвхтэй гоо сайханч, эсвэл цалин тохируулсан бусад (менежер, нягтлан, админ) */
 export async function payrollStaff(opts: { staffId?: string } = {}) {
   return db.user.findMany({
     where: {
       isActive: true,
       ...(opts.staffId && { id: opts.staffId }),
-      OR: [{ role: { not: "ADMIN" } }, { baseSalary: { gt: 0 } }, { salaryHistory: { some: {} } }],
+      OR: [{ role: "STAFF" }, { baseSalary: { gt: 0 } }, { salaryHistory: { some: {} } }],
     },
     orderBy: [{ role: "asc" }, { name: "asc" }],
     select: { id: true, name: true, role: true, baseSalary: true, siCategory: true },

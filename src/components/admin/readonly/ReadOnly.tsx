@@ -19,7 +19,7 @@ export function ReadOnlyFieldset({ readOnly, children }: { readOnly: boolean; ch
 }
 
 /** Хуудасны дээд талын "Зөвхөн харах" тэмдэг — нягтлангийн өөрийн хэсэгт (цалин, ирц харах г.м.) харагдахгүй */
-const OWN_AREAS = ["/admin/payroll", "/admin/attendance", "/admin/holidays", "/admin/settings/accountant", "/admin/account"];
+const OWN_AREAS = ["/admin/payroll", "/admin/attendance", "/admin/holidays", "/admin/reports/payroll", "/admin/settings/accountant", "/admin/account"];
 
 export function ReadOnlyBanner() {
   const path = usePathname() ?? "";

@@ -10,7 +10,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { t } from "@/i18n";
 import { Avatar } from "./ui";
-import { isGroup, type NavEntry, type NavGroup, type NavIcon, type NavLeaf } from "./nav";
+import { ADMIN_NAV, isGroup, type NavEntry, type NavGroup, type NavIcon, type NavLeaf } from "./nav";
 
 const ICONS: Record<NavIcon, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -61,8 +61,12 @@ type Props = {
   tag?: string;
 };
 
+const matches = (pathname: string, href: string) => (href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`));
+const ALL_HREFS = ADMIN_NAV.flatMap((e) => (isGroup(e) ? e.children.map((c) => c.href) : [e.href]));
+
+/** Хамгийн нарийн таарсан цэс л идэвхтэй (/admin/payroll/settings → "Цалингийн үе" биш) */
 function isActive(pathname: string, href: string) {
-  return href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
+  return matches(pathname, href) && !ALL_HREFS.some((h) => h.length > href.length && h.startsWith(href) && matches(pathname, h));
 }
 
 // < 1280px: the sidebar is a rail (icons only)

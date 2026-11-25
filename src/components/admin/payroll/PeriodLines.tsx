@@ -10,6 +10,7 @@ import type { LineDetails } from "@/server/modules/payroll/periods";
 import { STATUS_TONE } from "./AttendanceGrid";
 
 const C = t.admin.payroll.col;
+const S = t.admin.payroll.colShort;
 const D = t.admin.payroll.detail;
 const A = t.admin.payroll.att;
 
@@ -33,31 +34,40 @@ export type LineView = {
   details: LineDetails;
 };
 
+const adjText = (add: number, ded: number) =>
+  !add && !ded ? "—" : [add ? `+${formatMNT(add)}` : "", ded ? `−${formatMNT(ded)}` : ""].filter(Boolean).join(" / ");
 const pct = (bp: number) => `${(bp / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
-const num = "px-3 py-2.5 text-right tabular-nums";
+const num = "whitespace-nowrap px-2 py-2.5 text-right tabular-nums";
 
 export function PeriodLines({ lines, isFinal, slipBase }: { lines: LineView[]; isFinal: boolean; slipBase?: string }) {
   const [open, setOpen] = useState<string | null>(null);
   const total = (k: keyof LineView) => lines.reduce((s, l) => s + (l[k] as number), 0);
-  const cols = isFinal ? 12 : 11;
+  const cols = isFinal ? 11 : 10;
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-hairline bg-white">
-      <table className="w-full min-w-[1100px] text-[14px]">
-        <thead className="text-[13px] text-ink-soft">
+    <div className="@container overflow-x-auto rounded-2xl border border-hairline bg-white">
+      <table className="w-full min-w-[900px] text-[13px]">
+        <thead className="text-[12px] text-ink-soft">
           <tr className="border-b border-hairline">
             <th className="px-4 py-3 text-left font-medium">{C.staff}</th>
-            <th className="px-3 py-3 text-right font-medium">{C.days}</th>
-            <th className="px-3 py-3 text-right font-medium">{C.base}</th>
-            <th className="px-3 py-3 text-right font-medium">{C.service}</th>
-            <th className="px-3 py-3 text-right font-medium">{C.product}</th>
-            <th className="px-3 py-3 text-right font-medium">{C.adjust}</th>
-            <th className="px-3 py-3 text-right font-medium">{C.gross}</th>
-            <th className="px-3 py-3 text-right font-medium">{C.si}</th>
-            <th className="px-3 py-3 text-right font-medium">{C.pit}</th>
-            {isFinal && <th className="px-3 py-3 text-right font-medium">{C.advance}</th>}
-            <th className="px-3 py-3 text-right font-medium">{C.net}</th>
-            <th className="px-3 py-3 text-right font-medium">{C.er}</th>
+            {(
+              [
+                [S.base, C.base],
+                [S.service, C.service],
+                [S.product, C.product],
+                [S.adjust, C.adjust],
+                [S.gross, C.gross],
+                [S.si, C.si],
+                [S.pit, C.pit],
+                ...(isFinal ? [[S.advance, C.advance]] : []),
+                [S.net, C.net],
+                [S.er, C.er],
+              ] as [string, string][]
+            ).map(([short, full]) => (
+              <th key={full} scope="col" title={full} className="px-2 py-3 text-right font-medium">
+                <abbr title={full} className="no-underline">{short}</abbr>
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -67,21 +77,21 @@ export function PeriodLines({ lines, isFinal, slipBase }: { lines: LineView[]; i
               <Fragment key={l.id}>
                 <tr className="border-b border-hairline hover:bg-canvas">
                   <td className="px-4 py-2.5">
-                    <button type="button" onClick={() => setOpen(isOpen ? null : l.id)} aria-expanded={isOpen} className="flex items-center gap-2 text-left font-medium hover:underline">
+                    <button type="button" onClick={() => setOpen(isOpen ? null : l.id)} aria-expanded={isOpen} className="flex items-center gap-2 whitespace-nowrap text-left font-medium hover:underline">
                       <ChevronDown className={`size-4 shrink-0 transition ${isOpen ? "rotate-180" : ""}`} aria-hidden />
                       {l.name}
                     </button>
+                    <span className="block whitespace-nowrap pl-6 text-[12px] text-ink-soft tabular-nums">{C.days}: {l.workedDays} / {l.plannedDays}</span>
                     {l.details.warnings.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1 pl-6">
                         {l.details.warnings.map((w) => <Badge key={w} tone="red">{t.admin.payroll.warnings[w] ?? w}</Badge>)}
                       </div>
                     )}
                   </td>
-                  <td className={num}>{l.workedDays} / {l.plannedDays}</td>
                   <td className={num}>{formatMNT(l.baseSalary)}</td>
                   <td className={num}>{formatMNT(l.serviceCommission)}</td>
                   <td className={num}>{formatMNT(l.productCommission)}</td>
-                  <td className={num}>{l.adjustments || l.deductions ? `+${formatMNT(l.adjustments)} / −${formatMNT(l.deductions)}` : "—"}</td>
+                  <td className={num}>{adjText(l.adjustments, l.deductions)}</td>
                   <td className={`${num} font-medium`}>{formatMNT(l.gross)}</td>
                   <td className={num}>{formatMNT(l.siEmployee)}</td>
                   <td className={num}>{formatMNT(l.pit)}</td>
@@ -91,8 +101,11 @@ export function PeriodLines({ lines, isFinal, slipBase }: { lines: LineView[]; i
                 </tr>
                 {isOpen && (
                   <tr className="border-b border-hairline bg-canvas/60">
-                    <td colSpan={cols} className="px-4 py-4">
-                      <Breakdown l={l} slipHref={slipBase ? `${slipBase}${l.staffId}` : undefined} />
+                    <td colSpan={cols} className="p-0">
+                      {/* Хүснэгт хэвтээ гүйлгэгддэг ч задаргаа харагдах өргөнд (100cqw) багтана */}
+                      <div className="sticky left-0 w-[100cqw] px-4 py-4">
+                        <Breakdown l={l} slipHref={slipBase ? `${slipBase}${l.staffId}` : undefined} />
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -103,11 +116,10 @@ export function PeriodLines({ lines, isFinal, slipBase }: { lines: LineView[]; i
         <tfoot className="font-semibold">
           <tr>
             <td className="px-4 py-3">{t.admin.payroll.period.totals}</td>
-            <td />
             <td className={num}>{formatMNT(total("baseSalary"))}</td>
             <td className={num}>{formatMNT(total("serviceCommission"))}</td>
             <td className={num}>{formatMNT(total("productCommission"))}</td>
-            <td className={num}>+{formatMNT(total("adjustments"))} / −{formatMNT(total("deductions"))}</td>
+            <td className={num}>{adjText(total("adjustments"), total("deductions"))}</td>
             <td className={num}>{formatMNT(total("gross"))}</td>
             <td className={num}>{formatMNT(total("siEmployee"))}</td>
             <td className={num}>{formatMNT(total("pit"))}</td>
@@ -158,12 +170,12 @@ export function Breakdown({ l, slipHref }: { l: LineView; slipHref?: string }) {
               <tbody>
                 {d.commissions.map((c, i) => (
                   <tr key={i} className="border-t border-hairline">
-                    <td className="px-3 py-1.5 tabular-nums">{c.day}</td>
+                    <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">{c.day}</td>
                     <td className="px-3 py-1.5">{c.name}{c.qty > 1 ? ` ×${c.qty}` : ""}</td>
-                    <td className="px-3 py-1.5 font-mono">{c.receipt ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{formatMNT(c.amount)}</td>
+                    <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[12px]">{c.receipt ?? "—"}</td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{formatMNT(c.amount)}</td>
                     <td className="px-3 py-1.5 text-right">{c.rule ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{formatMNT(c.commission)}</td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{formatMNT(c.commission)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -198,7 +210,7 @@ export function Breakdown({ l, slipHref }: { l: LineView; slipHref?: string }) {
               <Dt k={C.si} v={d.month.siEmployee} />
               <Dt k={C.pit} v={d.month.pit} />
               <Dt k={D.monthNet} v={d.month.net} strong />
-              <Dt k={D.advanceNet} v={-d.month.advanceNet} />
+              <Dt k={D.advanceNet} v={-d.month.advanceNet || 0} />
               <Dt k={C.net} v={l.net} strong />
             </dl>
           </div>
@@ -210,7 +222,7 @@ export function Breakdown({ l, slipHref }: { l: LineView; slipHref?: string }) {
               <Dt k={D.siBase} v={d.tax.siBase} />
               <Dt k={D.taxable} v={d.tax.taxable} />
               <Dt k={D.pitBefore} v={d.tax.pitBefore} />
-              <Dt k={D.credit} v={-d.tax.credit} />
+              <Dt k={D.credit} v={-d.tax.credit || 0} />
             </dl>
           </div>
         )}
