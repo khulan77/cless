@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { verifySignature } from "./webhook";
+import { verifySignature } from "./webhook-signature";
 
 const secret = "whsec_test";
 const body = JSON.stringify({ id: "evt_1", type: "balance.low", data: { balance: 10 } });
