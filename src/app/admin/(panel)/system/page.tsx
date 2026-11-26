@@ -3,7 +3,7 @@ import { Badge, Card, PageHeader, Table, tdClass, thClass } from "@/components/a
 import { t } from "@/i18n";
 import { formatDateTime } from "@/lib/time";
 import { requirePagePermission } from "@/server/auth/session";
-import { workerStatus } from "@/server/modules/outbox/heartbeat";
+import { agoLabel, workerStatus } from "@/server/modules/outbox/heartbeat";
 import { problemJobs } from "@/server/modules/outbox/monitor";
 
 export const metadata = { title: "Систем" };
@@ -56,11 +56,17 @@ export default async function SystemPage() {
         <Card title="Дотоод үйлчилгээ">
           <p className="flex items-center gap-2 text-[14px]">
             <Badge tone={worker.stale ? "red" : "green"}>{worker.stale ? "Зогссон" : "Ажиллаж байна"}</Badge>
-            {worker.minutesAgo === null ? "Хэзээ ч ажиллаагүй" : `Сүүлд: ${worker.minutesAgo} минутын өмнө`}
+            {worker.secondsAgo === null ? "Хэзээ ч ажиллаагүй" : `Арын ажил: сүүлд ${agoLabel(worker.secondsAgo)} өмнө (${worker.source === "cron" ? "cron tick" : "worker"})`}
           </p>
+          {worker.stale && (
+            <p className="mt-2 text-[13px] text-warn">
+              SMS, имэйл, сануулга, QPay шалгалт зогссон байж магадгүй. Vercel дээр минут тутам /api/cron/tick дуудагдах ёстой (README → «Арын ажил»).
+            </p>
+          )}
           <p className="mt-2 text-[13px] text-ink-soft">
             Илгээх дараалалд: {jobs.counts.PENDING ?? 0} · Илгээж буй: {jobs.counts.PROCESSING ?? 0} · Илгээгдсэн: {jobs.counts.DONE ?? 0} · Илгээгдээгүй:{" "}
             {jobs.counts.FAILED ?? 0}
+            {jobs.counts.SKIPPED ? ` · Алгассан (хуучирсан): ${jobs.counts.SKIPPED}` : ""}
           </p>
         </Card>
         <Card title={`Илгээгдээгүй (${jobs.failed.length})`} description="5 удаа оролдоод бүтээгүй. Шалтгааныг засаад «Дахин оролдох» дарна.">

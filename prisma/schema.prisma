@@ -263,6 +263,8 @@ enum JobStatus {
   PROCESSING
   DONE
   FAILED
+  /// Илгээхгүйгээр алгассан (PROMPT 22: хэт хуучирсан SMS/сануулга — бодит хүнд хожуу очихоос сэргийлнэ)
+  SKIPPED
 }
 
 enum JobType {

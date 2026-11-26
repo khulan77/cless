@@ -68,3 +68,8 @@ test("cron route requires CRON_SECRET", async ({ request }) => {
   expect((await request.get("/api/cron/attendance")).status()).toBe(401);
   expect((await request.get("/api/cron/attendance", { headers: { authorization: "Bearer wrong-secret-0000000000" } })).status()).toBe(401);
 });
+
+test("tick route requires CRON_SECRET", async ({ request }) => {
+  expect((await request.post("/api/cron/tick")).status()).toBe(401);
+  expect((await request.post("/api/cron/tick", { headers: { authorization: "Bearer wrong-secret-0000000000" } })).status()).toBe(401);
+});

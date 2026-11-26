@@ -23,7 +23,17 @@ export async function getWorkerHeartbeat() {
 
 export async function workerStatus(now = new Date()) {
   const hb = await getWorkerHeartbeat();
-  if (!hb) return { lastRunAt: null, minutesAgo: null, stale: true };
+  if (!hb) return { lastRunAt: null, minutesAgo: null, secondsAgo: null, source: null, stale: true };
   const ms = now.getTime() - hb.lastRunAt.getTime();
-  return { lastRunAt: hb.lastRunAt, minutesAgo: Math.max(0, Math.floor(ms / 60_000)), stale: ms > WORKER_STALE_MS };
+  // PROMPT 22: Vercel дээр worker-ийн оронд cron tick heartbeat бичнэ ({ source: "cron" })
+  const source = (hb.info as { source?: string } | null)?.source === "cron" ? ("cron" as const) : ("worker" as const);
+  return { lastRunAt: hb.lastRunAt, minutesAgo: Math.max(0, Math.floor(ms / 60_000)), secondsAgo: Math.max(0, Math.round(ms / 1000)), source, stale: ms > WORKER_STALE_MS };
+}
+
+/** "40 сек", "3 мин", "4 цаг", "2 өдөр" */
+export function agoLabel(seconds: number) {
+  if (seconds < 90) return `${seconds} сек`;
+  if (seconds < 90 * 60) return `${Math.round(seconds / 60)} мин`;
+  if (seconds < 48 * 3600) return `${Math.round(seconds / 3600)} цаг`;
+  return `${Math.round(seconds / 86_400)} өдөр`;
 }

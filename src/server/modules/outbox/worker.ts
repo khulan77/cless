@@ -104,10 +104,30 @@ export async function runJob(job: OutboxJob, now = new Date()) {
   }
 }
 
-/** Нэг давталт: сэргээх → авах → гүйцэтгэх. Гүйцэтгэсэн ажлын тоо. */
-export async function processOutbox(limit = 10, now = new Date()) {
+export type DrainOptions = { maxJobs?: number; budgetMs?: number };
+
+/**
+ * Нэг давталт: сэргээх → авах → гүйцэтгэх. Гүйцэтгэсэн ажлын тоо.
+ * Тоо өгвөл (worker) нэг удаа limit хүртэл; { maxJobs, budgetMs } өгвөл (Vercel tick, after()) хугацааны
+ * төсөв дуустал жижиг багцаар (serverless функцийн хугацаанд багтана).
+ */
+export async function processOutbox(opts: number | DrainOptions = 10, now = new Date()) {
   await recoverStuckJobs(now);
-  const jobs = await claimJobs(limit, now);
-  for (const job of jobs) await runJob(job, now);
-  return jobs.length;
+  if (typeof opts === "number") {
+    const jobs = await claimJobs(opts, now);
+    for (const job of jobs) await runJob(job, now);
+    return jobs.length;
+  }
+  const max = opts.maxJobs ?? 25;
+  const deadline = Date.now() + (opts.budgetMs ?? 8000);
+  let done = 0;
+  while (done < max && Date.now() < deadline) {
+    const jobs = await claimJobs(Math.min(5, max - done), new Date());
+    if (jobs.length === 0) break;
+    for (const job of jobs) {
+      await runJob(job, new Date());
+      done++;
+    }
+  }
+  return done;
 }
