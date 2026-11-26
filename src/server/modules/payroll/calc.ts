@@ -74,11 +74,25 @@ export function monthDays(month: string): string[] {
 /** Ажлын хуваарьгүй ажилтанд: Даваа–Баасан */
 export const DEFAULT_WEEKDAYS = [1, 2, 3, 4, 5];
 
-export type WorkCalendar = { weekdays: ReadonlySet<number>; holidays: ReadonlySet<string> };
+export type WorkCalendar = {
+  weekdays: ReadonlySet<number>;
+  holidays: ReadonlySet<string>;
+  /**
+   * PROMPT 20 — автомат ирц: энэ өдрөөс хойш (өнөөдрийг оролцуулаагүй өнгөрсөн өдөр) "Ирлээ" бүртгэлгүй
+   * хуваарийн өдөр → ABSENT. Тохируулаагүй (null) бол хуучин дүрэм (хуваарийн өдөр → WORKED).
+   */
+  autoSince?: string | null;
+  today?: string;
+};
 
-/** Тэмдэглээгүй өдрийн анхдагч төлөв: хуваарийн ажлын өдөр (амралтын өдөр биш) → WORKED, үгүй бол OFF */
+/**
+ * Тэмдэглээгүй (WorkDay мөргүй) өдрийн анхдагч төлөв: хуваарийн ажлын өдөр → WORKED, үгүй бол OFF.
+ * Автомат ирц асаалттай бол autoSince ≤ өдөр < өнөөдөр хуваарийн өдөр → ABSENT (ирц зөвхөн "Ирлээ/Явлаа"-аар).
+ */
 export function defaultStatus(day: string, cal: WorkCalendar): WorkStatus {
-  return isPlanned(day, cal) ? "WORKED" : "OFF";
+  if (!isPlanned(day, cal)) return "OFF";
+  if (cal.autoSince && cal.today && day >= cal.autoSince && day < cal.today) return "ABSENT";
+  return "WORKED";
 }
 
 export function isPlanned(day: string, cal: WorkCalendar): boolean {

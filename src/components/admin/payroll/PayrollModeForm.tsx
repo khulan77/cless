@@ -9,18 +9,24 @@ import { savePayrollSettingsAction } from "@/server/actions/payroll";
 const R = t.admin.payroll.rates;
 type Mode = "ADVANCE_FINAL" | "INDEPENDENT";
 
-export function PayrollModeForm({ initial }: { initial: { mode: Mode; splitDay: number; advanceWithholding: boolean; commissionBase: "NET" | "GROSS" } }) {
+export function PayrollModeForm({
+  initial,
+}: {
+  initial: { mode: Mode; splitDay: number; advanceWithholding: boolean; commissionBase: "NET" | "GROSS"; autoAttendanceSince: string | null; attendanceAdminEdit: boolean };
+}) {
   const [mode, setMode] = useState<Mode>(initial.mode);
   const [splitDay, setSplitDay] = useState(String(initial.splitDay));
   const [withhold, setWithhold] = useState(initial.advanceWithholding);
   const [commissionBase, setCommissionBase] = useState(initial.commissionBase);
+  const [autoSince, setAutoSince] = useState(initial.autoAttendanceSince ?? "");
+  const [adminEdit, setAdminEdit] = useState(initial.attendanceAdminEdit);
   const { run, pending, fieldErrors } = useServerAction(savePayrollSettingsAction);
   return (
     <form
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        run({ mode, splitDay: Number(splitDay), advanceWithholding: withhold, commissionBase });
+        run({ mode, splitDay: Number(splitDay), advanceWithholding: withhold, commissionBase, autoAttendanceSince: autoSince || null, attendanceAdminEdit: adminEdit });
       }}
     >
       <fieldset className="grid gap-3 md:grid-cols-2">
@@ -52,6 +58,19 @@ export function PayrollModeForm({ initial }: { initial: { mode: Mode; splitDay: 
           <option value="NET">НӨАТ-гүй цэвэр дүнгээс (400 000₮ → 363 636₮)</option>
         </Select>
       </Field>
+      <fieldset className="space-y-3 rounded-2xl border border-hairline p-4">
+        <legend className="px-1 text-[14px] font-medium">Ирц (автомат)</legend>
+        <Field
+          label="Автомат ирц эхлэх өдөр"
+          htmlFor="auto-since"
+          error={fieldErrors.autoAttendanceSince}
+          hint="Энэ өдрөөс хойш «Ирлээ» дараагүй хуваарийн өдөр цалинд «тасалсан» болно. Хоосон = хуучин дүрэм (хуваарийн өдөр ажилласанд тооцно). Ажилтнууд «Ирлээ/Явлаа»-г хэрэглэж эхэлсэн өдрийг оруулна."
+          className="max-w-md"
+        >
+          <Input id="auto-since" type="date" value={autoSince} onChange={(e) => setAutoSince(e.target.value)} />
+        </Field>
+        <Checkbox label="Админ ирцийг гараар засах (заавал шалтгаантай)" checked={adminEdit} onChange={(e) => setAdminEdit(e.target.checked)} />
+      </fieldset>
       <Button type="submit" disabled={pending}>{pending ? t.admin.saving : R.save}</Button>
     </form>
   );

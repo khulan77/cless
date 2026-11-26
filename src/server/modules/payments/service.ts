@@ -9,6 +9,7 @@ import { can } from "@/server/auth/permissions";
 import { db } from "@/server/db";
 import { ForbiddenError, UserError } from "@/server/errors";
 import { requireOpenShiftForUpdate } from "@/server/modules/cash-shifts/service";
+import { getPosSettings } from "@/server/modules/settings/pos-settings";
 import { enqueue } from "@/server/modules/outbox/service";
 import { applyPayment } from "@/server/modules/sales/finalize";
 import { getQPaySettings } from "@/server/modules/settings/pos-settings";
@@ -136,7 +137,8 @@ export async function createPayment(raw: CreatePaymentInput, actor: Actor): Prom
       let extra: Prisma.PaymentUncheckedCreateInput | Record<string, unknown> = {};
       if (input.method === "CASH") {
         if (input.tendered < input.amount) throw new UserError("Өгсөн мөнгө төлөх дүнгээс бага байна.", { tendered: ["Хүрэлцэхгүй."] });
-        const shiftId = await requireOpenShiftForUpdate(tx, sale.branchId);
+        // PROMPT 20: ээлж унтраалттай (анхдагч) бол ээлж шаардахгүй, CashMovement үүсгэхгүй
+        const shiftId = (await getPosSettings(tx)).cashShiftsEnabled ? await requireOpenShiftForUpdate(tx, sale.branchId) : null;
         extra = { tendered: input.tendered, change: input.tendered - input.amount, cashShiftId: shiftId };
       } else if (input.method === "CARD") {
         extra = { approvalCode: input.approvalCode, cardLast4: input.cardLast4 ?? null };
@@ -147,7 +149,7 @@ export async function createPayment(raw: CreatePaymentInput, actor: Actor): Prom
       const p = await tx.payment.create({
         data: { ...common, ...extra, status: "SUCCEEDED", paidAt: now, confirmedById: actor.id } as Prisma.PaymentUncheckedCreateInput,
       });
-      if (input.method === "CASH") {
+      if (input.method === "CASH" && p.cashShiftId) {
         await tx.cashMovement.create({ data: { shiftId: p.cashShiftId!, type: "SALE", amount: input.amount, paymentId: p.id, createdById: actor.id } });
       }
       await audit(tx, {

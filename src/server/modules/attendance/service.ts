@@ -73,6 +73,8 @@ export async function punch(type: "CHECK_IN" | "CHECK_OUT", staffId: string, pos
   const v = evaluateGeo(branches, pos, ip);
   if (!v.ok) throw new UserError(v.reason === "no-branch-location" ? M.noLocation : M.tooFar(v.distanceM), undefined, v.reason === "too-far" ? "GEO_TOO_FAR" : "GEO_NO_BRANCH");
 
+  // Өмнөх өдрийн "Явлаа" дараагүй сессийг эхлээд хаана (цаг нь тухайн өдөрт орно)
+  await closeStaleSessions(now);
   const day = ubDateKey(now);
   return db.$transaction(async (tx) => {
     // Нэг ажилтны зэрэг дарахыг цуваа болгоно
@@ -156,6 +158,20 @@ export async function autoCloseOpenSessions(now = new Date()) {
   return closed;
 }
 
+/**
+ * Хуудас/үйлдэл бүрт "тэр дор нь" (Vercel дээр worker байхгүй тул): ирцийн хуудас, цалин тооцох, "Ирлээ/Явлаа",
+ * менежерийн самбар. autoCloseOpenSessions нь давхардалгүй (ажилтан бүрээр advisory lock + сүүлийн үйл явдлыг
+ * дахин шалгана) тул зэрэг дуудагдсан ч нэг л AUTO_CLOSE үүснэ. Алдаа гарвал хуудсыг эвдэхгүй — log-д л.
+ */
+export async function closeStaleSessions(now = new Date()): Promise<number> {
+  try {
+    return await autoCloseOpenSessions(now);
+  } catch (e) {
+    console.error("[attendance] auto-close failed", { message: e instanceof Error ? e.message : String(e) });
+    return 0;
+  }
+}
+
 /** 90 хоногоос хуучин координатыг устгана (зай, flag үлдэнэ). Worker цаг тутам. */
 export async function purgeOldCoordinates(now = new Date()) {
   const r = await db.attendanceEvent.updateMany({
@@ -170,11 +186,12 @@ export async function purgeOldCoordinates(now = new Date()) {
 /** Өдрийн ирц: ажилтан бүрт сесс, цаг, flag, "Явлаа дараагүй" */
 export async function dayAttendance(day: string, now = new Date()) {
   const { start, end } = ubDayRange(day);
-  const [staff, events, workDays, schedules] = await Promise.all([
+  const [staff, events, workDays, schedules, notes] = await Promise.all([
     db.user.findMany({ where: { isActive: true, role: { in: ["STAFF", "MANAGER"] } }, orderBy: [{ role: "asc" }, { name: "asc" }], select: { id: true, name: true, role: true } }),
     db.attendanceEvent.findMany({ where: { at: { gte: start, lt: end } }, orderBy: { at: "asc" } }),
     db.workDay.findMany({ where: { date: toDbDate(day) }, select: { staffId: true, status: true, hours: true, fromEvents: true, note: true } }),
     db.staffSchedule.findMany({ where: { weekday: ubWeekday(day) }, select: { staffId: true, startTime: true, endTime: true } }),
+    db.attendanceNote.findMany({ where: { date: toDbDate(day) }, select: { staffId: true, note: true } }),
   ]);
   return staff.map((s) => {
     const mine = events.filter((e) => e.staffId === s.id);
@@ -192,6 +209,7 @@ export async function dayAttendance(day: string, now = new Date()) {
       flagged: mine.filter((e) => e.flagged).map((e) => ({ at: formatTime(e.at), note: e.note, autoClosed: e.source === "AUTO_CLOSE" })),
       missingCheckout: mine.some((e) => e.source === "AUTO_CLOSE"),
       workDay: wd ? { status: wd.status, hours: wd.hours, manual: !wd.fromEvents, note: wd.note } : null,
+      comment: notes.find((n) => n.staffId === s.id)?.note ?? null,
     };
   });
 }
@@ -203,3 +221,21 @@ export async function onDutyNow(now = new Date()) {
   return { working: rows.filter((r) => r.working).length, expected: expected.length, missing: rows.filter((r) => r.missingCheckout).length };
 }
 
+
+// ───────────────────────── Тайлбар (PROMPT 20) ─────────────────────────
+
+/** Менежер / админ — тайлбар (цагт нөлөөлөхгүй). Хоосон бол устгана. */
+export async function setAttendanceNote(p: { staffId: string; date: string; note: string }, actorId: string) {
+  const note = p.note.trim().slice(0, 300);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date)) throw new UserError("Огноо буруу.");
+  const where = { staffId_date: { staffId: p.staffId, date: toDbDate(p.date) } };
+  await db.$transaction(async (tx) => {
+    const before = await tx.attendanceNote.findUnique({ where });
+    if (!note) {
+      if (before) await tx.attendanceNote.delete({ where });
+    } else {
+      await tx.attendanceNote.upsert({ where, create: { staffId: p.staffId, date: toDbDate(p.date), note, createdById: actorId }, update: { note, createdById: actorId } });
+    }
+    await audit(tx, { userId: actorId, action: "attendance.note", entity: "AttendanceNote", entityId: `${p.staffId}:${p.date}`, before: before ? { note: before.note } : null, after: note ? { note } : null });
+  });
+}

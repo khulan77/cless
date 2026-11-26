@@ -175,13 +175,13 @@ function EditDay({ row, day, onClose }: { row: GridRow; day: GridDay; onClose: (
   const [note, setNote] = useState(day.note ?? "");
   const { run, pending, fieldErrors } = useServerAction(setWorkDayAction);
   const save = () =>
-    run({ staffId: row.id, date: day.date, status, hours: hours === "" ? null : Number(hours), note: note || null }, { onSuccess: onClose });
+    run({ staffId: row.id, date: day.date, status, hours: hours === "" ? null : Number(hours), note: note.trim() }, { onSuccess: onClose });
 
   return (
     <Dialog
       open
       onClose={onClose}
-      title={`${row.name} · ${day.date}`}
+      title={`Админы засвар · ${row.name} · ${day.date}`}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>{t.admin.cancel}</Button>
@@ -205,8 +205,8 @@ function EditDay({ row, day, onClose }: { row: GridRow; day: GridDay; onClose: (
         <Field label={A.hours} htmlFor="att-hours" error={fieldErrors.hours} hint={`Хоосон бол ${DEFAULT_HOURS[status]} цаг (ажилласан 8, хагас өдөр 4)`}>
           <Input id="att-hours" type="number" inputMode="decimal" min={0} max={24} step={0.5} placeholder={String(DEFAULT_HOURS[status])} value={hours} onChange={(e) => setHours(e.target.value)} className="max-w-32" />
         </Field>
-        <Field label={A.note} htmlFor="att-note" error={fieldErrors.note}>
-          <Input id="att-note" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+        <Field label="Засварын шалтгаан (заавал)" htmlFor="att-note" error={fieldErrors.note} hint="Ирц автомат («Ирлээ/Явлаа»). Гар засвар зөвхөн бодит алдаанд (утас эвдэрсэн г.м.) — AuditLog-д, тайланд «гараар засагдсан».">
+          <Input id="att-note" required minLength={5} maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
       </div>
     </Dialog>

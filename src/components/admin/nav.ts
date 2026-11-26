@@ -46,6 +46,7 @@ export const ADMIN_NAV: NavEntry[] = [
       { href: "/admin/pos", label: n.pos, icon: "pos", permission: "pos:use" },
       { href: "/admin/sales", label: n.sales, icon: "orders", permission: "sale:read" },
       { href: "/admin/shifts", label: n.shifts, icon: "shift", permission: "shift:own", view: "admin:view" },
+      { href: "/admin/reports/daily-cash", label: "Өдрийн касс", icon: "cash", permission: "sale:read" },
     ],
   },
   {
@@ -128,6 +129,15 @@ export function navFor(can: (p: Permission) => boolean): NavEntry[] {
   return ADMIN_NAV.flatMap<NavEntry>((e) => {
     if (!isGroup(e)) return ok(e) ? [e] : [];
     const children = e.children.filter(ok);
+    return children.length ? [{ ...e, children }] : [];
+  });
+}
+
+/** Тодорхой хуудсыг цэснээс хасна (тохиргоогоор унтарсан хэсэг — жишээ нь кассын ээлж). Хоосон бүлэг алга болно. */
+export function withoutHrefs(entries: NavEntry[], hrefs: string[]): NavEntry[] {
+  return entries.flatMap<NavEntry>((e) => {
+    if (!isGroup(e)) return hrefs.includes(e.href) ? [] : [e];
+    const children = e.children.filter((c) => !hrefs.includes(c.href));
     return children.length ? [{ ...e, children }] : [];
   });
 }

@@ -10,6 +10,7 @@ import { audit } from "@/server/audit";
 import { db } from "@/server/db";
 import { UserError } from "@/server/errors";
 import { requireOpenShiftForUpdate } from "@/server/modules/cash-shifts/service";
+import { getPosSettings } from "@/server/modules/settings/pos-settings";
 import { nextStatus } from "@/server/modules/sales/state";
 import type { SaleStatus } from "@/generated/prisma/client";
 
@@ -94,7 +95,8 @@ export async function createRefund(raw: RefundInput, actorId: string) {
         }
       }
 
-      if (input.method === "CASH") {
+      // PROMPT 20: ээлж унтраалттай (анхдагч) бол бэлэн буцаалтад ээлж шаардахгүй
+      if (input.method === "CASH" && (await getPosSettings(tx)).cashShiftsEnabled) {
         const shiftId = await requireOpenShiftForUpdate(tx, sale.branchId);
         const shift = await tx.cashShift.findUniqueOrThrow({ where: { id: shiftId }, select: { openingCash: true } });
         const agg = await tx.cashMovement.aggregate({ where: { shiftId }, _sum: { amount: true } });

@@ -10,7 +10,7 @@ import { z } from "zod";
 import { clientIp } from "@/server/auth/rate-limit";
 import { requirePermission } from "@/server/auth/session";
 import { branchLocationSchema, saveBranchLocation } from "@/server/modules/attendance/branch-location";
-import { myToday, punch } from "@/server/modules/attendance/service";
+import { myToday, punch, setAttendanceNote } from "@/server/modules/attendance/service";
 import { parseInput, runAction } from "./result";
 
 const posSchema = z.object({
@@ -49,4 +49,14 @@ export async function saveBranchLocationAction(input: z.input<typeof branchLocat
     await saveBranchLocation(parseInput(branchLocationSchema, input), user.id);
     revalidatePath("/admin/settings/attendance");
   }, "Байршил хадгалагдлаа.");
+}
+
+/** Ирцийн тайлбар (цагт нөлөөлөхгүй) — attendance:note (MANAGER, ADMIN) */
+export async function setAttendanceNoteAction(input: { staffId: string; date: string; note: string }) {
+  return runAction(async () => {
+    const user = await requirePermission("attendance:note");
+    const v = parseInput(z.object({ staffId: z.string().min(1), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), note: z.string().max(300) }), input);
+    await setAttendanceNote(v, user.id);
+    revalidatePath("/admin/attendance");
+  }, "Тайлбар хадгалагдлаа.");
 }

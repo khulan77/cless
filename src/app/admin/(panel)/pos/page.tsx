@@ -112,7 +112,11 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
         eyebrow="Касс"
         title="Төлбөр авах"
         description={
-          shift ? (
+          !pos.cashShiftsEnabled ? (
+            <span className="inline-flex items-center gap-2">
+              {branch.name} · бичсэн: {user.name}
+            </span>
+          ) : shift ? (
             <span className="inline-flex items-center gap-2">
               <Badge tone="green">Касс нээлттэй</Badge> {branch.name}
             </span>
@@ -153,7 +157,7 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
         staff={staff}
         cashier={{ id: user.id, name: user.name }}
         qpayMode={effectiveQPayMode(qpay.mode)}
-        shiftOpen={Boolean(shift)}
+        shiftOpen={!pos.cashShiftsEnabled || Boolean(shift)}
         canTransfer={can(user.role, "payment:transfer:confirm")}
         maxDiscountPercent={can(user.role, "discount:over-limit") ? 100 : pos.maxManagerDiscountPercent}
         vat={{ included: tax.vatIncluded, rateBp: tax.vatRateBp }}

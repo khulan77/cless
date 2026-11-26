@@ -105,6 +105,7 @@ Vercel дээр зөвхөн вэб апп ажиллана. Worker (имэйл,
 | `RESEND_API_KEY`, `EMAIL_FROM` |  | **Хуучирсан** — WeSend тохируулаагүй үед л имэйлд |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | ✓ (Vercel) | Админаас оруулах зураг (бүтээгдэхүүн, үйлчилгээ, ангилал, контент) — Supabase Storage. Vercel-ийн диск read-only тул заавал; service role key зөвхөн сервер талд |
 | `SUPABASE_STORAGE_BUCKET` | | Анхдагч `media`. Supabase → Storage дээр **Public** bucket үүсгэнэ. Зураг 4MB хүртэл (Vercel-ийн 4.5MB хүсэлтийн хязгаар) |
+| `CRON_SECRET` | ✓ (Vercel) | Vercel Cron-ийн нууц (`openssl rand -hex 32`, 16+ тэмдэгт). `vercel.json`-ий cron өдөр бүр 23:50 (УБ, `50 15 * * *` UTC) `/api/cron/attendance`-ийг `Authorization: Bearer <CRON_SECRET>`-ээр дуудна: «Явлаа» дараагүй ирцийг хаах, 90 хоногоос хуучин байршил устгах. Vercel → Settings → Environment Variables (Production) — нэмээгүй бол cron 401 буцаана |
 | `DB_POOL_MAX` | | Нэг instance-ийн pg холболт. Default 3 (Vercel) |
 | `NEXT_IMAGE_UNOPTIMIZED` | | `1` — `/_next/image`-ийг алгасаж зургийг шууд өгнө (Hobby-ийн Image Optimization хязгаар дуусаж 402 өгвөл). Default зургууд, upload-ууд sharp-аар webp болсон тул чанар алдагдахгүй; зөвхөн дэлгэцийн өргөнөөр жижигрүүлсэн хувилбар (srcset) байхгүй болно. Build үед уншигдана — өөрчилбөл redeploy |
 | `QPAY_*` | | Зөвхөн CHECKOUT горимд |

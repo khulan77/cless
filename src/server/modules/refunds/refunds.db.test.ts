@@ -16,6 +16,12 @@ beforeEach(async () => {
   staff = await makeUser("STAFF");
 });
 
+
+/** PROMPT 20: кассын ээлж анхдагчаар унтраалттай — хуучин урсгалын тестэд асаана */
+async function enableShifts() {
+  await db.siteSetting.upsert({ where: { key: "pos" }, create: { key: "pos", value: { cashShiftsEnabled: true } }, update: { value: { cashShiftsEnabled: true } } });
+}
+
 describe("refundLineAmount", () => {
   it("floors per unit and the last unit takes the remainder", () => {
     // 3 ширхэг, 100 000 (хөнгөлөлттэй) → 33 333 + 33 333 + 33 334
@@ -81,7 +87,8 @@ describe("createRefund", () => {
     expect(sale.refundedAmount).toBe(s.total);
   });
 
-  it("cash refund needs an open shift with enough cash", async () => {
+  it("cash refund needs an open shift with enough cash (cash shifts enabled)", async () => {
+    await enableShifts();
     const s = await paidSale();
     const input = { saleId: s.saleId, items: [{ saleItemId: s.product.id, qty: 1 }], reason: "Буцаалт", method: "CASH" as const };
     await expect(createRefund(input, admin.id)).rejects.toThrow(/кассаа нээнэ/);

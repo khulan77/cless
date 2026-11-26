@@ -4,6 +4,7 @@ import { Card, PageHeader, btnClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { requireFinancePage } from "@/server/modules/finance/access";
+import { CASH_METHODS, dailyCash } from "@/server/modules/finance/daily-cash";
 import { balanceSheet, cashFlow, compare, financeRange, previousFinanceRange, profitAndLoss, vatReport } from "@/server/modules/finance/reports";
 
 export const metadata = { title: "Санхүүгийн тайлан" };
@@ -128,7 +129,7 @@ async function PL({ period, range }: { period: Parameters<typeof previousFinance
 }
 
 async function Cash({ range }: { range: { from: string; to: string } }) {
-  const cf = await cashFlow(range);
+  const [cf, daily] = await Promise.all([cashFlow(range), dailyCash(range)]);
   return (
     <div className="grid gap-6 xl:grid-cols-2">
       <Card title="Мөнгөн гүйлгээ">
@@ -179,6 +180,36 @@ async function Cash({ range }: { range: { from: string; to: string } }) {
           </p>
         )}
         <p className="mt-2 text-[13px] text-ink-soft">Кассаас гаргасан зардлыг «Зардал»-д бэлэнээр бүртгэсэн бол кассын PAY_OUT-д давхар бүү бүртгэ.</p>
+      </Card>
+      <Card title="Өдрийн касс (бүртгэсэн хүнээр)" description="Буцаалт хассан. Кассын ээлжийн оронд.">
+        {daily.rows.length === 0 ? (
+          <p className="text-[14px] text-ink-soft">Төлбөр алга.</p>
+        ) : (
+          <table className="w-full text-[14px]">
+            <thead className="text-[13px] text-ink-soft">
+              <tr className="border-b border-hairline">
+                <th className="py-2 text-left font-medium">Огноо</th>
+                <th className="py-2 text-left font-medium">Бүртгэсэн</th>
+                {CASH_METHODS.map((m) => (
+                  <th key={m} className="py-2 text-right font-medium">{PAY[m] ?? m}</th>
+                ))}
+                <th className="py-2 text-right font-medium">Нийт</th>
+              </tr>
+            </thead>
+            <tbody>
+              {daily.rows.map((r) => (
+                <tr key={`${r.day}${r.userId}`} className="border-b border-hairline">
+                  <td className="py-2 tabular-nums">{r.day}</td>
+                  <td className="py-2">{r.name}</td>
+                  {CASH_METHODS.map((m) => (
+                    <td key={m} className="py-2 text-right tabular-nums">{r.byMethod[m] ? money(r.byMethod[m]) : "—"}</td>
+                  ))}
+                  <td className="py-2 text-right font-medium tabular-nums">{money(r.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Card>
       <Card title="Кассын ээлж">
         {cf.shifts.length === 0 ? (

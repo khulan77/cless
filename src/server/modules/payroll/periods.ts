@@ -13,6 +13,7 @@ import { t } from "@/i18n";
 import { audit } from "@/server/audit";
 import { removePayrollExpenses, syncPayrollExpenses } from "@/server/modules/finance/expenses";
 import { hoursOf, periodHours } from "./hours";
+import { closeStaleSessions } from "@/server/modules/attendance/service";
 import { db } from "@/server/db";
 import { UserError } from "@/server/errors";
 import { basePay, computeFinal, computeLine, daysBetween, monthDays, monthOf, resolveAttendance, type WorkStatus } from "./calc";
@@ -128,6 +129,8 @@ export async function calculatePeriod(id: string, actorId: string) {
   const period = await db.payrollPeriod.findUnique({ where: { id } });
   if (!period) throw new UserError(P.notFound);
   if (period.status !== "DRAFT") throw new UserError(P.notDraft);
+  // "Явлаа" дараагүй сессийг тооцохоос өмнө хаана (Vercel дээр worker байхгүй)
+  await closeStaleSessions();
   const from = fromDbDate(period.startDate);
   const to = fromDbDate(period.endDate);
   const month = monthOf(from);

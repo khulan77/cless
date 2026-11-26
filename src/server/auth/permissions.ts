@@ -62,7 +62,10 @@ export const PERMISSIONS = [
   "admin:view",
   // Ирц: харах / тэмдэглэх; нийтийн амралтын өдрүүд
   "attendance:read",
+  // Ирцийг гараар засах — зөвхөн ADMIN, шалтгаантай (PROMPT 20: ирц бүрэн автомат)
   "attendance:write",
+  // Ирцэд тайлбар бичих (цагт нөлөөлөхгүй) — MANAGER, ADMIN
+  "attendance:note",
   // Өөрийн ирц: "Ирлээ / Явлаа" (байршлаар, PROMPT 19) — бүх ажилтан
   "attendance:self",
   "holiday:write",
@@ -91,8 +94,8 @@ export type Permission = (typeof PERMISSIONS)[number];
  */
 const STAFF: readonly Permission[] = ["schedule:own", "me:read", "customer-note:write", "visit-photo:read", "visit-photo:write", "attendance:self"];
 
-/** Зөвхөн ADMIN: хэрэглэгч нэмэх/хасах, интеграцийн нууц тохиргоо */
-const ADMIN_ONLY: readonly Permission[] = ["user:write", "integration:write"];
+/** Зөвхөн ADMIN: хэрэглэгч нэмэх/хасах, интеграцийн нууц тохиргоо, ирцийн гар засвар (PROMPT 20) */
+const ADMIN_ONLY: readonly Permission[] = ["user:write", "integration:write", "attendance:write"];
 
 /** Цалин — ADMIN ба ACCOUNTANT (11/25). Цалингийн мэдээлэл эмзэг тул MANAGER-т үгүй. */
 const PAYROLL: readonly Permission[] = ["payroll:read", "payroll:write", "payroll:settings"];
@@ -114,6 +117,10 @@ const ACCOUNTANT: readonly Permission[] = [
   "customer:contact:read",
   "sale:read",
   "stock:read",
+  // PROMPT 20: нягтлан бараа бүртгэнэ (нэг каталог — POS, сайт шууд харна)
+  "stock:write",
+  "product:write",
+  "price:write",
   "cost:read",
   "report:read",
   "report:send",

@@ -1,3 +1,4 @@
+import { setCashShifts } from "./settings-db";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { addDays, formatHm, ubDateKey, ubMinuteOfDay } from "../../src/lib/time";
 import { seedPassword } from "./env";
@@ -8,6 +9,11 @@ import { seedPassword } from "./env";
  * "Ирсэн — POS нээх" today → arrived card is locked (note only) → pay cash → DONE → STAFF sees only their own schedule.
  */
 test.describe.configure({ mode: "serial" });
+
+// PROMPT 20: кассын ээлж анхдагчаар унтраалттай — энэ файл ээлжтэй урсгалыг шалгана
+test.beforeAll(() => setCashShifts(true));
+test.afterAll(() => setCashShifts(false));
+
 
 async function login(page: Page, email: string) {
   await page.goto("/admin/login");

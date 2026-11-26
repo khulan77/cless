@@ -7,10 +7,13 @@ import { z } from "zod";
 import type { WorkDayStatus } from "@/generated/prisma/client";
 import { audit } from "@/server/audit";
 import { db } from "@/server/db";
-import { DEFAULT_WEEKDAYS, daysBetween, defaultStatus, resolveAttendance, type WorkCalendar, type WorkStatus } from "./calc";
+import { DEFAULT_WEEKDAYS, daysBetween, resolveAttendance, type WorkCalendar, type WorkStatus } from "./calc";
 import { fromDbDate, toDbDate } from "./dates";
 import { holidaySet } from "./holidays";
+import { getPayrollSettings } from "./settings";
+import { ubDateKey } from "@/lib/time";
 import { assertDayOpen, invalidateDay } from "./locks";
+import { UserError } from "@/server/errors";
 
 export const WORK_STATUSES = ["WORKED", "HALF_DAY", "PAID_LEAVE", "UNPAID_LEAVE", "SICK", "ABSENT", "OFF"] as const satisfies readonly WorkDayStatus[];
 
@@ -29,14 +32,16 @@ export async function payrollStaff(opts: { staffId?: string } = {}) {
 
 /** Ажилтан бүрийн ажлын гаригууд (StaffSchedule; хуваарьгүй бол Да–Ба) + нийтийн амралт */
 export async function workCalendars(staffIds: string[], from: string, to: string) {
-  const [schedules, holidays] = await Promise.all([
+  const [schedules, holidays, settings] = await Promise.all([
     db.staffSchedule.findMany({ where: { staffId: { in: staffIds } }, select: { staffId: true, weekday: true } }),
     holidaySet(from, to),
+    getPayrollSettings(),
   ]);
+  const today = ubDateKey();
   const map = new Map<string, WorkCalendar & { fromSchedule: boolean }>();
   for (const id of staffIds) {
     const own = schedules.filter((s) => s.staffId === id).map((s) => s.weekday);
-    map.set(id, { weekdays: new Set(own.length ? own : DEFAULT_WEEKDAYS), holidays, fromSchedule: own.length > 0 });
+    map.set(id, { weekdays: new Set(own.length ? own : DEFAULT_WEEKDAYS), holidays, fromSchedule: own.length > 0, autoSince: settings.autoAttendanceSince, today });
   }
   return { map, holidays };
 }
@@ -85,33 +90,34 @@ export const setWorkDaySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   status: z.enum(WORK_STATUSES),
   hours: z.number().min(0).max(24).nullable().optional(),
-  note: z.string().trim().max(200).nullable().optional(),
+  /** PROMPT 20: гар засвар зөвхөн ADMIN, ЗААВАЛ шалтгаантай (утас эвдэрсэн г.м.) — тайланд "гараар засагдсан" */
+  note: z.string({ error: "Шалтгаан заавал." }).trim().min(5, "Засварын шалтгааныг бичнэ үү (5+ тэмдэгт).").max(200),
 });
 
+/**
+ * Ирцийн гар засвар (PROMPT 20): ирц бүрэн автомат — зөвхөн ADMIN (action: attendance:write), заавал шалтгаантай,
+ * тохиргоогоор унтраах боломжтой (payroll settings → attendanceAdminEdit). Мөр үргэлж үлдэнэ (fromEvents = false →
+ * "Ирлээ/Явлаа"-аас тооцсоныг дарна, тайланд "гараар засагдсан").
+ */
 export async function setWorkDay(raw: z.input<typeof setWorkDaySchema>, actorId: string) {
   const input = setWorkDaySchema.parse(raw);
+  const settings = await getPayrollSettings();
+  if (!settings.attendanceAdminEdit) throw new UserError("Ирцийг гараар засах боломжийг тохиргоогоор хаасан.");
   await assertDayOpen(input.date);
-  const { map } = await workCalendars([input.staffId], input.date, input.date);
-  const isDefault = input.status === defaultStatus(input.date, map.get(input.staffId)!) && !input.note && input.hours == null;
   const where = { staffId_date: { staffId: input.staffId, date: toDbDate(input.date) } };
   return db.$transaction(async (tx) => {
-    const before = await tx.workDay.findUnique({ where, select: { id: true, status: true, hours: true, note: true } });
-    if (isDefault) {
-      if (before) await tx.workDay.delete({ where });
-    } else {
-      // Менежерийн гар засвар — "Ирлээ/Явлаа"-аас тооцсоныг дарна (PROMPT 19)
-      const data = { status: input.status, hours: input.hours ?? null, note: input.note || null, markedById: actorId, fromEvents: false };
-      await tx.workDay.upsert({ where, create: { staffId: input.staffId, date: toDbDate(input.date), ...data }, update: data });
-    }
+    const before = await tx.workDay.findUnique({ where, select: { id: true, status: true, hours: true, note: true, fromEvents: true } });
+    const data = { status: input.status, hours: input.hours ?? null, note: input.note, markedById: actorId, fromEvents: false };
+    await tx.workDay.upsert({ where, create: { staffId: input.staffId, date: toDbDate(input.date), ...data }, update: data });
     await invalidateDay(input.date, tx);
     await audit(tx, {
       userId: actorId,
-      action: "attendance.set",
+      action: "attendance.manual_edit",
       entity: "WorkDay",
       entityId: `${input.staffId}:${input.date}`,
-      before: before ? { status: before.status, hours: before.hours, note: before.note } : null,
-      after: isDefault ? null : { status: input.status, hours: input.hours ?? null, note: input.note || null },
+      before: before ? { status: before.status, hours: before.hours, note: before.note, fromEvents: before.fromEvents } : null,
+      after: { status: input.status, hours: input.hours ?? null, reason: input.note },
     });
-    return { status: input.status, isDefault };
+    return { status: input.status, isDefault: false };
   });
 }
