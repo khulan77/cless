@@ -1,8 +1,8 @@
 /**
  * Зардлын баримт (зураг / PDF) — хувийн storage (public/-ээс гадуур), зөвхөн эрхтэй route-оор уншина.
  * Төрлийг файлын эхний байтаар (magic bytes) шалгана — Content-Type-д итгэхгүй.
- * TODO(PROMPT 21): Supabase private bucket (visit-photos-тэй ижил загвар, "receipts/" folder) руу шилжүүлнэ —
- * локал диск Vercel дээр ажиллахгүй. Merge-ийн өмнө / PROMPT 21-тэй хамт.
+ * Хадгалалт: storage/private.ts — prod-д Supabase PRIVATE bucket-ийн "receipts/" хавтас (айлчлалын зурагтай ижил
+ * bucket, public URL үгүй), dev-д локал диск. Object path-д хувийн мэдээлэл орохгүй (огноо + uuid).
  */
 import "server-only";
 import { randomUUID } from "node:crypto";
@@ -30,11 +30,11 @@ export async function storeReceipt(file: File | null): Promise<string | null> {
   const kind = KINDS.find((k) => k.test(buf));
   if (!kind) throw new UserError("Баримт: зөвхөн PDF, JPG, PNG, WEBP.", { receipt: ["PDF, JPG, PNG, WEBP"] });
   const now = new Date();
-  const key = `expenses/${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.${kind.ext}`;
+  const key = `receipts/${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.${kind.ext}`;
   try {
     await privateStorage.put(key, buf);
-  } catch {
-    throw new UserError("Баримт хадгалж чадсангүй (хувийн storage). Баримтгүйгээр хадгалаад дараа нь нэмнэ үү.");
+  } catch (e) {
+    throw new UserError(e instanceof Error && e.message.startsWith("Хувийн") ? e.message : "Баримт хадгалж чадсангүй. Баримтгүйгээр хадгалаад дараа нь нэмнэ үү.");
   }
   return key;
 }

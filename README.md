@@ -104,6 +104,7 @@ Vercel дээр зөвхөн вэб апп ажиллана. Worker (имэйл,
 | `NOTIFY_BRAND` |  | Брэнд: имэйлийн илгээгчийн нэр (анхдагч `CLÉSS`); SMS/кодонд автоматаар ASCII (`CLESS`, ≤20 тэмдэгт) — WeSend verify ASCII биш брэндийг `invalid_request`-ээр буцаадаг |
 | `RESEND_API_KEY`, `EMAIL_FROM` |  | **Хуучирсан** — WeSend тохируулаагүй үед л имэйлд |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | ✓ (Vercel) | Админаас оруулах зураг (бүтээгдэхүүн, үйлчилгээ, ангилал, контент) — Supabase Storage. Vercel-ийн диск read-only тул заавал; service role key зөвхөн сервер талд |
+| `SUPABASE_PRIVATE_BUCKET` | | Анхдагч `visit-photos`. Айлчлалын өмнө/дараах зураг (`visits/…`), зардлын баримт (`receipts/…`). Supabase → Storage → New bucket **`visit-photos`, Public: OFF**. Нэмэлт env хэрэггүй (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`-ийг ашиглана). Файл зөвхөн эрх шалгадаг route-оор (сервер татаж) харагдана — public / signed URL үүсгэхгүй |
 | `SUPABASE_STORAGE_BUCKET` | | Анхдагч `media`. Supabase → Storage дээр **Public** bucket үүсгэнэ. Зураг 4MB хүртэл (Vercel-ийн 4.5MB хүсэлтийн хязгаар) |
 | `CRON_SECRET` | ✓ (Vercel) | Vercel Cron-ийн нууц (`openssl rand -hex 32`, 16+ тэмдэгт). `vercel.json`-ий cron өдөр бүр 23:50 (УБ, `50 15 * * *` UTC) `/api/cron/attendance`-ийг `Authorization: Bearer <CRON_SECRET>`-ээр дуудна: «Явлаа» дараагүй ирцийг хаах, 90 хоногоос хуучин байршил устгах. Vercel → Settings → Environment Variables (Production) — нэмээгүй бол cron 401 буцаана |
 | `DB_POOL_MAX` | | Нэг instance-ийн pg холболт. Default 3 (Vercel) |
