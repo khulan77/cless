@@ -7,6 +7,8 @@ import { t } from "@/i18n";
 import { addDays, formatDateLabel, formatTime, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
+import { CheckInCard } from "@/components/admin/attendance/CheckInCard";
+import { myToday } from "@/server/modules/attendance/service";
 import { mySchedule } from "@/server/modules/appointments/queries";
 
 export const metadata = { title: "Миний хуваарь" };
@@ -34,6 +36,7 @@ export default async function MySchedulePage() {
           <MeTabs active="schedule" />
         </div>
       )}
+      {can(user.role, "attendance:self") && <CheckInCard initial={await myToday(user.id)} />}
       <PageHeader title="Миний хуваарь" description={m.subtitle(list.length)} />
       <div className="max-w-[720px] space-y-8">
         {days.map((d, i) => {

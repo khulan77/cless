@@ -24,6 +24,8 @@ const ACCOUNTANT_DOMAIN: Permission[] = [
   "expense:read",
   "expense:write",
   "finance:read",
+  // PROMPT 19: өөрийн ирц ("Ирлээ / Явлаа") — бусдын өгөгдлийг өөрчлөхгүй
+  "attendance:self",
 ];
 
 /** Менежерийн хэсгээс зөвхөн УНШИХ action-ууд (өгөгдөл өөрчлөхгүй) */

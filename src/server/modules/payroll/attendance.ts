@@ -99,7 +99,8 @@ export async function setWorkDay(raw: z.input<typeof setWorkDaySchema>, actorId:
     if (isDefault) {
       if (before) await tx.workDay.delete({ where });
     } else {
-      const data = { status: input.status, hours: input.hours ?? null, note: input.note || null, markedById: actorId };
+      // Менежерийн гар засвар — "Ирлээ/Явлаа"-аас тооцсоныг дарна (PROMPT 19)
+      const data = { status: input.status, hours: input.hours ?? null, note: input.note || null, markedById: actorId, fromEvents: false };
       await tx.workDay.upsert({ where, create: { staffId: input.staffId, date: toDbDate(input.date), ...data }, update: data });
     }
     await invalidateDay(input.date, tx);

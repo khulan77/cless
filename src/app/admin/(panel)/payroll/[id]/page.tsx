@@ -8,7 +8,7 @@ import { Badge, Card, PageHeader } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatDateTime } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
-import { requirePagePermission } from "@/server/auth/session";
+import { requireFinancePage } from "@/server/modules/finance/access";
 import { payrollStaff } from "@/server/modules/payroll/attendance";
 import { getPeriod } from "@/server/modules/payroll/periods";
 import { getPayrollSettings } from "@/server/modules/payroll/settings";
@@ -17,7 +17,8 @@ export const metadata = { title: "Цалингийн үе" };
 export const instant = false;
 
 export default async function PayrollPeriodPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requirePagePermission("payroll:read");
+  // MANAGER — тохиргоогоор зөвхөн харах (PROMPT 19); бичих товч payroll:write-ээр
+  const { user } = await requireFinancePage("payroll");
   const { id } = await params;
   const [p, settings, staff] = await Promise.all([getPeriod(id), getPayrollSettings(), payrollStaff()]);
   if (!p) notFound();

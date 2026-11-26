@@ -109,6 +109,7 @@ export const ADMIN_NAV: NavEntry[] = [
       { href: "/admin/settings/shop", label: n.settingsShop, icon: "storefront", permission: "settings:write" },
       { href: "/admin/settings/pos", label: n.settingsPos, icon: "discount", permission: "settings:write" },
       { href: "/admin/holidays", label: n.holidays, icon: "holiday", permission: "holiday:write" },
+      { href: "/admin/settings/attendance", label: "Ирцийн байршил", icon: "attendance", permission: "settings:write" },
       { href: "/admin/rooms", label: n.rooms, icon: "room", permission: "room:write" },
       { href: "/admin/settings/email", label: n.settingsEmail, icon: "email", permission: "settings:write" },
       { href: "/admin/settings/notifications", label: "Мэдэгдэл (WeSend)", icon: "email", permission: "settings:write" },

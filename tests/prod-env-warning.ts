@@ -35,6 +35,9 @@ export function prodKeysIn(env: Record<string, string>): string[] {
 }
 
 export function warnIfProdEnv(label: string) {
+  // Playwright config-ийг үндсэн ба worker процесс хоёуланд ачаална — нэг л удаа
+  if (process.env.CLESS_PROD_ENV_WARNED) return;
+  process.env.CLESS_PROD_ENV_WARNED = "1";
   for (const file of [".env", ".env.local"]) {
     const hits = prodKeysIn(parse(file));
     if (hits.length === 0) continue;

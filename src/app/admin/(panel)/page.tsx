@@ -14,6 +14,8 @@ import { formatMNT } from "@/lib/money";
 import { formatTime, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requireUser } from "@/server/auth/session";
+import { CheckInCard } from "@/components/admin/attendance/CheckInCard";
+import { myToday, onDutyNow } from "@/server/modules/attendance/service";
 import { db } from "@/server/db";
 import { todayAppointmentStats } from "@/server/modules/appointments/queries";
 import { countNewInquiries } from "@/server/modules/inquiries/service";
@@ -55,6 +57,11 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
     can(user.role, "appointment:read") ? todayAppointmentStats() : null,
     can(user.role, "appointment:read") ? apptSourceBreakdown(rangeBounds(range)) : null,
   ]);
+  // PROMPT 19: өөрийн "Ирлээ/Явлаа" + "Өнөөдөр ажил дээр" (ирц харах эрхтэйд)
+  const [myAtt, duty] = await Promise.all([
+    can(user.role, "attendance:self") && user.role === "MANAGER" ? myToday(user.id) : null,
+    can(user.role, "attendance:read") ? onDutyNow() : null,
+  ]);
   const sourceTotal = sources?.reduce((s, x) => s + x.count, 0) ?? 0;
   const k = report.kpi;
   const p = prev.kpi;
@@ -66,6 +73,15 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
 
   return (
     <>
+      {myAtt && <CheckInCard initial={myAtt} />}
+      {duty && duty.expected > 0 && (
+        <Link href="/admin/attendance?view=day" className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-hairline bg-white px-5 py-3 text-[15px] hover:border-ink/20">
+          <span className="text-ink-soft">Өнөөдөр ажил дээр:</span>
+          <strong className="tabular-nums">{duty.working}/{duty.expected}</strong>
+          {duty.missing > 0 && <span className="text-warn">⚠ «Явлаа» дараагүй: {duty.missing}</span>}
+          <ChevronRight className="ml-auto size-4 text-ink-soft" aria-hidden />
+        </Link>
+      )}
       {/* Launch readiness — ADMIN, one line until everything is done */}
       {missing.length > 0 && (
         <details className="group mb-6 rounded-2xl border border-warn/30 bg-warn-bg">

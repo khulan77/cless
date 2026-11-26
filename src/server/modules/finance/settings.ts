@@ -1,6 +1,7 @@
 /**
  * Санхүүгийн тохиргоо (SiteSetting "finance") — ADMIN / ACCOUNTANT засна:
  *  - managerExpenses / managerFinance: MANAGER зардал / санхүүгийн тайланг ХАРАХ эсэх (анхдагч — үгүй; нягтлан шийднэ)
+ *  - managerPayroll: MANAGER цалингийн тайланг (үе, мөр) ХАРАХ эсэх (PROMPT 19, анхдагч — үгүй)
  *  - opening: мөнгөн гүйлгээний эхний үлдэгдэл (огноо, бэлэн, данс) — үүнээс хойших гүйлгээгээр үлдэгдэл тооцно
  * TODO(нягтлан): НХАТ (хотын албан татвар) хамаарах эсэх — хамаарвал энд хувь нэмж НӨАТ-ын тайланд мөр гаргана.
  */
@@ -17,6 +18,7 @@ const money = z.coerce.number().int().min(-10_000_000_000).max(10_000_000_000);
 export const financeSettingsSchema = z.object({
   managerExpenses: z.boolean().catch(false).default(false),
   managerFinance: z.boolean().catch(false).default(false),
+  managerPayroll: z.boolean().catch(false).default(false),
   opening: z
     .object({ asOf: dateKey, cash: money, bank: money })
     .nullable()
@@ -33,6 +35,7 @@ export async function getFinanceSettings(client: Client = db): Promise<FinanceSe
 export const saveFinanceSettingsSchema = z.object({
   managerExpenses: z.boolean(),
   managerFinance: z.boolean(),
+  managerPayroll: z.boolean().default(false),
   opening: z.object({ asOf: dateKey, cash: money, bank: money }).nullable(),
 });
 

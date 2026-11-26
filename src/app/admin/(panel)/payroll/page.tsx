@@ -6,7 +6,7 @@ import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
-import { requirePagePermission } from "@/server/auth/session";
+import { requireFinancePage } from "@/server/modules/finance/access";
 import { listPeriods } from "@/server/modules/payroll/periods";
 import { getPayrollSettings } from "@/server/modules/payroll/settings";
 import { HandCoins } from "lucide-react";
@@ -15,7 +15,8 @@ export const metadata = { title: "Цалингийн үе" };
 export const instant = false;
 
 export default async function PayrollPage() {
-  const user = await requirePagePermission("payroll:read");
+  // MANAGER — тохиргоогоор зөвхөн харах (PROMPT 19); бичих товч payroll:write-ээр
+  const { user } = await requireFinancePage("payroll");
   const [periods, settings] = await Promise.all([listPeriods(), getPayrollSettings()]);
   const P = t.admin.payroll;
   return (

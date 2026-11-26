@@ -37,8 +37,8 @@ export default async function AdminPanelLayout({ children }: { children: React.R
     );
   }
   // Санхүү: MANAGER-т тохиргоогоор зөвхөн харах (finance/access.ts)
-  const [viewExpenses, viewFinance] = await Promise.all([canView(user.role, "expenses"), canView(user.role, "finance")]);
-  const entries = navFor((p) => (p === "expense:read" ? viewExpenses : p === "finance:read" ? viewFinance : can(user.role, p)));
+  const [viewExpenses, viewFinance, viewPayroll] = await Promise.all([canView(user.role, "expenses"), canView(user.role, "finance"), canView(user.role, "payroll")]);
+  const entries = navFor((p) => (p === "expense:read" ? viewExpenses : p === "finance:read" ? viewFinance : p === "payroll:read" ? viewPayroll : can(user.role, p)));
   // Утасгүй/баталгаажаагүй хэрэглэгчид утсаа нэмэхийг санал болгоно (PROMPT 15 §2)
   const phoneVerified = Boolean((await db.user.findUnique({ where: { id: user.id }, select: { loginPhone: true } }))?.loginPhone);
   // Онлайн захиалга (батлах хүлээж буй) ба сайтаас шинээр бүртгүүлсэн (24 цаг) — MANAGER, ADMIN (PROMPT 15)

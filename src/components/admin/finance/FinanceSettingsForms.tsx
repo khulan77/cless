@@ -5,11 +5,12 @@ import { useServerAction } from "@/components/admin/use-action";
 import { Badge, Button, Checkbox, Field, Input, Select } from "@/components/admin/ui";
 import { saveExpenseCategoryAction, saveFinanceSettingsAction } from "@/server/actions/finance";
 
-type Settings = { managerExpenses: boolean; managerFinance: boolean; opening: { asOf: string; cash: number; bank: number } | null };
+type Settings = { managerExpenses: boolean; managerFinance: boolean; managerPayroll: boolean; opening: { asOf: string; cash: number; bank: number } | null };
 
 export function FinanceSettingsForm({ initial, today }: { initial: Settings; today: string }) {
   const [managerExpenses, setME] = useState(initial.managerExpenses);
   const [managerFinance, setMF] = useState(initial.managerFinance);
+  const [managerPayroll, setMP] = useState(initial.managerPayroll);
   const [useOpening, setUseOpening] = useState(!!initial.opening);
   const [asOf, setAsOf] = useState(initial.opening?.asOf ?? today);
   const [cash, setCash] = useState(String(initial.opening?.cash ?? 0));
@@ -21,13 +22,14 @@ export function FinanceSettingsForm({ initial, today }: { initial: Settings; tod
       className="space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
-        run({ managerExpenses, managerFinance, opening: useOpening ? { asOf, cash: n(cash), bank: n(bank) } : null });
+        run({ managerExpenses, managerFinance, managerPayroll, opening: useOpening ? { asOf, cash: n(cash), bank: n(bank) } : null });
       }}
     >
       <fieldset className="space-y-2">
-        <legend className="mb-1 text-[14px] font-medium">Ресепшн (менежер)</legend>
+        <legend className="mb-1 text-[14px] font-medium">Ресепшн (менежер) — эрх</legend>
         <Checkbox label="Зардлыг харах" checked={managerExpenses} onChange={(e) => setME(e.target.checked)} />
         <Checkbox label="Санхүүгийн тайланг харах" checked={managerFinance} onChange={(e) => setMF(e.target.checked)} />
+        <Checkbox label="Цалингийн тайланг харах (үе, ажилтны дүн)" checked={managerPayroll} onChange={(e) => setMP(e.target.checked)} />
         <p className="text-[13px] text-ink-soft">Зөвхөн харна — бүртгэх, засах эрх нь Админ, Нягтланд л. Анхдагч: хоёулаа үгүй.</p>
       </fieldset>
       <fieldset className="space-y-3">

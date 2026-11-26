@@ -6,6 +6,7 @@
  *  - Удаан түгжигдсэн борлуулалтыг тайлах: 1 минут тутам (тохиргоо: pos.staleLockMinutes)
  *  - 24 цагаас хуучирсан POS ноорог устгах: 10 минут тутам
  *  - Heartbeat (хянах самбар): 30 секунд тутам
+ *  - Ирц: "Явлаа" дараагүй сессийг хуваарийн дуусах цагаар хаах — 5 минут тутам; 90 хоногоос хуучин байршил устгах — цаг тутам
  */
 import { assertEnv } from "@/server/env";
 import { log as slog } from "@/server/log";
@@ -16,6 +17,7 @@ import { purgeStaleDrafts } from "@/server/modules/sales/drafts";
 import { pollProcessingQPayPayments } from "@/server/modules/payments/service";
 import { unlockStaleSales } from "@/server/modules/sales/service";
 import { getPosSettings } from "@/server/modules/settings/pos-settings";
+import { autoCloseOpenSessions, purgeOldCoordinates } from "@/server/modules/attendance/service";
 
 const OUTBOX_MS = 5_000;
 const MINUTE_MS = 60_000;
@@ -70,5 +72,7 @@ void Promise.all([
     return unlocked;
   }),
   loop("stale-drafts", 10 * MINUTE_MS, () => purgeStaleDrafts(24)),
+  loop("attendance-autoclose", 5 * MINUTE_MS, () => autoCloseOpenSessions()),
+  loop("attendance-geo-purge", 60 * MINUTE_MS, () => purgeOldCoordinates()),
   loop("heartbeat", 30_000, () => beat({ pid: process.pid }).then(() => 0)),
 ]).then(() => process.exit(0));
