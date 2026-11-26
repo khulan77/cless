@@ -1,6 +1,6 @@
 import { Clock } from "lucide-react";
 import Link from "next/link";
-import { Img } from "@/components/ui/Img";
+import { BrandFallback, Img } from "@/components/ui/Img";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { realImageSrc } from "@/lib/placeholder";
@@ -15,11 +15,10 @@ export function ServiceCard({ service: s, headingLevel = "h3" }: { service: Publ
   const src = realImageSrc(s.image);
   return (
     <li className="group relative flex flex-col bg-card sm:flex-row">
-      {src && (
-        <div className="relative aspect-[4/3] sm:aspect-auto sm:w-48 sm:shrink-0">
-          <Img src={src} alt="" fill sizes="(min-width: 640px) 192px, 100vw" className="object-cover" />
-        </div>
-      )}
+      {/* Зураггүй бол брэндийн зөөлөн placeholder — карт бүр ижил хэмжээтэй */}
+      <div className="relative aspect-[4/3] sm:aspect-auto sm:min-h-40 sm:w-48 sm:shrink-0">
+        {src ? <Img src={src} alt="" fill sizes="(min-width: 640px) 192px, 100vw" className="object-cover" /> : <BrandFallback fill />}
+      </div>
       <div className="flex flex-1 flex-col p-6">
         <H className="text-product">
           <Link href={`/services/${s.slug}`} className="after:absolute after:inset-0 group-hover:underline">

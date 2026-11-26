@@ -10,6 +10,7 @@ import { infra } from "@/i18n/mn.infra";
 import { BADGE_LABELS } from "@/lib/validation/product";
 import { db } from "@/server/db";
 import { requirePageOrView } from "@/server/auth/session";
+import { ProductBulkProvider, ProductBulkToolbar, RowCheckbox, SelectAllCheckbox } from "@/components/admin/products/ProductBulk";
 
 export const metadata = { title: "Бүтээгдэхүүн" };
 // Нэвтэрсэн хэрэглэгчийн динамик хуудас — request бүрт render (Cache Components validation-аас гаргана)
@@ -112,11 +113,24 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
       </FilterBar>
 
       {products.length === 0 ? (
-        <EmptyState icon={Package} title="Бүтээгдэхүүн олдсонгүй">Хайлт, шүүлтүүрээ өөрчилж үзнэ үү.</EmptyState>
+        total === 0 && !q && !collection && !status ? (
+          <EmptyState icon={Package} title="Бүтээгдэхүүн алга">
+            «Бүтээгдэхүүн нэмэх»-ээр нэр, ангилал, үнэ, зургаа оруулна уу. Хадгалж «Сайтад» болгоход дэлгүүрт шууд харагдана.
+          </EmptyState>
+        ) : (
+          <EmptyState icon={Package} title="Бүтээгдэхүүн олдсонгүй">Хайлт, шүүлтүүрээ өөрчилж үзнэ үү.</EmptyState>
+        )
       ) : (
+        <ProductBulkProvider key={`${page}-${q ?? ""}-${collection ?? ""}-${status ?? ""}`}>
+        {!readOnly && <ProductBulkToolbar />}
         <Table>
           <thead>
             <tr>
+              {!readOnly && (
+                <th className={`${thClass} w-10`}>
+                  <SelectAllCheckbox ids={products.map((p) => p.id)} />
+                </th>
+              )}
               <th className={`${thClass} w-14`}><span className="sr-only">Зураг</span></th>
               <th className={thClass}>Нэр</th>
               <th className={`${thClass} text-right`}>Хэмжээ</th>
@@ -136,6 +150,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
               const img = p.images[0];
               return (
                 <tr key={p.id} className="hover:bg-canvas">
+                  {!readOnly && (
+                    <td className={tdClass}>
+                      <RowCheckbox id={p.id} name={p.name} />
+                    </td>
+                  )}
                   <td className={tdClass}>
                     <div className="relative size-12 overflow-hidden rounded-xl bg-canvas">
                       {img && <Image src={img.url} alt={img.alt} fill sizes="48px" unoptimized={img.url.endsWith(".svg")} className="object-contain" />}
@@ -161,6 +180,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
             })}
           </tbody>
         </Table>
+        </ProductBulkProvider>
       )}
       <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath="/admin/products" params={{ q, collection, status }} />
     </>
