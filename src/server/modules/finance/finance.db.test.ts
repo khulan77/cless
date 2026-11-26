@@ -10,6 +10,7 @@ import { vatOf } from "@/server/modules/sales/pricing";
 import { approvePeriod, calculatePeriod, openMonth, unapprovePeriod } from "@/server/modules/payroll/periods";
 import { confirmRateSet, saveRateSet } from "@/server/modules/payroll/rates";
 import { addSalary } from "@/server/modules/payroll/staff";
+import { commissionsByStaff } from "@/server/modules/payroll/commissions";
 import { makeService, makeUser, makeVariant, resetDb } from "../../../../tests/db-helpers";
 import { createExpense, deleteExpense, lastReferences, updateExpense } from "./expenses";
 import { balanceSheet, cashFlow, financeRange, profitAndLoss, vatReport } from "./reports";
@@ -51,6 +52,19 @@ describe("зардал", () => {
     await expect(createExpense({ categoryId: payroll.id, date: today, amount: 1 }, acc.id)).rejects.toThrow(/Системийн/);
     await deleteExpense(e.id, acc.id);
     expect(await db.auditLog.count({ where: { entity: "Expense" } })).toBe(3);
+  });
+});
+
+describe("урамшууллын суурь", () => {
+  it("анхдагч GROSS (НӨАТ-тэй, өмнөхтэй ижил); NET сонговол НӨАТ-гүй дүнгээс", async () => {
+    const staff = await makeUser("STAFF");
+    await db.commissionRule.create({ data: { kind: "SERVICE", type: "PERCENT", value: 1000 } });
+    const svc = await makeService({ price: 200_000 });
+    await paidSale([{ kind: "SERVICE", serviceId: svc.id, qty: 1, staffId: staff.id }], "CARD");
+    const gross = (await commissionsByStaff(today, today, [staff.id])).get(staff.id)!;
+    expect(gross).toMatchObject({ service: 20_000, serviceBase: 200_000 });
+    const net = (await commissionsByStaff(today, today, [staff.id], { base: "NET" })).get(staff.id)!;
+    expect(net).toMatchObject({ service: 18_182, serviceBase: 181_818 });
   });
 });
 

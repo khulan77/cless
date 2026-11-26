@@ -18,7 +18,7 @@ export default defineConfig({
     projects: [
       {
         extends: true,
-        test: { name: "unit", include: ["src/**/*.test.ts"], exclude: ["src/**/*.db.test.ts"], environment: "node" },
+        test: { name: "unit", include: ["src/**/*.test.ts", "tests/*.test.ts"], exclude: ["src/**/*.db.test.ts"], environment: "node", globalSetup: ["tests/env-warning-setup.ts"] },
       },
       {
         extends: true,

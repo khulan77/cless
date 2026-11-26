@@ -38,9 +38,9 @@ type Row = {
 
 const ruleLabel = (r: CommissionRuleLite) => (r.type === "PERCENT" ? `${r.value / 100}%` : `${r.value.toLocaleString("en-US")}₮/ш`);
 
-/** Урамшууллын суурь: NET (анхдагч) — НӨАТ-гүй цэвэр дүн, GROSS — НӨАТ-тэй */
+/** Урамшууллын суурь: GROSS (анхдагч) — НӨАТ-тэй дүн, NET — НӨАТ-гүй цэвэр дүн */
 export async function commissionsByStaff(from: string, to: string, staffIds: string[], opts: { base?: "NET" | "GROSS" } = {}) {
-  const onNet = (opts.base ?? "NET") === "NET";
+  const onNet = opts.base === "NET";
   const { start, end } = rangeBounds({ from, to });
   const [rows, rules] = await Promise.all([
     staffIds.length === 0

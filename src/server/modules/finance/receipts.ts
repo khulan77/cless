@@ -1,6 +1,8 @@
 /**
  * Зардлын баримт (зураг / PDF) — хувийн storage (public/-ээс гадуур), зөвхөн эрхтэй route-оор уншина.
  * Төрлийг файлын эхний байтаар (magic bytes) шалгана — Content-Type-д итгэхгүй.
+ * TODO(PROMPT 21): Supabase private bucket (visit-photos-тэй ижил загвар, "receipts/" folder) руу шилжүүлнэ —
+ * локал диск Vercel дээр ажиллахгүй. Merge-ийн өмнө / PROMPT 21-тэй хамт.
  */
 import "server-only";
 import { randomUUID } from "node:crypto";

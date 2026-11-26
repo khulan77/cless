@@ -46,10 +46,10 @@ export function PayrollModeForm({ initial }: { initial: { mode: Mode; splitDay: 
         </Field>
         {mode === "ADVANCE_FINAL" && <Checkbox label={R.advanceWithholding} checked={withhold} onChange={(e) => setWithhold(e.target.checked)} />}
       </div>
-      <Field label="Урамшууллыг ямар дүнгээс бодох" htmlFor="commission-base" hint="Анхдагч: НӨАТ-гүй цэвэр дүнгээс. Нягтлан баталгаажуулна." className="max-w-md">
+      <Field label="Урамшууллыг ямар дүнгээс бодох" htmlFor="commission-base" hint="Анхдагч: НӨАТ-тэй нийт дүнгээс (өмнөх тооцоотой ижил). Нягтлан баталгаажуулна." className="max-w-md">
         <Select id="commission-base" value={commissionBase} onChange={(e) => setCommissionBase(e.target.value as "NET" | "GROSS")}>
-          <option value="NET">НӨАТ-гүй цэвэр дүнгээс (400 000₮ → 363 636₮)</option>
           <option value="GROSS">НӨАТ-тэй нийт дүнгээс</option>
+          <option value="NET">НӨАТ-гүй цэвэр дүнгээс (400 000₮ → 363 636₮)</option>
         </Select>
       </Field>
       <Button type="submit" disabled={pending}>{pending ? t.admin.saving : R.save}</Button>
