@@ -13,7 +13,18 @@ import { can, type Permission } from "@/server/auth/permissions";
 const DIR = join(process.cwd(), "src/server/actions");
 
 /** Нягтлангийн өөрийн хэсэг — эдгээрээр хамгаалагдсан action бүрэн нээлттэй */
-const ACCOUNTANT_DOMAIN: Permission[] = ["payroll:read", "payroll:write", "payroll:settings", "attendance:read", "holiday:write", "report:send"];
+const ACCOUNTANT_DOMAIN: Permission[] = [
+  "payroll:read",
+  "payroll:write",
+  "payroll:settings",
+  "attendance:read",
+  "holiday:write",
+  "report:send",
+  // PROMPT 18: санхүү — зардал, санхүүгийн тохиргоо
+  "expense:read",
+  "expense:write",
+  "finance:read",
+];
 
 /** Менежерийн хэсгээс зөвхөн УНШИХ action-ууд (өгөгдөл өөрчлөхгүй) */
 const READ_ACTIONS = [
@@ -39,7 +50,7 @@ function actions() {
     });
 }
 
-describe("ACCOUNTANT is read-only outside payroll (PROMPT 14 §1)", () => {
+describe("ACCOUNTANT is read-only outside payroll / finance (PROMPT 14 §1, 18 §4)", () => {
   const all = actions();
   const open = all.filter((a) => a.perms.some((p) => can("ACCOUNTANT", p)));
 

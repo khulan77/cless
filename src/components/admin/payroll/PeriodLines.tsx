@@ -82,6 +82,12 @@ export function PeriodLines({ lines, isFinal, slipBase }: { lines: LineView[]; i
                       {l.name}
                     </button>
                     <span className="block whitespace-nowrap pl-6 text-[12px] text-ink-soft tabular-nums">{C.days}: {l.workedDays} / {l.plannedDays}</span>
+                    {l.details.hours && (
+                      <span className="block whitespace-nowrap pl-6 text-[12px] text-ink-soft tabular-nums">
+                        Цаг: {l.details.hours.worked} / {l.details.hours.norm}
+                        {l.details.hours.overtime > 0 && <span className="ml-1 font-medium text-amber-700">· илүү {l.details.hours.overtime}</span>}
+                      </span>
+                    )}
                     {l.details.warnings.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1 pl-6">
                         {l.details.warnings.map((w) => <Badge key={w} tone="red">{t.admin.payroll.warnings[w] ?? w}</Badge>)}
@@ -151,6 +157,33 @@ export function Breakdown({ l, slipHref }: { l: LineView; slipHref?: string }) {
           ))}
         </div>
 
+        {d.hours && d.hours.weeks.length > 0 && (
+          <>
+            <h4 className="mb-2 mt-5 text-[14px] font-semibold">Цаг (7 хоногт 40 цаг норм)</h4>
+            <div className="flex flex-wrap gap-2 text-[12px] tabular-nums">
+              {d.hours.weeks.map((w) => (
+                <span key={w.week} className={`rounded-lg px-2.5 py-1.5 ${w.overtime > 0 ? "bg-amber-100 text-amber-900" : "bg-canvas"}`}>
+                  {w.week.slice(5)}~ · {w.hours} ц{w.overtime > 0 ? ` (+${w.overtime})` : ""}
+                </span>
+              ))}
+            </div>
+            <p className="mt-1 text-[12px] text-ink-soft">Илүү цагийн хөлсийг одоохондоо цалинд оруулаагүй (нягтлан шийдсэний дараа).</p>
+          </>
+        )}
+
+        {d.bases && (
+          <dl className="mt-5 grid grid-cols-2 gap-3 rounded-xl bg-canvas p-3 text-[13px]">
+            <div>
+              <dt className="text-ink-soft">Үйлчилгээний суурь ({d.bases.on === "NET" ? "НӨАТ-гүй" : "НӨАТ-тэй"})</dt>
+              <dd className="tabular-nums">{formatMNT(d.bases.service)} → <strong>{formatMNT(l.serviceCommission)}</strong></dd>
+            </div>
+            <div>
+              <dt className="text-ink-soft">Бүтээгдэхүүний суурь ({d.bases.on === "NET" ? "НӨАТ-гүй" : "НӨАТ-тэй"})</dt>
+              <dd className="tabular-nums">{formatMNT(d.bases.product)} → <strong>{formatMNT(l.productCommission)}</strong></dd>
+            </div>
+          </dl>
+        )}
+
         <h4 className="mb-2 mt-5 text-[14px] font-semibold">{D.commissions}</h4>
         {d.commissions.length === 0 ? (
           <p className="text-[13px] text-ink-soft">{D.noCommissions}</p>
@@ -173,7 +206,7 @@ export function Breakdown({ l, slipHref }: { l: LineView; slipHref?: string }) {
                     <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">{c.day}</td>
                     <td className="px-3 py-1.5">{c.name}{c.qty > 1 ? ` ×${c.qty}` : ""}</td>
                     <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[12px]">{c.receipt ?? "—"}</td>
-                    <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{formatMNT(c.amount)}</td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums" title={c.base !== undefined && c.base !== c.amount ? `Суурь (НӨАТ-гүй): ${formatMNT(c.base)}` : undefined}>{formatMNT(c.amount)}</td>
                     <td className="px-3 py-1.5 text-right">{c.rule ?? "—"}</td>
                     <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{formatMNT(c.commission)}</td>
                   </tr>

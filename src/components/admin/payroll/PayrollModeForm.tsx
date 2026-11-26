@@ -2,24 +2,25 @@
 
 import { useState } from "react";
 import { useServerAction } from "@/components/admin/use-action";
-import { Button, Checkbox, Field, Input } from "@/components/admin/ui";
+import { Button, Checkbox, Field, Input, Select } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { savePayrollSettingsAction } from "@/server/actions/payroll";
 
 const R = t.admin.payroll.rates;
 type Mode = "ADVANCE_FINAL" | "INDEPENDENT";
 
-export function PayrollModeForm({ initial }: { initial: { mode: Mode; splitDay: number; advanceWithholding: boolean } }) {
+export function PayrollModeForm({ initial }: { initial: { mode: Mode; splitDay: number; advanceWithholding: boolean; commissionBase: "NET" | "GROSS" } }) {
   const [mode, setMode] = useState<Mode>(initial.mode);
   const [splitDay, setSplitDay] = useState(String(initial.splitDay));
   const [withhold, setWithhold] = useState(initial.advanceWithholding);
+  const [commissionBase, setCommissionBase] = useState(initial.commissionBase);
   const { run, pending, fieldErrors } = useServerAction(savePayrollSettingsAction);
   return (
     <form
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        run({ mode, splitDay: Number(splitDay), advanceWithholding: withhold });
+        run({ mode, splitDay: Number(splitDay), advanceWithholding: withhold, commissionBase });
       }}
     >
       <fieldset className="grid gap-3 md:grid-cols-2">
@@ -45,6 +46,12 @@ export function PayrollModeForm({ initial }: { initial: { mode: Mode; splitDay: 
         </Field>
         {mode === "ADVANCE_FINAL" && <Checkbox label={R.advanceWithholding} checked={withhold} onChange={(e) => setWithhold(e.target.checked)} />}
       </div>
+      <Field label="Урамшууллыг ямар дүнгээс бодох" htmlFor="commission-base" hint="Анхдагч: НӨАТ-гүй цэвэр дүнгээс. Нягтлан баталгаажуулна." className="max-w-md">
+        <Select id="commission-base" value={commissionBase} onChange={(e) => setCommissionBase(e.target.value as "NET" | "GROSS")}>
+          <option value="NET">НӨАТ-гүй цэвэр дүнгээс (400 000₮ → 363 636₮)</option>
+          <option value="GROSS">НӨАТ-тэй нийт дүнгээс</option>
+        </Select>
+      </Field>
       <Button type="submit" disabled={pending}>{pending ? t.admin.saving : R.save}</Button>
     </form>
   );

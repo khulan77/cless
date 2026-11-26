@@ -78,7 +78,7 @@ describe("цалингийн үе (PROMPT 14)", () => {
     await expect(setWorkDay({ staffId: staff.id, date: firstWeekday, status: "WORKED" }, admin.id)).rejects.toThrow(/батлагдсан/);
     await expect(addHoliday({ date: md[0]!, name: "Test" }, admin.id)).rejects.toThrow(/батлагдсан/);
 
-    // Үйлчилгээ 200,000 × 10% = 20,000 урамшуулал; нэмэлт 50,000
+    // Үйлчилгээ 200,000 (НӨАТ-тэй) → НӨАТ-гүй 181,818 × 10% = 18,182 урамшуулал (PROMPT 18: анхдагч NET); нэмэлт 50,000
     await db.commissionRule.create({ data: { kind: "SERVICE", type: "PERCENT", value: 1000 } });
     const svc = await makeService({ price: 200_000 });
     const sale = await checkout({ items: [{ kind: "SERVICE", serviceId: svc.id, qty: 1, staffId: staff.id }] }, { id: admin.id, role: "ADMIN" });
@@ -89,14 +89,16 @@ describe("цалингийн үе (PROMPT 14)", () => {
     const f = (await getPeriod(fin.id))!.lines[0]!;
     const monthBase = Math.round((2_100_000 / planned) * (planned - 1));
     const expected = computeFinal(
-      { base: monthBase, serviceCommission: 20_000, productCommission: 0, additions: 50_000, deductions: 0 },
+      { base: monthBase, serviceCommission: 18_182, productCommission: 0, additions: 50_000, deductions: 0 },
       a,
       { employeeSiBp: 1150, employerSiBp: 1250, siCap: 5_000_000, pitBp: 1000, pitCredits: RATES.pitCredits },
     );
-    expect(f.details.month).toMatchObject({ gross: monthBase + 70_000, advanceNet: a.net });
+    expect(f.details.month).toMatchObject({ gross: monthBase + 68_182, advanceNet: a.net });
     expect(f).toMatchObject({ net: expected.line.net, siEmployee: expected.line.siEmployee, pit: expected.line.pit, advancePaid: a.net, adjustments: 50_000 });
     expect(a.net + f.net).toBe(expected.month.net);
-    expect(f.details.commissions).toEqual([expect.objectContaining({ kind: "SERVICE", amount: 200_000, commission: 20_000, rule: "10%" })]);
+    expect(f.details.commissions).toEqual([expect.objectContaining({ kind: "SERVICE", amount: 200_000, base: 181_818, commission: 18_182, rule: "10%" })]);
+    expect(f.details.bases).toEqual({ service: 181_818, product: 0, on: "NET" });
+    expect(f.details.hours).toMatchObject({ norm: planned * 8, worked: (planned - 1) * 8 });
     // Үйлчлүүлэгчийн мэдээлэл задаргаанд байхгүй
     expect(JSON.stringify(f.details)).not.toMatch(/customer|phone/i);
 

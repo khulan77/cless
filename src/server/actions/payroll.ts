@@ -23,7 +23,7 @@ import {
 } from "@/server/modules/payroll/periods";
 import { confirmRateSet, deleteRateSet, rateSetSchema, saveRateSet, type RateSetInput } from "@/server/modules/payroll/rates";
 import { savePayrollSettings, savePayrollSettingsSchema } from "@/server/modules/payroll/settings";
-import { addSalary, removeSalary, salarySchema, saveStaffPayroll, staffPayrollSchema } from "@/server/modules/payroll/staff";
+import { addSalary, removeSalary, salarySchema, saveStaffPayroll, setStaffCommission, staffCommissionSchema, staffPayrollSchema } from "@/server/modules/payroll/staff";
 import { parseInput, runAction } from "./result";
 
 const id = z.string().min(1);
@@ -144,6 +144,14 @@ export async function saveStaffPayrollAction(input: z.input<typeof staffPayrollS
     await saveStaffPayroll(parseInput(staffPayrollSchema, input), user.id);
     refresh("/admin/payroll/staff");
   }, "Хадгалагдлаа.");
+}
+
+export async function setStaffCommissionAction(input: z.input<typeof staffCommissionSchema>) {
+  return runAction(async () => {
+    const user = await requirePermission("payroll:write");
+    await setStaffCommission(parseInput(staffCommissionSchema, input), user.id);
+    refresh("/admin/payroll/staff");
+  }, "Урамшууллын хувь хадгалагдлаа.");
 }
 
 // ───────── Хувь хэмжээ, горим ─────────

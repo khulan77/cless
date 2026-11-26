@@ -13,9 +13,16 @@ const font = "Helvetica, Arial, sans-serif";
 const cell = { fontSize: 14, lineHeight: "22px", color: "#1d1b18", padding: "6px 0", borderBottom: "1px solid #ece7df" };
 
 /** downloadUrl: WeSend хавсралт дэмждэггүй үед Excel-ийг системээс (нэвтэрч) татах холбоос */
-export type AccountantEmailData = { salonName: string; summary: DailySummary; lines: [string, number | string][]; downloadUrl?: string | null };
+export type AccountantEmailData = {
+  salonName: string;
+  summary: DailySummary;
+  lines: [string, number | string][];
+  downloadUrl?: string | null;
+  /** PROMPT 18: "Бүх системийн тайлан" XLSX — хувийн, хугацаатай холбоос (нэвтрэлтгүй) */
+  fullReportUrl?: string | null;
+};
 
-export function AccountantEmail({ salonName, summary, lines, downloadUrl }: AccountantEmailData) {
+export function AccountantEmail({ salonName, summary, lines, downloadUrl, fullReportUrl }: AccountantEmailData) {
   return (
     <Html lang="mn">
       <Head />
@@ -48,6 +55,12 @@ export function AccountantEmail({ salonName, summary, lines, downloadUrl }: Acco
               s.attachment
             )}
           </Text>
+          {fullReportUrl && (
+            <Text style={{ fontSize: 13, color: "#8a8378", marginTop: 12 }}>
+              Бүх системийн тайлан (борлуулалт, үйлчилгээ, бүтээгдэхүүн, касс, цалин, зардал, НӨАТ — сарын эхнээс) Excel:{" "}
+              <a href={fullReportUrl} style={{ color: "#8a6d3b" }}>татах</a> · 7 хоногийн дотор хүчинтэй, бусадтай бүү хуваалц.
+            </Text>
+          )}
         </Container>
       </Body>
     </Html>

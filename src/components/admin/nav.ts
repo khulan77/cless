@@ -8,7 +8,7 @@ export type NavIcon =
   | "shop" | "product" | "stock" | "collection" | "content"
   | "spa" | "service" | "staffSchedule" | "room"
   | "settings" | "salon" | "storefront" | "discount" | "email" | "accountant" | "payments" | "users" | "system"
-  | "payroll" | "attendance" | "wallet" | "holiday";
+  | "payroll" | "attendance" | "wallet" | "holiday" | "finance" | "expense";
 
 export type NavLeaf = {
   href: string;
@@ -86,6 +86,17 @@ export const ADMIN_NAV: NavEntry[] = [
       { href: "/admin/payroll", label: n.payrollPeriods, icon: "payroll", permission: "payroll:read" },
       { href: "/admin/payroll/staff", label: n.payrollStaff, icon: "wallet", permission: "payroll:write" },
       { href: "/admin/payroll/settings", label: n.payrollSettings, icon: "accountant", permission: "payroll:settings" },
+    ],
+  },
+  {
+    // PROMPT 18: санхүү — ADMIN, ACCOUNTANT; MANAGER — тохиргоогоор зөвхөн харах (layout-д)
+    id: "finance",
+    label: "Санхүү",
+    icon: "finance",
+    children: [
+      { href: "/admin/finance", label: "Санхүүгийн тайлан", icon: "finance", permission: "finance:read" },
+      { href: "/admin/expenses", label: "Зардал", icon: "expense", permission: "expense:read" },
+      { href: "/admin/finance/settings", label: "Санхүүгийн тохиргоо", icon: "accountant", permission: "expense:write" },
     ],
   },
   {

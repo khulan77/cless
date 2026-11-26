@@ -7,7 +7,8 @@ export type LoginState = { error?: string; email?: string };
 
 /** proxy-ийн callbackUrl-ыг зөвхөн /admin доторх зам болгож цэвэрлэнэ (open redirect хамгаалалт) */
 function safeCallback(raw: FormDataEntryValue | null): string {
-  if (typeof raw !== "string" || !raw) return "/admin";
+  // Callback-гүй бол /admin/login → нэвтэрсэн хэрэглэгчийг эрхээр нь (homePathFor) чиглүүлнэ
+  if (typeof raw !== "string" || !raw) return "/admin/login";
   try {
     const url = new URL(raw, "http://localhost");
     if (url.pathname.startsWith("/admin") && !url.pathname.startsWith("/admin/login")) {
@@ -16,7 +17,7 @@ function safeCallback(raw: FormDataEntryValue | null): string {
   } catch {
     // үл тооно
   }
-  return "/admin";
+  return "/admin/login";
 }
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {

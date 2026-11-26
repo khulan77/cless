@@ -6,7 +6,7 @@ import { useServerAction } from "@/components/admin/use-action";
 import { Badge, Button, Checkbox, Field, IconButton, Input, Select } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
-import { addSalaryAction, removeSalaryAction, saveStaffPayrollAction } from "@/server/actions/payroll";
+import { addSalaryAction, removeSalaryAction, saveStaffPayrollAction, setStaffCommissionAction } from "@/server/actions/payroll";
 
 const S = t.admin.payroll.staff;
 
@@ -19,6 +19,8 @@ export type StaffPayrollView = {
   bankMasked: string;
   hasBank: boolean;
   history: { id: string; effectiveFrom: string; monthly: number; note: string | null }[];
+  /** Урамшууллын хувь (%) — null = ерөнхий дүрмээр */
+  commission: { service: number | null; product: number | null };
 };
 
 export function StaffPayrollCard({ s, categories, today }: { s: StaffPayrollView; categories: { code: string; label: string }[]; today: string }) {
@@ -31,6 +33,9 @@ export function StaffPayrollCard({ s, categories, today }: { s: StaffPayrollView
   const add = useServerAction(addSalaryAction);
   const remove = useServerAction(removeSalaryAction);
   const save = useServerAction(saveStaffPayrollAction);
+  const comm = useServerAction(setStaffCommissionAction);
+  const [svcPct, setSvcPct] = useState(s.commission.service?.toString() ?? "");
+  const [prodPct, setProdPct] = useState(s.commission.product?.toString() ?? "");
 
   return (
     <article className="rounded-2xl border border-hairline bg-white p-5">
@@ -102,6 +107,23 @@ export function StaffPayrollCard({ s, categories, today }: { s: StaffPayrollView
           </Field>
           {s.hasBank && <Checkbox label={S.bankClear} checked={clearBank} onChange={(e) => setClearBank(e.target.checked)} />}
           <Button type="submit" variant="secondary" disabled={save.pending}>{t.admin.save}</Button>
+        </form>
+
+        {/* PROMPT 18 §3: үйлчилгээ ба бүтээгдэхүүний урамшууллын хувь (ар талдаа CommissionRule) */}
+        <form
+          className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end lg:col-span-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            comm.run({ staffId: s.id, servicePct: svcPct === "" ? null : Number(svcPct), productPct: prodPct === "" ? null : Number(prodPct) });
+          }}
+        >
+          <Field label="Үйлчилгээний урамшуулал %" htmlFor={`cs-${s.id}`} error={comm.fieldErrors.servicePct} hint="Хоосон = ерөнхий дүрмээр">
+            <Input id={`cs-${s.id}`} inputMode="decimal" value={svcPct} onChange={(e) => setSvcPct(e.target.value.replace(/[^\d.]/g, ""))} />
+          </Field>
+          <Field label="Бүтээгдэхүүний урамшуулал %" htmlFor={`cp-${s.id}`} error={comm.fieldErrors.productPct} hint="Хоосон = ерөнхий дүрмээр">
+            <Input id={`cp-${s.id}`} inputMode="decimal" value={prodPct} onChange={(e) => setProdPct(e.target.value.replace(/[^\d.]/g, ""))} />
+          </Field>
+          <Button type="submit" variant="secondary" disabled={comm.pending}>{t.admin.save}</Button>
         </form>
       </div>
     </article>
