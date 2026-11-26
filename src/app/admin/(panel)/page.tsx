@@ -15,7 +15,7 @@ import { formatTime, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requireUser } from "@/server/auth/session";
 import { CheckInCard } from "@/components/admin/attendance/CheckInCard";
-import { myToday, onDutyNow } from "@/server/modules/attendance/service";
+import { closeStaleSessions, myToday, onDutyNow } from "@/server/modules/attendance/service";
 import { db } from "@/server/db";
 import { todayAppointmentStats } from "@/server/modules/appointments/queries";
 import { countNewInquiries } from "@/server/modules/inquiries/service";
@@ -57,7 +57,8 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
     can(user.role, "appointment:read") ? todayAppointmentStats() : null,
     can(user.role, "appointment:read") ? apptSourceBreakdown(rangeBounds(range)) : null,
   ]);
-  // PROMPT 19: өөрийн "Ирлээ/Явлаа" + "Өнөөдөр ажил дээр" (ирц харах эрхтэйд)
+  // PROMPT 19: өөрийн "Ирлээ/Явлаа" + "Өнөөдөр ажил дээр" (ирц харах эрхтэйд). "Явлаа" дараагүйг эхлээд хаана.
+  if (can(user.role, "attendance:read")) await closeStaleSessions();
   const [myAtt, duty] = await Promise.all([
     can(user.role, "attendance:self") && user.role === "MANAGER" ? myToday(user.id) : null,
     can(user.role, "attendance:read") ? onDutyNow() : null,

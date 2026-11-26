@@ -38,6 +38,7 @@ const PUBLIC_ROUTES: Record<string, RegExp> = {
   "src/app/api/wesend/webhook/route.ts": /verifySignature\(/, // WeSend HMAC гарын үсэг (PROMPT 15)
   // Хамтрагчийн health check (нийтийн, нууц мэдээлэлгүй) — файл нэмэгдэхэд л шалгагдана
   "src/app/api/finance/export/[token]/route.ts": /verifyExportToken\(/, // HMAC, хугацаатай токен (PROMPT 18)
+  "src/app/api/cron/attendance/route.ts": /cronAuthorized\(/, // Vercel Cron — CRON_SECRET (PROMPT 20)
   "src/app/api/health/route.ts": /export\s+(async\s+)?function\s+GET|export\s+const\s+GET/,
 };
 

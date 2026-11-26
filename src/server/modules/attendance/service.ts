@@ -73,6 +73,8 @@ export async function punch(type: "CHECK_IN" | "CHECK_OUT", staffId: string, pos
   const v = evaluateGeo(branches, pos, ip);
   if (!v.ok) throw new UserError(v.reason === "no-branch-location" ? M.noLocation : M.tooFar(v.distanceM), undefined, v.reason === "too-far" ? "GEO_TOO_FAR" : "GEO_NO_BRANCH");
 
+  // Өмнөх өдрийн "Явлаа" дараагүй сессийг эхлээд хаана (цаг нь тухайн өдөрт орно)
+  await closeStaleSessions(now);
   const day = ubDateKey(now);
   return db.$transaction(async (tx) => {
     // Нэг ажилтны зэрэг дарахыг цуваа болгоно
@@ -154,6 +156,20 @@ export async function autoCloseOpenSessions(now = new Date()) {
     });
   }
   return closed;
+}
+
+/**
+ * Хуудас/үйлдэл бүрт "тэр дор нь" (Vercel дээр worker байхгүй тул): ирцийн хуудас, цалин тооцох, "Ирлээ/Явлаа",
+ * менежерийн самбар. autoCloseOpenSessions нь давхардалгүй (ажилтан бүрээр advisory lock + сүүлийн үйл явдлыг
+ * дахин шалгана) тул зэрэг дуудагдсан ч нэг л AUTO_CLOSE үүснэ. Алдаа гарвал хуудсыг эвдэхгүй — log-д л.
+ */
+export async function closeStaleSessions(now = new Date()): Promise<number> {
+  try {
+    return await autoCloseOpenSessions(now);
+  } catch (e) {
+    console.error("[attendance] auto-close failed", { message: e instanceof Error ? e.message : String(e) });
+    return 0;
+  }
 }
 
 /** 90 хоногоос хуучин координатыг устгана (зай, flag үлдэнэ). Worker цаг тутам. */

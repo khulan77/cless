@@ -5,7 +5,7 @@ import { PageHeader, SegmentedTabs, btnClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { addDays, ubDateKey } from "@/lib/time";
 import { DayAttendance } from "@/components/admin/attendance/DayAttendance";
-import { dayAttendance } from "@/server/modules/attendance/service";
+import { closeStaleSessions, dayAttendance } from "@/server/modules/attendance/service";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { attendanceGrid } from "@/server/modules/payroll/attendance";
@@ -19,6 +19,8 @@ type SP = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function AttendancePage({ searchParams }: { searchParams: SP }) {
   const user = await requirePagePermission("attendance:read");
+  // "Явлаа" дараагүй сессийг тэр дор нь хаана (Vercel дээр worker байхгүй)
+  await closeStaleSessions();
   // PROMPT 20: ирц бүрэн автомат — гар засвар зөвхөн ADMIN (тохиргоогоор унтардаг), бусад нь зөвхөн харна
   const payrollSettings = await getPayrollSettings();
   const canEdit = can(user.role, "attendance:write") && payrollSettings.attendanceAdminEdit;

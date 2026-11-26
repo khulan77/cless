@@ -66,11 +66,25 @@ describe("Ирлээ / Явлаа", () => {
     expect(await autoCloseOpenSessions(at("19:10"))).toBe(0);
   });
 
+  it("AUTO_CLOSE давхардалгүй: зэрэг 3 дуудлага → нэг л мөр; дараагийн өдөр «Ирлээ» дарахад өмнөхийг хаана", async () => {
+    await db.staffSchedule.create({ data: { staffId: staff.id, weekday: 2, startTime: "10:00", endTime: "19:00" } });
+    await punch("CHECK_IN", staff.id, near, null, at("10:00"));
+    const r = await Promise.all([autoCloseOpenSessions(at("19:30")), autoCloseOpenSessions(at("19:30")), autoCloseOpenSessions(at("19:30"))]);
+    expect(r.reduce((a, b) => a + b, 0)).toBe(1);
+    expect(await db.attendanceEvent.count({ where: { source: "AUTO_CLOSE" } })).toBe(1);
+
+    // Өмнөх өдөр нээлттэй үлдсэн → маргааш «Ирлээ» дарахад эхлээд хаагдана
+    await punch("CHECK_IN", staff.id, near, null, at("10:00", "2026-11-25"));
+    await punch("CHECK_IN", staff.id, near, null, at("10:00", "2026-11-26"));
+    expect(await db.attendanceEvent.count({ where: { source: "AUTO_CLOSE" } })).toBe(2);
+    expect(await db.workDay.findUnique({ where: { staffId_date: { staffId: staff.id, date: toDbDate("2026-11-25") } } })).toMatchObject({ hours: 14, fromEvents: true }); // Лхагва хуваарьгүй → өдрийн эцэст (23:59)
+  });
+
   it("менежерийн гар засвар GEO-г дарна", async () => {
     const manager = await makeUser("MANAGER");
     await punch("CHECK_IN", staff.id, near, null, at("10:00"));
     await punch("CHECK_OUT", staff.id, near, null, at("18:00"));
-    await setWorkDay({ staffId: staff.id, date: DAY, status: "WORKED", hours: 6, note: "Эрт явсан" }, manager.id);
+    await setWorkDay({ staffId: staff.id, date: DAY, status: "WORKED", hours: 6, note: "Эрт явсан" }, manager.id); // service түвшин (эрхийг action шалгана)
     expect(await workDay()).toMatchObject({ hours: 6, fromEvents: false });
     await punch("CHECK_IN", staff.id, near, null, at("19:00"));
     await punch("CHECK_OUT", staff.id, near, null, at("20:00"));
