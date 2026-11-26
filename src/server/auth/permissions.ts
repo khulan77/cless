@@ -63,6 +63,8 @@ export const PERMISSIONS = [
   // Ирц: харах / тэмдэглэх; нийтийн амралтын өдрүүд
   "attendance:read",
   "attendance:write",
+  // Өөрийн ирц: "Ирлээ / Явлаа" (байршлаар, PROMPT 19) — бүх ажилтан
+  "attendance:self",
   "holiday:write",
   // Цалин: харах; тооцоолох, засвар, батлах, олгосон, экспорт (банкны данс); хувь хэмжээ
   "payroll:read",
@@ -87,7 +89,7 @@ export type Permission = (typeof PERMISSIONS)[number];
  * Эрхийн тодорхойлолт — role бүр нэг мөр. Шинэ role (жишээ нь ACCOUNTANT) нэмэхэд:
  * schema-ийн Role enum + энд нэг мөр + ROLE_LABELS + permissions.test.ts-ийн хүснэгтэд багана.
  */
-const STAFF: readonly Permission[] = ["schedule:own", "me:read", "customer-note:write", "visit-photo:read", "visit-photo:write"];
+const STAFF: readonly Permission[] = ["schedule:own", "me:read", "customer-note:write", "visit-photo:read", "visit-photo:write", "attendance:self"];
 
 /** Зөвхөн ADMIN: хэрэглэгч нэмэх/хасах, интеграцийн нууц тохиргоо */
 const ADMIN_ONLY: readonly Permission[] = ["user:write", "integration:write"];
@@ -117,6 +119,7 @@ const ACCOUNTANT: readonly Permission[] = [
   "report:send",
   "admin:view",
   "attendance:read",
+  "attendance:self",
   "holiday:write",
   ...PAYROLL,
   ...FINANCE,

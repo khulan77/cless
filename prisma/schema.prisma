@@ -368,6 +368,8 @@ model User {
   salaryHistory         SalaryHistory[]     @relation("SalaryHistoryStaff")
   payrollAdjustments    PayrollAdjustment[] @relation("PayrollAdjustmentStaff")
   expensesCreated       Expense[]           @relation("ExpenseCreatedBy")
+  attendanceEvents      AttendanceEvent[]   @relation("AttendanceEventStaff")
+  attendanceCreated     AttendanceEvent[]   @relation("AttendanceEventCreatedBy")
   approvedPayrolls      PayrollPeriod[]     @relation("PayrollApprovedBy")
   confirmedRateSets     PayrollRateSet[]    @relation("RateSetConfirmedBy")
 
@@ -1248,24 +1250,30 @@ model CashMovement {
 }
 
 model Branch {
-  id        String   @id @default(cuid())
+  id         String   @id @default(cuid())
   /// Борлуулалтын дугаарын угтвар: "CL"
-  code      String   @unique
+  code       String   @unique
   /// Имэйл, баримт дээр харагдах салоны нэр
-  name      String
-  address   String?
-  phone     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  name       String
+  address    String?
+  phone      String?
+  isActive   Boolean  @default(true)
+  /// Ирцийн байршил (PROMPT 19): салоны цэг, зөвшөөрөх радиус (м), салоны Wi-Fi-ийн гадаад IP (сонголттой)
+  latitude   Float?
+  longitude  Float?
+  geoRadiusM Int      @default(100)
+  allowedIps String[] @default([])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  sales          Sale[]
-  shifts         CashShift[]
-  visits         Visit[]
-  appointments   Appointment[]
-  stockMovements StockMovement[]
-  counters       SaleCounter[]
-  rooms          Room[]
+  attendanceEvents AttendanceEvent[]
+  sales            Sale[]
+  shifts           CashShift[]
+  visits           Visit[]
+  appointments     Appointment[]
+  stockMovements   StockMovement[]
+  counters         SaleCounter[]
+  rooms            Room[]
 }
 
 /// Өдөр тутмын борлуулалтын дугаар (УБ цагаар). INSERT … ON CONFLICT DO UPDATE.
@@ -1384,6 +1392,8 @@ model WorkDay {
   status     WorkDayStatus
   hours      Float?
   note       String?
+  /// true = "Ирлээ/Явлаа"-аас автоматаар (PROMPT 19); менежер гараар засвал false (давуу эрхтэй)
+  fromEvents Boolean       @default(false)
   markedById String?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
@@ -1663,4 +1673,44 @@ model Expense {
   @@unique([payrollPeriodId, categoryId])
   @@index([date])
   @@index([categoryId, date])
+}
+
+// ─────────────────────── Байршлаар ирц (PROMPT 19) ───────────────────────
+
+enum AttendanceEventType {
+  CHECK_IN
+  CHECK_OUT
+}
+
+enum AttendanceSource {
+  GEO
+  MANAGER
+  AUTO_CLOSE
+}
+
+/// "Ирлээ / Явлаа". at — серверийн цаг (утасны цагт итгэхгүй). lat/lng — 90 хоногийн дараа null болно.
+model AttendanceEvent {
+  id          String              @id @default(cuid())
+  staffId     String
+  branchId    String
+  type        AttendanceEventType
+  at          DateTime            @default(now())
+  lat         Float?
+  lng         Float?
+  accuracyM   Float?
+  distanceM   Float?
+  ipHash      String?
+  source      AttendanceSource
+  /// Сэжигтэй: нарийвчлал муу, IP таарахгүй, "Явлаа" дараагүй (AUTO_CLOSE)
+  flagged     Boolean             @default(false)
+  note        String?
+  createdById String?
+  createdAt   DateTime            @default(now())
+
+  staff     User   @relation("AttendanceEventStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  branch    Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  createdBy User?  @relation("AttendanceEventCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([staffId, at])
+  @@index([at])
 }

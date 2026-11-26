@@ -10,7 +10,7 @@ import { can, type Permission } from "@/server/auth/permissions";
 
 const DIR = join(process.cwd(), "src/server/actions");
 /** STAFF-д санаатайгаар нээлттэй эрхүүд */
-const STAFF_WRITE_ALLOWED: Permission[] = ["customer-note:write", "visit-photo:write", "visit-photo:read", "schedule:own", "me:read"];
+const STAFF_WRITE_ALLOWED: Permission[] = ["customer-note:write", "visit-photo:write", "visit-photo:read", "schedule:own", "me:read", "attendance:self"];
 
 /** Бүх STAFF-д нээлттэй action. Шинээр нэмэх бол энд шалтгаантай нь бичнэ. */
 const STAFF_ACTIONS = [
@@ -20,6 +20,8 @@ const STAFF_ACTIONS = [
   "notes.ts#noteDelete",
   "visit-photos.ts#visitPhotoUpload", // A9
   "visit-photos.ts#visitPhotoDelete", // A9
+  "attendance.ts#checkInAction", // PROMPT 19: өөрийн ирц (байршлаар)
+  "attendance.ts#checkOutAction",
 ];
 
 function actions() {

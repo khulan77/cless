@@ -14,7 +14,7 @@ export async function resetDb() {
     "PriceHistory", "Variant", "Product", "Customer", "Appointment", "SiteSetting", "User",
     "Collection", "WorkerHeartbeat", "Room", "StaffSchedule", "StaffTimeOff", "ServiceStaff", "ProductInquiry",
     "Holiday", "PayrollRateSet", "PayrollPeriod", "WorkDay", "SalaryHistory", "PayrollAdjustment",
-    "Verification", "CustomerSession", "MessageLog", "CustomerEmail", "Expense"
+    "Verification", "CustomerSession", "MessageLog", "CustomerEmail", "Expense", "AttendanceEvent"
     RESTART IDENTITY CASCADE`);
 }
 

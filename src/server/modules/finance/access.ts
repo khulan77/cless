@@ -9,14 +9,14 @@ import { can } from "@/server/auth/permissions";
 import { requireUser } from "@/server/auth/session";
 import { getFinanceSettings } from "./settings";
 
-export type FinanceArea = "expenses" | "finance";
+export type FinanceArea = "expenses" | "finance" | "payroll";
 
 export async function canView(role: Role | null | undefined, area: FinanceArea): Promise<boolean> {
   if (!role) return false;
-  if (can(role, area === "expenses" ? "expense:read" : "finance:read")) return true;
+  if (can(role, area === "expenses" ? "expense:read" : area === "payroll" ? "payroll:read" : "finance:read")) return true;
   if (role !== "MANAGER") return false;
   const s = await getFinanceSettings();
-  return area === "expenses" ? s.managerExpenses : s.managerFinance;
+  return area === "expenses" ? s.managerExpenses : area === "payroll" ? s.managerPayroll : s.managerFinance;
 }
 
 /** Хуудсанд: харах эрхгүй бол 403. canWrite — бүртгэх/засах товч харуулах эсэх. */
