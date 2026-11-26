@@ -101,7 +101,7 @@ Vercel дээр зөвхөн вэб апп ажиллана. Worker (имэйл,
 | `INTERNAL_REVALIDATE_SECRET` | ✓ | 32+ тэмдэгт; worker-тэй ИЖИЛ утга |
 | `WESEND_API_KEY` | ✓ | WeSend: SMS, имэйл, нэг удаагийн код (production-д заавал) |
 | `WESEND_WEBHOOK_SECRET` |  | WeSend webhook-ийн гарын үсэг (`/api/wesend/webhook`) |
-| `NOTIFY_BRAND` |  | SMS/имэйлийн брэнд (анхдагч `CLÉSS`) |
+| `NOTIFY_BRAND` |  | Брэнд: имэйлийн илгээгчийн нэр (анхдагч `CLÉSS`); SMS/кодонд автоматаар ASCII (`CLESS`, ≤20 тэмдэгт) — WeSend verify ASCII биш брэндийг `invalid_request`-ээр буцаадаг |
 | `RESEND_API_KEY`, `EMAIL_FROM` |  | **Хуучирсан** — WeSend тохируулаагүй үед л имэйлд |
 | `DB_POOL_MAX` | | Нэг instance-ийн pg холболт. Default 3 (Vercel) |
 | `NEXT_IMAGE_UNOPTIMIZED` | | `1` — `/_next/image`-ийг алгасаж зургийг шууд өгнө (Hobby-ийн Image Optimization хязгаар дуусаж 402 өгвөл). Default зургууд, upload-ууд sharp-аар webp болсон тул чанар алдагдахгүй; зөвхөн дэлгэцийн өргөнөөр жижигрүүлсэн хувилбар (srcset) байхгүй болно. Build үед уншигдана — өөрчилбөл redeploy |

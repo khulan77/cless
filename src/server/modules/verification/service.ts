@@ -79,7 +79,7 @@ export async function startCode(input: StartInput, now = new Date()) {
       return { id: row.id, mask: base.targetMask, channel, expiresAt: r.expiresAt };
     } catch (e) {
       await db.verification.update({ where: { id: row.id }, data: { status: "CANCELED" } });
-      await logMessage({ channel: "VERIFY", kind: input.purpose, to, status: "FAILED", error: e instanceof Error ? e.message : String(e) });
+      await logMessage({ channel: "VERIFY", kind: input.purpose, to, status: "FAILED", error: wesend.describeError(e) });
       throw e;
     }
   }

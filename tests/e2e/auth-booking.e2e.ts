@@ -16,14 +16,15 @@ const STAFF_PHONE = "88776600";
 const NEW_PASSWORD = "Cless-E2E-pass-1";
 
 /** Хамгийн сүүлийн код (тухайн хүлээн авагч, зорилгоор) */
-async function latestCode(to: string, purpose: string): Promise<string> {
+async function latestCode(to: string, purpose: string, since = 0): Promise<string> {
   for (let i = 0; i < 30; i++) {
     const files = (await readdir(E2E_EMAIL_DIR).catch(() => [] as string[])).filter((f) => f.startsWith("verify-"));
     const hits: { m: number; code: string }[] = [];
     for (const f of files) {
       const p = join(E2E_EMAIL_DIR, f);
       const txt = await readFile(p, "utf8");
-      if (txt.includes(`to: ${to}`) && txt.includes(`purpose: ${purpose}`)) hits.push({ m: (await stat(p)).mtimeMs, code: /code: (\d+)/.exec(txt)![1]! });
+      const m = (await stat(p)).mtimeMs;
+      if (m >= since && txt.includes(`to: ${to}`) && txt.includes(`purpose: ${purpose}`)) hits.push({ m, code: /code: (\d+)/.exec(txt)![1]! });
     }
     if (hits.length) return hits.sort((a, b) => b.m - a.m)[0]!.code;
     await new Promise((r) => setTimeout(r, 300));
@@ -56,15 +57,18 @@ test("customer logs in by phone and books online → reception approves → cust
   await c.getByRole("option").nth(3).click();
   const slot = c.locator("main .grid button").filter({ hasText: /^\d{2}:\d{2}$/ }).first();
   await slot.click();
+  // Сонгосон огноо (хураангуйгаас) — жагсаалт өнөөдрөөс эсвэл маргаашаас эхэлж болно (оройн цагт)
+  const picked = /\d{4}-\d{2}-\d{2}/.exec((await c.getByText(/\d{4}-\d{2}-\d{2} · \d{2}:\d{2}/).first().textContent()) ?? "")![0];
 
   // Нэвтрэх: утас → код → нэр + зөвшөөрөл
   await c.getByLabel("Утасны дугаар").fill(CUSTOMER_PHONE);
   await c.getByRole("button", { name: "Код авах", exact: true }).click();
   await c.getByLabel("6 оронтой код").fill(await latestCode(CUSTOMER_PHONE, "CUSTOMER_LOGIN"));
-  await c.getByRole("button", { name: "Нэвтрэх", exact: true }).click();
-  await c.getByLabel("Нэр", { exact: true }).fill("Онлайн Тест");
+  await c.getByRole("button", { name: "Үргэлжлүүлэх", exact: true }).click();
+  await expect(c.getByText("Алхам 3/3")).toBeVisible();
+  await c.getByLabel("Овог нэр").fill("Онлайн Тест");
   await c.getByText("Цаг захиалах, үйлчилгээ үзүүлэхэд").click();
-  await c.getByRole("button", { name: "Үргэлжлүүлэх" }).click();
+  await c.locator("main").getByRole("button", { name: "Бүртгүүлэх" }).click();
   await c.getByRole("button", { name: "Захиалгын хүсэлт илгээх" }).click();
   await expect(c.getByText("Захиалгын хүсэлт хүлээн авлаа")).toBeVisible();
 
@@ -74,11 +78,7 @@ test("customer logs in by phone and books online → reception approves → cust
   await c.goto("/account");
   const when = (await c.locator("main li p.text-body").first().textContent()) ?? "";
   await expect(c.getByText("Батлахыг хүлээж буй")).toBeVisible();
-  const date = (await c.evaluate(() => {
-    const d = new Date(Date.now() + 3 * 86_400_000);
-    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ulaanbaatar" }).format(d);
-  })) as string;
-  await page.goto(`/admin/calendar?date=${date}`);
+  await page.goto(`/admin/calendar?date=${picked}`);
   await page.getByRole("button", { name: /Онлайн Тест/ }).first().click();
   await expect(page.getByText("Онлайн захиалга — батлахыг хүлээж байна")).toBeVisible();
   await page.getByRole("button", { name: "Батлах", exact: true }).click();
@@ -92,6 +92,51 @@ test("customer logs in by phone and books online → reception approves → cust
   await c.getByRole("button", { name: "Тийм, цуцлах" }).click();
   await expect(c.getByText("Ирэх цаг алга.")).toBeVisible();
   await ctx.close();
+
+  // Бусад E2E (storefront) онлайн захиалга унтраалттай гэж хүлээдэг — буцааж унтраана
+  await page.goto("/admin/settings/online-booking");
+  await page.getByLabel("Онлайн захиалга асаах").uncheck();
+  await page.getByRole("button", { name: "Хадгалах" }).click();
+  await expect(page.getByText("Хадгалагдлаа.")).toBeVisible();
+});
+
+test("Нэвтрэх / Бүртгүүлэх: new phone → code → profile → /account; same phone again → code → straight to /account", async ({ browser }) => {
+  test.setTimeout(240_000); // 1 минутын кодын хязгаарыг хүлээнэ
+  const phone = "99887711";
+  const ctx = await browser.newContext();
+  const c = await ctx.newPage();
+  await c.goto("/login?next=/account");
+  await expect(c.getByRole("heading", { name: "Нэвтрэх / Бүртгүүлэх" })).toBeVisible();
+  await expect(c.getByText("Алхам 1/3")).toBeVisible();
+  await c.getByLabel("Утасны дугаар").fill("+976 9988-7711");
+  await c.getByRole("button", { name: "Код авах", exact: true }).click();
+  await expect(c.getByText("Алхам 2/3")).toBeVisible();
+  await expect(c.getByText("99****11")).toBeVisible();
+  await expect(c.getByText(/Дахин илгээх \(\d+ сек\)/)).toBeVisible();
+  await c.getByLabel("6 оронтой код").fill(await latestCode(phone, "CUSTOMER_LOGIN"));
+  await c.getByRole("button", { name: "Үргэлжлүүлэх", exact: true }).click();
+  await expect(c.getByText("Алхам 3/3")).toBeVisible();
+  await c.getByLabel("Овог нэр").fill("Шинэ Бүртгэл");
+  await c.getByLabel("Имэйл (заавал биш)").fill("shine@example.mn");
+  await c.getByText("Цаг захиалах, үйлчилгээ үзүүлэхэд").click();
+  await c.locator("main").getByRole("button", { name: "Бүртгүүлэх" }).click();
+  await c.waitForURL(/\/account$/);
+  await ctx.close();
+
+  // Дахин нэвтрэх — профайлын алхамгүй (1 минутын хязгаар — шинэ context, хүлээлттэй)
+  const ctx2 = await browser.newContext();
+  const c2 = await ctx2.newPage();
+  await c2.waitForTimeout(61_000);
+  await c2.goto("/login");
+  await c2.getByLabel("Утасны дугаар").fill(phone);
+  const since = Date.now() - 1000;
+  await c2.getByRole("button", { name: "Код авах", exact: true }).click();
+  await expect(c2.getByText("Алхам 2/3")).toBeVisible();
+  await c2.getByLabel("6 оронтой код").fill(await latestCode(phone, "CUSTOMER_LOGIN", since));
+  await c2.getByRole("button", { name: "Үргэлжлүүлэх", exact: true }).click();
+  await c2.waitForURL(/\/account$/);
+  await expect(c2.getByText("Алхам 3/3")).toHaveCount(0);
+  await ctx2.close();
 });
 
 test("admin invites a staff member → code → own password → logs in with phone", async ({ page, browser }) => {

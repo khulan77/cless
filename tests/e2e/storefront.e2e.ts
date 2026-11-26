@@ -23,8 +23,9 @@ test("CATALOG: no cart or add-to-cart; /cart redirects to the catalog; /account 
   for (const path of ["/", "/collections", "/products/serum-biofixine"]) {
     await page.goto(path);
     await expect(page.locator('a[href="/cart"]')).toHaveCount(0);
-    // PROMPT 15: үйлчлүүлэгчийн нэвтрэлт — header-т бүртгэлийн холбоос
-    await expect(page.locator('header a[href="/account"]')).toHaveCount(1);
+    // PROMPT 15/16: үйлчлүүлэгчийн нэвтрэлт — header-ийн дүрс "Нэвтрэх / Бүртгүүлэх" (+ гар утасны цэсэнд "Нэвтрэх")
+    await expect(page.getByRole("link", { name: "Нэвтрэх / Бүртгүүлэх" })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Нэвтрэх / Бүртгүүлэх" })).toHaveAttribute("href", "/account");
     await expect(page.getByRole("button", { name: /Сагсанд нэмэх/ })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /сагсанд нэмэх/ })).toHaveCount(0);
   }
