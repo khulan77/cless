@@ -39,6 +39,7 @@ const PUBLIC_ROUTES: Record<string, RegExp> = {
   // Хамтрагчийн health check (нийтийн, нууц мэдээлэлгүй) — файл нэмэгдэхэд л шалгагдана
   "src/app/api/finance/export/[token]/route.ts": /verifyExportToken\(/, // HMAC, хугацаатай токен (PROMPT 18)
   "src/app/api/cron/attendance/route.ts": /cronAuthorized\(/, // Vercel Cron — CRON_SECRET (PROMPT 20)
+  "src/app/api/cron/tick/route.ts": /cronAuthorized\(/, // pg_cron / cron-job.org — CRON_SECRET (PROMPT 22)
   "src/app/api/health/route.ts": /export\s+(async\s+)?function\s+GET|export\s+const\s+GET/,
 };
 

@@ -46,6 +46,51 @@ bun run worker      # зөвхөн worker
 - `WESEND_API_KEY` байхгүй үед SMS, имэйл, код илгээгдэхгүй — `.emails/` хавтсанд файл болно (SMS: `sms-*.txt`, код: `verify-*.txt`). `RESEND_API_KEY`, `EMAIL_FROM` (хуучирсан) байхгүй үед ч мөн адил — `.emails/<job-id>.html` файл болж үүснэ (gitignore), `Visit.emailStatus` = SENT.
 - Production deploy: [deploy/README.md](deploy/README.md)
 
+### Арын ажил (Vercel) — минут тутам `/api/cron/tick`
+
+Vercel дээр worker процесс ажилладаггүй. Иймээс outbox (SMS, имэйл, сануулга, нягтланд илгээх, QPay invoice цуцлах), QPay шалгалт, POS-ийн удаан түгжээ тайлах, ноорог цэвэрлэх, ирцийн AUTO_CLOSE-ийг **гаднаас минут тутам** дуудна:
+`POST /api/cron/tick` + `Authorization: Bearer <CRON_SECRET>`. Зэрэг дуудалт advisory lock-оор алгасагдана. VPS-ийн worker-тэй зэрэг ажиллаж болно.
+Мөн outbox-д ажил нэмсэн хүсэлтийн дараа `after()`-аар шууд илгээдэг тул SMS/имэйл минут хүлээхгүй. Tick нь сануулга (`runAfter`) ба дахин оролдлогод ажиллана.
+
+**Supabase pg_cron + pg_net** (үнэгүй). Supabase → SQL Editor-т **өөрөө** ажиллуулна:
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select cron.schedule('cless-tick', '* * * * *', $$
+  select net.http_post(
+    url := 'https://www.cless.mn/api/cron/tick',
+    headers := jsonb_build_object('Authorization', 'Bearer <CRON_SECRET>', 'Content-Type', 'application/json'),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 9000
+  )
+$$);
+```
+
+**Зөвлөмж — нууцыг SQL-д шууд бичихгүй (Supabase Vault):**
+
+```sql
+select vault.create_secret('<CRON_SECRET>', 'cless_cron_secret');
+
+select cron.schedule('cless-tick', '* * * * *', $$
+  select net.http_post(
+    url := 'https://www.cless.mn/api/cron/tick',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cless_cron_secret'),
+      'Content-Type', 'application/json'),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 9000
+  )
+$$);
+```
+
+Шалгах: `select * from cron.job_run_details order by start_time desc limit 5;`. Админ → Систем дээр «Арын ажил: сүүлд N сек өмнө (cron tick)» харагдана. Зогсоох: `select cron.unschedule('cless-tick');`.
+
+**Альтернатив — cron-job.org:** шинэ cronjob → URL `https://www.cless.mn/api/cron/tick`, schedule: every 1 minute, method **POST**. Advanced → Headers → `Authorization: Bearer <CRON_SECRET>`.
+
+**Анх асаахаас өмнө:** worker ажиллаагүй хугацаанд хуримтлагдсан хуучин SMS/сануулга бодит хүмүүст хожуу очихоос сэргийлж tick эхэндээ тэдгээрийг `SKIPPED` болгодог. Хэдэн мөр болохыг урьдчилан харах: `bun scripts/stale-jobs.ts` (dry-run, хост хэвлэнэ; `--confirm` — "yes" асууна).
+
 ### E2E (Playwright)
 
 Өөрийн локал DB-д (`cless_e2e`, ажиллах бүрт цэвэрлэнэ — Supabase-д хэзээ ч хүрэхгүй) production build + worker-ийг асааж POS-ийн бүтэн урсгалыг шалгана.

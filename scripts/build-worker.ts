@@ -17,7 +17,8 @@ const result = await Bun.build({
   minify: { syntax: true, whitespace: true },
   sourcemap: "linked",
   // pg-ийн native горим ашиглагдахгүй
-  external: ["pg-native"],
+  // next/server: outbox/drain.ts-ийн after() — worker-т хэрэггүй (request-гүй), импорт алдааг чимээгүй алгасна
+  external: ["pg-native", "next/server"],
   plugins: [
     {
       name: "server-only-stub",

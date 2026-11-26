@@ -24,14 +24,17 @@ const headingFont = Inter_Tight({
   preload: false,
 });
 
+const BRAND = "CLÉSS";
+
 export async function generateMetadata(): Promise<Metadata> {
   // Сайтын нэр — Сайтын контент → Брэнд ("Сайтын нэр"), title template, OG, copyright нэг эх сурвалж
   const [brand, { siteName }] = await Promise.all([getSetting("brand"), getSalonInfo()]);
   return {
     metadataBase: new URL(SITE_URL),
-    title: { default: siteName, template: `%s · ${siteName}` },
+    // PROMPT 22: "%s · CLÉSS"; нүүр — "CLÉSS · <сайтын нэр>" (Biologique Recherche Mongolia)
+    title: { default: `${BRAND} · ${siteName}`, template: `%s · ${BRAND}` },
     description: brand?.description,
-    openGraph: { type: "website", siteName, locale: "mn_MN", title: siteName, description: brand?.description },
+    openGraph: { type: "website", siteName: `${BRAND} · ${siteName}`, locale: "mn_MN", title: `${BRAND} · ${siteName}`, description: brand?.description },
   };
 }
 

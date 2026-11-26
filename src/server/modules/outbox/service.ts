@@ -2,6 +2,7 @@
  * Outbox: гадны дуудлагатай ажлыг (имэйл, QPay invoice цуцлах …) transaction-тай
  * хамт DB-д бичээд, worker тусад нь гүйцэтгэнэ. dedupeKey давхардлаас хамгаална.
  */
+import { drainSoon } from "./drain";
 import type { JobType, Prisma } from "@/generated/prisma/client";
 
 export const MAX_ATTEMPTS = 5;
@@ -17,6 +18,8 @@ export async function enqueue(
             ${job.dedupeKey ?? null}, ${job.runAfter ?? new Date()}, (now() AT TIME ZONE 'UTC'))
     ON CONFLICT ("dedupeKey") DO NOTHING
     RETURNING "id"`;
+  // Шууд (минут хүлээлгүй) илгээх — хүсэлтийн хариуны дараа; хугацаатай ажлыг (runAfter) tick илгээнэ
+  if (rows.length > 0 && (!job.runAfter || job.runAfter.getTime() <= Date.now() + 1000)) drainSoon();
   return rows.length > 0;
 }
 
