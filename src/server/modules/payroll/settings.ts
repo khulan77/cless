@@ -19,6 +19,10 @@ export const payrollSettingsSchema = z.object({
   splitDay: z.coerce.number().int().min(5).max(25).catch(15).default(15),
   advanceWithholding: z.coerce.boolean().catch(false).default(false),
   commissionBase: z.enum(["NET", "GROSS"]).catch("GROSS").default("GROSS"),
+  /** PROMPT 20: автомат ирц эхэлсэн өдөр (null = хуучин дүрэм). Үүнээс хойш "Ирлээ"-гүй хуваарийн өдөр = тасалсан */
+  autoAttendanceSince: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().catch(null).default(null),
+  /** PROMPT 20: ADMIN ирцийг гараар засах (шалтгаантай) боломж — анхдагч асаалттай */
+  attendanceAdminEdit: z.boolean().catch(true).default(true),
 });
 export type PayrollSettings = z.infer<typeof payrollSettingsSchema>;
 
@@ -32,6 +36,8 @@ export const savePayrollSettingsSchema = z.object({
   splitDay: z.coerce.number().int().min(5, "5–25 хооронд").max(25, "5–25 хооронд"),
   advanceWithholding: z.boolean(),
   commissionBase: z.enum(["NET", "GROSS"]).default("GROSS"),
+  autoAttendanceSince: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+  attendanceAdminEdit: z.boolean().default(true),
 });
 
 export async function savePayrollSettings(raw: z.input<typeof savePayrollSettingsSchema>, actorId: string) {

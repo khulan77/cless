@@ -19,11 +19,14 @@ type SP = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function AttendancePage({ searchParams }: { searchParams: SP }) {
   const user = await requirePagePermission("attendance:read");
-  const canEdit = can(user.role, "attendance:write");
+  // PROMPT 20: ирц бүрэн автомат — гар засвар зөвхөн ADMIN (тохиргоогоор унтардаг), бусад нь зөвхөн харна
+  const payrollSettings = await getPayrollSettings();
+  const canEdit = can(user.role, "attendance:write") && payrollSettings.attendanceAdminEdit;
+  const canNote = can(user.role, "attendance:note");
   const sp = await searchParams;
   const today = ubDateKey();
   const month = typeof sp.month === "string" && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : today.slice(0, 7);
-  const { splitDay } = await getPayrollSettings();
+  const { splitDay } = payrollSettings;
   const half = sp.half === "1" || sp.half === "2" ? (Number(sp.half) as 1 | 2) : Number(today.slice(8)) <= splitDay ? 1 : 2;
   const { from, to } = halfRange(month, half, splitDay);
   const view = sp.view === "day" ? "day" : "grid";
@@ -36,7 +39,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
 
   return (
     <>
-      <PageHeader eyebrow={t.admin.nav.groups.payroll} title={A.title} description={canEdit ? A.description : A.descriptionRead} />
+      <PageHeader eyebrow={t.admin.nav.groups.payroll} title={A.title} description="Ирц зөвхөн ажилтны «Ирлээ / Явлаа» (байршлаар) товчоор автоматаар бүртгэгдэнэ. Менежер тайлбар бичнэ; гар засвар зөвхөн админ, шалтгаантай." />
       <SegmentedTabs
         className="mb-4"
         label="Харагдац"
@@ -53,9 +56,10 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
             <span className="min-w-28 text-center font-display text-[20px] font-semibold tabular-nums">{day}</span>
             <Link href={`/admin/attendance?view=day&date=${addDays(day, 1)}`} className={btnClass("secondary", "sm")} aria-label="Дараагийн өдөр"><ChevronRight className="size-4" /></Link>
           </div>
-          <DayAttendance rows={dayRows} />
+          <DayAttendance rows={dayRows} day={day} canNote={canNote} />
           <p className="mt-3 text-[13px] text-ink-soft">
-            «Ирлээ/Явлаа»-аас цаг автоматаар тооцогдоно. Засах бол «15 хоногоор» харагдацын нүдэн дээр дарж цаг, тайлбар оруулна — гар засвар давуу.
+            Цаг зөвхөн «Ирлээ/Явлаа»-аас автоматаар тооцогдоно. «Явлаа» дараагүй бол хуваарийн дуусах цагаар хаагдана (⚠). Тайлбар цагт нөлөөлөхгүй.
+            {canEdit && " Бодит алдаа гарвал (утас эвдэрсэн г.м.) админ «15 хоногоор» харагдацаас шалтгаантай засна."}
           </p>
         </>
       ) : (

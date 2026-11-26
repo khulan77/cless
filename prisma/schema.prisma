@@ -370,6 +370,8 @@ model User {
   expensesCreated       Expense[]           @relation("ExpenseCreatedBy")
   attendanceEvents      AttendanceEvent[]   @relation("AttendanceEventStaff")
   attendanceCreated     AttendanceEvent[]   @relation("AttendanceEventCreatedBy")
+  attendanceNotes       AttendanceNote[]    @relation("AttendanceNoteStaff")
+  attendanceNotesBy     AttendanceNote[]    @relation("AttendanceNoteBy")
   approvedPayrolls      PayrollPeriod[]     @relation("PayrollApprovedBy")
   confirmedRateSets     PayrollRateSet[]    @relation("RateSetConfirmedBy")
 
@@ -1713,4 +1715,20 @@ model AttendanceEvent {
 
   @@index([staffId, at])
   @@index([at])
+}
+
+/// Ирцийн тайлбар (PROMPT 20) — менежер / админ бичнэ, цагт НӨЛӨӨЛӨХГҮЙ (жишээ: "Явлаа дараагүй — 19:30-д явсан")
+model AttendanceNote {
+  id          String   @id @default(cuid())
+  staffId     String
+  date        DateTime @db.Date
+  note        String
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  staff     User  @relation("AttendanceNoteStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("AttendanceNoteBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([staffId, date])
 }

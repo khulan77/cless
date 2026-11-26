@@ -102,6 +102,7 @@ export const posFormSchema = z.object({
   maxManagerDiscountPercent: z.number({ error: "Тоо оруулна уу." }).min(0).max(100, "100-аас ихгүй."),
   shiftDifferenceThreshold: z.number({ error: "Тоо оруулна уу." }).int().min(0).max(10_000_000),
   staleLockMinutes: z.number({ error: "Тоо оруулна уу." }).int().min(5, "5-аас багагүй.").max(1440),
+  cashShiftsEnabled: z.boolean().optional(),
 });
 
 export async function savePosSettings(raw: z.input<typeof posFormSchema>, actorId: string) {

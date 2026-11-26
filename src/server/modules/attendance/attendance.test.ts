@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { defaultStatus } from "@/server/modules/payroll/calc";
 import { evaluateGeo, haversineM } from "./geo";
 import { hoursOfDay, sessionsOf } from "./sessions";
 
@@ -49,5 +50,17 @@ describe("сесс → цаг", () => {
     expect(hoursOfDay([{ type: "CHECK_IN", at: t("10:00") }, { type: "CHECK_OUT", at: t("17:08") }])).toBe(7.25);
     expect(sessionsOf([{ type: "CHECK_IN", at: t("10:00") }])).toEqual([{ in: t("10:00"), out: null }]);
     expect(hoursOfDay([{ type: "CHECK_IN", at: t("10:00") }])).toBe(0);
+  });
+});
+
+
+describe("автомат ирц (PROMPT 20)", () => {
+  const cal = { weekdays: new Set([1, 2, 3, 4, 5]), holidays: new Set<string>(), autoSince: "2026-11-23", today: "2026-11-26" };
+  it("autoSince-ээс хойш өнгөрсөн хуваарийн өдөр бүртгэлгүй бол ABSENT; өнөөдөр/ирээдүй, өмнөх, амралт — хуучнаар", () => {
+    expect(defaultStatus("2026-11-24", cal)).toBe("ABSENT");
+    expect(defaultStatus("2026-11-26", cal)).toBe("WORKED");
+    expect(defaultStatus("2026-11-20", cal)).toBe("WORKED");
+    expect(defaultStatus("2026-11-22", cal)).toBe("OFF");
+    expect(defaultStatus("2026-11-24", { ...cal, autoSince: null })).toBe("WORKED");
   });
 });

@@ -3,7 +3,7 @@ import { posSettingsSchema, qpaySettingsSchema, taxSettingsSchema } from "./sche
 
 describe("POS settings defaults", () => {
   it("falls back to safe defaults when missing or invalid", () => {
-    expect(posSettingsSchema.parse({})).toEqual({ maxManagerDiscountPercent: 10, allowNegativeStock: false, staleLockMinutes: 30, shiftDifferenceThreshold: 5000 });
+    expect(posSettingsSchema.parse({})).toEqual({ maxManagerDiscountPercent: 10, allowNegativeStock: false, staleLockMinutes: 30, shiftDifferenceThreshold: 5000, cashShiftsEnabled: false });
     expect(taxSettingsSchema.parse({ vatRateBp: "10%" })).toEqual({ vatIncluded: true, vatRateBp: 1000 });
     expect(qpaySettingsSchema.parse({ mode: "something" })).toEqual({ mode: "manual" });
   });

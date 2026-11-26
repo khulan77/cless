@@ -26,6 +26,10 @@ const ACCOUNTANT_DOMAIN: Permission[] = [
   "finance:read",
   // PROMPT 19: өөрийн ирц ("Ирлээ / Явлаа") — бусдын өгөгдлийг өөрчлөхгүй
   "attendance:self",
+  // PROMPT 20: нягтлан бараа бүртгэнэ — бүтээгдэхүүн, ангилал, үнэ, үлдэгдэл, зураг
+  "product:write",
+  "stock:write",
+  "price:write",
 ];
 
 /** Менежерийн хэсгээс зөвхөн УНШИХ action-ууд (өгөгдөл өөрчлөхгүй) */
@@ -64,8 +68,13 @@ describe("ACCOUNTANT is read-only outside payroll / finance (PROMPT 14 §1, 18 �
   });
 
   it("no write permission of the manager area is granted", () => {
-    const writes = ["appointment:write", "appointment:status", "customer:write", "visit:write", "pos:use", "sale:create", "sale:refund", "sale:void-paid", "sale:seller", "shift:own", "shift:all", "stock:write", "product:write", "service:write", "price:write", "settings:write", "user:write", "staff-schedule:write", "room:write", "attendance:write", "inquiry:manage"] as const;
+    const writes = ["appointment:write", "appointment:status", "customer:write", "visit:write", "pos:use", "sale:create", "sale:refund", "sale:void-paid", "sale:seller", "shift:own", "shift:all", "service:write", "settings:write", "user:write", "staff-schedule:write", "room:write", "attendance:write", "inquiry:manage"] as const;
     for (const p of writes) expect(can("ACCOUNTANT", p), p).toBe(false);
+  });
+
+  it("PROMPT 20: catalog write, but no POS / sales", () => {
+    for (const p of ["product:write", "stock:write", "price:write", "cost:read"] as const) expect(can("ACCOUNTANT", p), p).toBe(true);
+    for (const p of ["pos:use", "sale:create", "payment:cash", "sale:refund"] as const) expect(can("ACCOUNTANT", p), p).toBe(false);
   });
 
   it("never sees visit photos (health data)", () => {

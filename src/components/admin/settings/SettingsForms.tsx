@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MoneyInput } from "@/components/admin/MoneyInput";
 import { useServerAction } from "@/components/admin/use-action";
-import { Button, Field, Input, Textarea } from "@/components/admin/ui";
+import { Button, Checkbox, Field, Input, Textarea } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { saveEmailSettingsAction, savePosSettingsAction, saveQPayModeAction, saveSalonAction, saveShopModeAction } from "@/server/actions/settings";
 
@@ -62,7 +62,7 @@ export function SalonForm({ initial }: { initial: SalonValue }) {
   );
 }
 
-export function PosSettingsForm({ initial }: { initial: { maxManagerDiscountPercent: number; shiftDifferenceThreshold: number; staleLockMinutes: number } }) {
+export function PosSettingsForm({ initial }: { initial: { maxManagerDiscountPercent: number; shiftDifferenceThreshold: number; staleLockMinutes: number; cashShiftsEnabled: boolean } }) {
   const router = useRouter();
   const [v, setV] = useState(initial);
   const a = useServerAction(savePosSettingsAction);
@@ -84,6 +84,16 @@ export function PosSettingsForm({ initial }: { initial: { maxManagerDiscountPerc
       <Field label={s.staleLock} htmlFor="st-stale" error={fe.staleLockMinutes}>
         <Input id="st-stale" type="number" min={5} max={1440} step={5} value={v.staleLockMinutes} onChange={(e) => setV({ ...v, staleLockMinutes: Number(e.target.value) })} />
       </Field>
+      <div className="md:col-span-3">
+        <Checkbox
+          label="Кассын ээлж ашиглах (нээх / хаах, бэлэн мөнгө тоолох)"
+          checked={v.cashShiftsEnabled}
+          onChange={(e) => setV({ ...v, cashShiftsEnabled: e.target.checked })}
+        />
+        <p className="mt-1 text-[13px] text-ink-soft">
+          Унтраалттай (анхдагч): менежер бүр өөрийн бүртгэлээр зэрэг борлуулалт бичнэ, бэлэн төлбөрт ээлж шаардахгүй. Тооцоо — «Өдрийн касс» тайлан.
+        </p>
+      </div>
       <div className="md:col-span-3">
         <Button type="submit" disabled={a.pending}>
           {s.save}

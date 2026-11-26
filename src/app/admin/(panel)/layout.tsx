@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Topbar } from "@/components/admin/Topbar";
-import { navFor } from "@/components/admin/nav";
+import { navFor, withoutHrefs } from "@/components/admin/nav";
+import { getPosSettings } from "@/server/modules/settings/pos-settings";
 import { canView } from "@/server/modules/finance/access";
 import { getSalonInfo } from "@/server/queries/storefront";
 import { countNewInquiries } from "@/server/modules/inquiries/service";
@@ -38,7 +39,9 @@ export default async function AdminPanelLayout({ children }: { children: React.R
   }
   // Санхүү: MANAGER-т тохиргоогоор зөвхөн харах (finance/access.ts)
   const [viewExpenses, viewFinance, viewPayroll] = await Promise.all([canView(user.role, "expenses"), canView(user.role, "finance"), canView(user.role, "payroll")]);
-  const entries = navFor((p) => (p === "expense:read" ? viewExpenses : p === "finance:read" ? viewFinance : p === "payroll:read" ? viewPayroll : can(user.role, p)));
+  // PROMPT 20: кассын ээлж унтраалттай (анхдагч) бол цэснээс нууна (түүх /admin/shifts-д хэвээр)
+  const shiftsOn = (await getPosSettings()).cashShiftsEnabled;
+  const entries = withoutHrefs(navFor((p) => (p === "expense:read" ? viewExpenses : p === "finance:read" ? viewFinance : p === "payroll:read" ? viewPayroll : can(user.role, p))), shiftsOn ? [] : ["/admin/shifts"]);
   // Утасгүй/баталгаажаагүй хэрэглэгчид утсаа нэмэхийг санал болгоно (PROMPT 15 §2)
   const phoneVerified = Boolean((await db.user.findUnique({ where: { id: user.id }, select: { loginPhone: true } }))?.loginPhone);
   // Онлайн захиалга (батлах хүлээж буй) ба сайтаас шинээр бүртгүүлсэн (24 цаг) — MANAGER, ADMIN (PROMPT 15)

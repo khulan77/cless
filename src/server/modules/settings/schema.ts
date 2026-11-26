@@ -9,6 +9,11 @@ export const posSettingsSchema = z.object({
   staleLockMinutes: z.number().int().min(5).max(24 * 60).catch(30),
   /** Касс хаахад үүнээс их (абсолют) зөрүү гарвал онцгой анхааруулна, ₮ */
   shiftDifferenceThreshold: z.number().int().min(0).max(10_000_000).catch(5000),
+  /**
+   * PROMPT 20: кассын ээлж (нээх/хаах, тоолох). Анхдагч — УНТРААЛТТАЙ: менежер бүр өөрийн бүртгэлээр зэрэг
+   * борлуулалт бичнэ, бэлэн төлбөр/буцаалтад ээлж шаардахгүй ("Өдрийн касс" тайлан). Асаавал хуучин урсгал.
+   */
+  cashShiftsEnabled: z.boolean().catch(false).default(false),
 });
 
 /** Имэйлийн илгээгч. Хоосон бол EMAIL_FROM env-ийг ашиглана. */

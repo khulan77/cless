@@ -50,8 +50,15 @@ async function lockedSale(price = 410_000, stock = 3) {
   return { ...r, variantId: v.id };
 }
 
+
+/** PROMPT 20: кассын ээлж анхдагчаар унтраалттай — хуучин урсгалын тестэд асаана */
+async function enableShifts() {
+  await db.siteSetting.upsert({ where: { key: "pos" }, create: { key: "pos", value: { cashShiftsEnabled: true } }, update: { value: { cashShiftsEnabled: true } } });
+}
+
 describe("createPayment", () => {
-  it("CASH requires an open shift", async () => {
+  it("CASH requires an open shift (cash shifts enabled)", async () => {
+    await enableShifts();
     const s = await lockedSale();
     await expect(createPayment({ saleId: s.saleId, method: "CASH", amount: 1000, tendered: 1000, idempotencyKey: key() }, asManager())).rejects.toThrow(
       /кассаа нээнэ/,
@@ -59,6 +66,7 @@ describe("createPayment", () => {
   });
 
   it("split payment (QPay manual + cash with change) → PAID, stock deducted, cash movement recorded", async () => {
+    await enableShifts();
     const shift = await openShift({ openingCash: 50_000 }, manager.id);
     const s = await lockedSale();
     const q = await createPayment({ saleId: s.saleId, method: "QPAY", amount: 300_000, externalRef: "QP123456", idempotencyKey: key() }, asManager());

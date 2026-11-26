@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { setCashShifts } from "./settings-db";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_EMAIL_DIR, seedPassword } from "./env";
 
@@ -22,6 +23,11 @@ async function typeMoney(input: Locator, digits: string) {
 
 // The second test opens a new shift, so it needs the first one to have closed its shift
 test.describe.configure({ mode: "serial" });
+
+// PROMPT 20: кассын ээлж анхдагчаар унтраалттай — энэ файл ээлжтэй урсгалыг шалгана
+test.beforeAll(() => setCashShifts(true));
+test.afterAll(() => setCashShifts(false));
+
 
 /** Optional screenshots for visual review: E2E_SHOTS=<dir> */
 async function shot(page: Page, name: string) {

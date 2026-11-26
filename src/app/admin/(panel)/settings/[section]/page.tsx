@@ -40,7 +40,7 @@ export default async function SettingsSectionPage({ params }: { params: Promise<
     body = <ShopModeForm mode={await getShopMode()} checkoutAvailable={CHECKOUT_AVAILABLE} />;
   } else if (topic === "pos") {
     const pos = await getPosSettings();
-    body = <PosSettingsForm initial={{ maxManagerDiscountPercent: pos.maxManagerDiscountPercent, shiftDifferenceThreshold: pos.shiftDifferenceThreshold, staleLockMinutes: pos.staleLockMinutes }} />;
+    body = <PosSettingsForm initial={{ maxManagerDiscountPercent: pos.maxManagerDiscountPercent, shiftDifferenceThreshold: pos.shiftDifferenceThreshold, staleLockMinutes: pos.staleLockMinutes, cashShiftsEnabled: pos.cashShiftsEnabled }} />;
   } else if (topic === "email") {
     body = <EmailSettingsForm initial={await getEmailSettings()} envFrom={process.env.EMAIL_FROM ?? ""} />;
   } else if (topic === "accountant") {

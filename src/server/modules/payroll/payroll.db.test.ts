@@ -63,7 +63,7 @@ describe("цалингийн үе (PROMPT 14)", () => {
     const { adv, fin } = await periods();
 
     // Ирц: эхний ажлын өдөр тасалсан
-    await setWorkDay({ staffId: staff.id, date: firstWeekday, status: "ABSENT" }, admin.id);
+    await setWorkDay({ staffId: staff.id, date: firstWeekday, status: "ABSENT", note: "Тестийн засвар" }, admin.id);
     await calculatePeriod(adv.id, admin.id);
     const planned = plannedDaysInMonth(month, MONFRI);
     const firstHalfPlanned = daysBetween(md[0]!, `${month}-15`).filter((d) => MONFRI.weekdays.has(weekdayOf(d))).length;
@@ -75,7 +75,7 @@ describe("цалингийн үе (PROMPT 14)", () => {
     // Урьдчилгааг батлахаас өмнө сарын эцсийг тооцохгүй; хувь хэмжээ баталгаажаагүй бол батлахгүй (урьдчилгаа — суутгалгүй тул болно)
     await expect(calculatePeriod(fin.id, admin.id)).rejects.toThrow(/урьдчилгааг/);
     await approvePeriod(adv.id, admin.id);
-    await expect(setWorkDay({ staffId: staff.id, date: firstWeekday, status: "WORKED" }, admin.id)).rejects.toThrow(/батлагдсан/);
+    await expect(setWorkDay({ staffId: staff.id, date: firstWeekday, status: "WORKED", note: "Тестийн засвар" }, admin.id)).rejects.toThrow(/батлагдсан/);
     await expect(addHoliday({ date: md[0]!, name: "Test" }, admin.id)).rejects.toThrow(/батлагдсан/);
 
     // Үйлчилгээ 200,000 × 10% = 20,000 урамшуулал (анхдагч GROSS — НӨАТ-тэй дүнгээс); нэмэлт 50,000
@@ -111,7 +111,7 @@ describe("цалингийн үе (PROMPT 14)", () => {
 
     // Сарын 2-р хагасын ирц өөрчлөгдвөл тооцоо хуучирна
     const lastWeekday = md.filter((d) => MONFRI.weekdays.has(weekdayOf(d))).at(-1)!;
-    await setWorkDay({ staffId: staff.id, date: lastWeekday, status: "SICK" }, admin.id);
+    await setWorkDay({ staffId: staff.id, date: lastWeekday, status: "SICK", note: "Тестийн засвар" }, admin.id);
     expect((await db.payrollPeriod.findUniqueOrThrow({ where: { id: fin.id } })).calculatedAt).toBeNull();
     await expect(approvePeriod(fin.id, admin.id)).rejects.toThrow(/Тооцоолох/);
     await calculatePeriod(fin.id, admin.id);
@@ -126,7 +126,7 @@ describe("цалингийн үе (PROMPT 14)", () => {
     expect((await myPayslips(staff.id)).map((p) => p.periodId).sort()).toEqual([adv.id, fin.id].sort());
 
     const actions = (await db.auditLog.findMany({ select: { action: true } })).map((x) => x.action);
-    expect(actions).toEqual(expect.arrayContaining(["payroll.calculate", "payroll.approve", "payroll.paid", "payroll.adjustment.create", "attendance.set", "payroll.rates.confirm"]));
+    expect(actions).toEqual(expect.arrayContaining(["payroll.calculate", "payroll.approve", "payroll.paid", "payroll.adjustment.create", "attendance.manual_edit", "payroll.rates.confirm"]));
     // Audit-д цалингийн дүн бичигдэхгүй (тооцооны мөрийн тоо л)
     const calc = await db.auditLog.findFirstOrThrow({ where: { action: "payroll.calculate" } });
     expect(calc.after).toEqual({ lines: 1 });
