@@ -62,7 +62,8 @@ describe("visit photos (A9)", () => {
     // Consent is remembered: the next upload does not ask again
     await uploadVisitPhoto({ customerId: s.customer.id, kind: "AFTER", appointmentId: s.appt.id, consent: false, file: await phonePhoto() }, s.sara);
     expect(files()).toHaveLength(2);
-    expect(p.storageKey.startsWith("visit-photos/")).toBe(true);
+    // PROMPT 21: visits/<visitId | appointmentId | unlinked>/<uuid>.webp — нэр/утасгүй
+    expect(p.storageKey).toMatch(new RegExp(`^visits/${s.appt.id}/[0-9a-f-]{36}\\.webp$`));
 
     session.user = s.sara;
     const res = await get(p.id);

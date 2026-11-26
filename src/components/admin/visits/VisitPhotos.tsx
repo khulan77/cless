@@ -18,18 +18,28 @@ export type PhotoGroupView = { key: string; at: string; title: string | null; ap
 export type PhotoTarget = { appointmentId: string; label: string };
 
 /** Phone photos can be 5–10 MB: scale to ≤2560px JPEG in the browser (also drops EXIF); the server makes the final 2048px webp */
-async function shrink(file: File): Promise<Blob> {
+const MAX_BYTES = 4 * 1024 * 1024;
+const HEIC_HELP = "HEIC зургийг энэ хөтөч уншиж чадсангүй. iPhone: Тохиргоо → Камер → Формат → «Хамгийн нийцтэй» (JPG), эсвэл Safari-гаар оруулна уу.";
+
+/** JPEG болгож ≤2048px, ≤4MB (Vercel-ийн хүсэлтийн хязгаар). Уншиж чадахгүй HEIC → null (мессеж) */
+async function shrink(file: File): Promise<Blob | null> {
+  const heic = /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
   try {
     const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-    const scale = Math.min(1, 2560 / Math.max(bmp.width, bmp.height));
+    const scale = Math.min(1, 2048 / Math.max(bmp.width, bmp.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(bmp.width * scale);
     canvas.height = Math.round(bmp.height * scale);
     canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
     bmp.close();
-    return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error("blob"))), "image/jpeg", 0.88));
+    for (const q of [0.85, 0.7, 0.55]) {
+      const b = await new Promise<Blob>((res, rej) => canvas.toBlob((x) => (x ? res(x) : rej(new Error("blob"))), "image/jpeg", q));
+      if (b.size <= MAX_BYTES) return b;
+    }
+    return null;
   } catch {
-    return file; // e.g. HEIC the browser cannot decode — the server tries
+    // Хөтөч уншиж чадахгүй: HEIC бол мессеж, бусдыг (4MB-аас бага бол) сервер оролдоно
+    return heic || file.size > MAX_BYTES ? null : file;
   }
 }
 
@@ -69,7 +79,12 @@ export function VisitPhotos({
       if (link.appointmentId) fd.set("appointmentId", link.appointmentId);
       if (link.visitId) fd.set("visitId", link.visitId);
       fd.set("consent", allowed ? "1" : "0");
-      fd.set("file", await shrink(file), "photo.jpg");
+      const blob = await shrink(file);
+      if (!blob) {
+        toast.error(/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name) ? HEIC_HELP : "Зураг 4MB-аас их байна — жижиг зураг сонгоно уу.");
+        break;
+      }
+      fd.set("file", blob, "photo.jpg");
       const res = await visitPhotoUpload(fd);
       if (!res.ok) {
         toast.error(res.error);

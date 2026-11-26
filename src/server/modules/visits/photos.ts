@@ -1,7 +1,10 @@
 /**
  * Айлчлалын өмнө/дараах зураг (A9).
  *
- * - Хадгалах: хувийн хавтас (storage/private.ts), public/ БИШ. Харах нь /api/media/visit/[id]-аар.
+ * - Хадгалах: Supabase PRIVATE bucket (prod) / хувийн хавтас (dev) — storage/private.ts, public URL хэзээ ч үгүй.
+ *   Object path: visits/<visitId | appointmentId | unlinked>/<uuid>.webp (нэр, утас ОРОХГҮЙ). Харах нь эрх шалгадаг
+ *   /api/media/visit/[id]-аар (сервер татаж stream хийнэ).
+ * - Хэмжээ ≤ 4MB (Vercel-ийн 4.5MB хүсэлтийн хязгаар; клиент том зургийг өмнө нь багасгана).
  * - Боловсруулалт: sharp — EXIF-ийн эргэлтийг хэрэглээд бүх metadata (байршил, төхөөрөмж) хасна,
  *   урт тал ≤ 2048px, webp.
  * - Эрх: харах/оруулах — ADMIN, MANAGER, тухайн үйлчлүүлэгчид үйлчилсэн STAFF (visit-photo:*).
@@ -21,7 +24,7 @@ import { canSeeCustomer } from "@/server/modules/customers/access";
 
 type Actor = { id: string; role: Role };
 
-export const PHOTO_MAX_INPUT_BYTES = 12 * 1024 * 1024;
+export const PHOTO_MAX_INPUT_BYTES = 4 * 1024 * 1024;
 export const PHOTO_MAX_SIDE = 2048;
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "image/avif"];
 
@@ -50,7 +53,7 @@ export async function uploadVisitPhoto(
   if (input.kind !== "BEFORE" && input.kind !== "AFTER") throw new UserError("Өмнө эсвэл дараа гэж сонгоно уу.");
   const f = input.file;
   if (!f || f.size === 0) throw new UserError("Зураг сонгоогүй байна.");
-  if (f.size > PHOTO_MAX_INPUT_BYTES) throw new UserError("Зураг 12MB-аас ихгүй байх ёстой.");
+  if (f.size > PHOTO_MAX_INPUT_BYTES) throw new UserError("Зураг 4MB-аас ихгүй байх ёстой.");
   if (f.type && !ACCEPTED.includes(f.type)) throw new UserError("Зөвхөн зураг (JPG, PNG, WEBP, HEIC) оруулна.");
 
   const customer = await db.customer.findUnique({ where: { id: input.customerId }, select: { id: true, photoConsentAt: true } });
@@ -70,10 +73,20 @@ export async function uploadVisitPhoto(
   try {
     processed = await processPhoto(Buffer.from(await f.arrayBuffer()));
   } catch {
-    throw new UserError("Зургийг уншиж чадсангүй. Өөр зураг оролдоно уу.");
+    const heic = /hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name);
+    throw new UserError(
+      heic
+        ? "HEIC зургийг уншиж чадсангүй. iPhone: Тохиргоо → Камер → Формат → «Хамгийн нийцтэй» (JPG), эсвэл Safari-гаар оруулна уу."
+        : "Зургийг уншиж чадсангүй. Өөр зураг оролдоно уу.",
+    );
   }
-  const key = `visit-photos/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.webp`;
-  await privateStorage.put(key, processed.data);
+  const folder = input.visitId ?? input.appointmentId ?? "unlinked";
+  const key = `visits/${folder}/${randomUUID()}.webp`;
+  try {
+    await privateStorage.put(key, processed.data);
+  } catch (e) {
+    throw new UserError(e instanceof Error && e.message.startsWith("Хувийн") ? e.message : "Зургийг хадгалж чадсангүй. Дахин оролдоно уу.");
+  }
   try {
     return await db.$transaction(async (tx) => {
       if (!customer.photoConsentAt) {
