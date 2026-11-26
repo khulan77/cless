@@ -68,6 +68,11 @@ export const PERMISSIONS = [
   "payroll:read",
   "payroll:write",
   "payroll:settings",
+  // Санхүү (PROMPT 18): зардал харах / бүртгэх; санхүүгийн тайлан (P&L, мөнгөн гүйлгээ, баланс, НӨАТ).
+  // MANAGER-т статик эрх үгүй — SiteSetting "finance"-ээр харах эрх нээгдэнэ (finance/access.ts).
+  "expense:read",
+  "expense:write",
+  "finance:read",
   "user:write",
   // MANAGER: зөвхөн гоо сайханч (STAFF) нэмэх/засах/урих (users/policy.ts)
   "user:write:staff",
@@ -90,8 +95,11 @@ const ADMIN_ONLY: readonly Permission[] = ["user:write", "integration:write"];
 /** Цалин — ADMIN ба ACCOUNTANT (11/25). Цалингийн мэдээлэл эмзэг тул MANAGER-т үгүй. */
 const PAYROLL: readonly Permission[] = ["payroll:read", "payroll:write", "payroll:settings"];
 
+/** Санхүү — ADMIN ба ACCOUNTANT. MANAGER — тохиргоогоор зөвхөн харах (finance/access.ts) */
+const FINANCE: readonly Permission[] = ["expense:read", "expense:write", "finance:read"];
+
 /** MANAGER = ADMIN-аас ADMIN_ONLY, цалинг хассан (11/24: менежер бүгдийг харж, засна; 10%-иас дээш хөнгөлөлт ч өгнө) */
-const MANAGER: readonly Permission[] = PERMISSIONS.filter((p) => !ADMIN_ONLY.includes(p) && !PAYROLL.includes(p));
+const MANAGER: readonly Permission[] = PERMISSIONS.filter((p) => !ADMIN_ONLY.includes(p) && !PAYROLL.includes(p) && !FINANCE.includes(p));
 
 /**
  * ACCOUNTANT (11/25): менежерийн харж буй бүх хэсгийг зөвхөн харна + цалин бүрэн + "Нягтланд илгээх".
@@ -111,6 +119,7 @@ const ACCOUNTANT: readonly Permission[] = [
   "attendance:read",
   "holiday:write",
   ...PAYROLL,
+  ...FINANCE,
 ];
 
 const ADMIN: readonly Permission[] = PERMISSIONS;
@@ -141,5 +150,8 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 /** Нэвтэрсний дараа очих анхны хуудас */
 export function homePathFor(role: Role): string {
-  return role === "STAFF" ? "/admin/schedule" : "/admin";
+  if (role === "STAFF") return "/admin/schedule";
+  // PROMPT 18: нягтлангийн нүүр — санхүүгийн тайлан
+  if (role === "ACCOUNTANT") return "/admin/finance";
+  return "/admin";
 }

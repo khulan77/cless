@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Topbar } from "@/components/admin/Topbar";
 import { navFor } from "@/components/admin/nav";
+import { canView } from "@/server/modules/finance/access";
 import { getSalonInfo } from "@/server/queries/storefront";
 import { countNewInquiries } from "@/server/modules/inquiries/service";
 import { failedEmailCount } from "@/server/modules/outbox/monitor";
@@ -35,7 +36,9 @@ export default async function AdminPanelLayout({ children }: { children: React.R
       </div>
     );
   }
-  const entries = navFor((p) => can(user.role, p));
+  // Санхүү: MANAGER-т тохиргоогоор зөвхөн харах (finance/access.ts)
+  const [viewExpenses, viewFinance] = await Promise.all([canView(user.role, "expenses"), canView(user.role, "finance")]);
+  const entries = navFor((p) => (p === "expense:read" ? viewExpenses : p === "finance:read" ? viewFinance : can(user.role, p)));
   // Утасгүй/баталгаажаагүй хэрэглэгчид утсаа нэмэхийг санал болгоно (PROMPT 15 §2)
   const phoneVerified = Boolean((await db.user.findUnique({ where: { id: user.id }, select: { loginPhone: true } }))?.loginPhone);
   // Онлайн захиалга (батлах хүлээж буй) ба сайтаас шинээр бүртгүүлсэн (24 цаг) — MANAGER, ADMIN (PROMPT 15)

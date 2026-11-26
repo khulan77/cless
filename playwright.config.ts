@@ -1,5 +1,9 @@
 import { defineConfig } from "@playwright/test";
 import { E2E_BASE_URL, E2E_PORT, e2eEnv } from "./tests/e2e/env";
+import { warnIfProdEnv } from "./tests/prod-env-warning";
+
+// .env-д prod түлхүүр байвал анхааруулна (E2E сервер эдгээрийг хоосолдог — tests/e2e/env.ts)
+warnIfProdEnv("E2E");
 
 /**
  * E2E: `bun run build` → `bun run test:e2e`.

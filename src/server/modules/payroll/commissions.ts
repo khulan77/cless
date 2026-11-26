@@ -15,6 +15,8 @@ export type CommissionDetail = {
   receipt: string | null;
   qty: number;
   amount: number;
+  /** Урамшууллын суурь (NET бол НӨАТ-гүй) */
+  base?: number;
   commission: number;
   /** Дүрмийн товч: "10%" эсвэл "5,000₮/ш" */
   rule: string | null;
@@ -31,11 +33,14 @@ type Row = {
   collectionIds: string[] | null;
   qty: number;
   amount: number;
+  vat: number;
 };
 
 const ruleLabel = (r: CommissionRuleLite) => (r.type === "PERCENT" ? `${r.value / 100}%` : `${r.value.toLocaleString("en-US")}₮/ш`);
 
-export async function commissionsByStaff(from: string, to: string, staffIds: string[]) {
+/** Урамшууллын суурь: GROSS (анхдагч) — НӨАТ-тэй дүн, NET — НӨАТ-гүй цэвэр дүн */
+export async function commissionsByStaff(from: string, to: string, staffIds: string[], opts: { base?: "NET" | "GROSS" } = {}) {
+  const onNet = opts.base === "NET";
   const { start, end } = rangeBounds({ from, to });
   const [rows, rules] = await Promise.all([
     staffIds.length === 0
@@ -52,6 +57,7 @@ export async function commissionsByStaff(from: string, to: string, staffIds: str
           (SELECT array_agg(pc."collectionId") FROM "ProductCollection" pc WHERE pc."productId" = v."productId") AS "collectionIds",
           (i."qty" - COALESCE(r.qty, 0))::int AS qty,
           (i."lineTotal" - COALESCE(r.amount, 0))::int AS amount,
+          ROUND(CASE WHEN i."lineTotal" > 0 THEN i."vatAmount"::numeric * (i."lineTotal" - COALESCE(r.amount, 0)) / i."lineTotal" ELSE 0 END)::int AS vat,
           s."paidAt", i."sortOrder"
         FROM "SaleItem" i JOIN "Sale" s ON s."id" = i."saleId"
         LEFT JOIN r ON r."itemId" = i."id"
@@ -59,22 +65,28 @@ export async function commissionsByStaff(from: string, to: string, staffIds: str
         WHERE s."status"::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
           AND s."paidAt" >= ${start} AND s."paidAt" < ${end}
       )
-      SELECT "staffId", day, kind, name, receipt, "serviceId", "productId", "collectionIds", qty, amount
+      SELECT "staffId", day, kind, name, receipt, "serviceId", "productId", "collectionIds", qty, amount, vat
       FROM lines WHERE "staffId" = ANY(${staffIds}) ORDER BY "paidAt", "sortOrder"`,
     db.commissionRule.findMany({ where: { isActive: true } }),
   ]);
   const ruleList = rules as unknown as CommissionRuleLite[];
-  const out = new Map<string, { service: number; product: number; details: CommissionDetail[] }>();
-  for (const id of staffIds) out.set(id, { service: 0, product: 0, details: [] });
+  const out = new Map<string, { service: number; product: number; serviceBase: number; productBase: number; details: CommissionDetail[] }>();
+  for (const id of staffIds) out.set(id, { service: 0, product: 0, serviceBase: 0, productBase: 0, details: [] });
   for (const r of rows) {
     if (r.qty === 0 && r.amount === 0) continue; // бүрэн буцаагдсан
-    const line = { kind: r.kind, staffId: r.staffId, serviceId: r.serviceId, productId: r.productId, collectionIds: r.collectionIds ?? [], amount: r.amount, qty: r.qty };
+    const base = onNet ? r.amount - r.vat : r.amount;
+    const line = { kind: r.kind, staffId: r.staffId, serviceId: r.serviceId, productId: r.productId, collectionIds: r.collectionIds ?? [], amount: base, qty: r.qty };
     const rule = pickRule(line, ruleList);
     const commission = commissionFor(line, ruleList);
     const g = out.get(r.staffId)!;
-    if (r.kind === "SERVICE") g.service += commission;
-    else g.product += commission;
-    g.details.push({ day: r.day, kind: r.kind, name: r.name, receipt: r.receipt, qty: r.qty, amount: r.amount, commission, rule: rule ? ruleLabel(rule) : null });
+    if (r.kind === "SERVICE") {
+      g.service += commission;
+      g.serviceBase += base;
+    } else {
+      g.product += commission;
+      g.productBase += base;
+    }
+    g.details.push({ day: r.day, kind: r.kind, name: r.name, receipt: r.receipt, qty: r.qty, amount: r.amount, base, commission, rule: rule ? ruleLabel(rule) : null });
   }
   return out;
 }

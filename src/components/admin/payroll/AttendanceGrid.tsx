@@ -7,6 +7,7 @@ import { useServerAction } from "@/components/admin/use-action";
 import { Button, Field, Input } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { setWorkDayAction } from "@/server/actions/payroll";
+import { DEFAULT_HOURS, WEEKLY_NORM, hoursOf, weeklyHours } from "@/server/modules/payroll/hours";
 
 const A = t.admin.payroll.att;
 const STATUSES = ["WORKED", "HALF_DAY", "PAID_LEAVE", "UNPAID_LEAVE", "SICK", "ABSENT", "OFF"] as const;
@@ -50,7 +51,30 @@ export function AttendanceGrid({ days, rows, holidays, lockedDays, canEdit }: { 
     </button>
   );
 
-  const sumOf = (r: GridRow) => ({ worked: r.days.reduce((s, d) => s + WEIGHT[d.status], 0), planned: r.days.filter((d) => d.planned).length });
+  const sumOf = (r: GridRow) => {
+    const weeks = weeklyHours(r.days.map((d) => ({ date: d.date, hours: hoursOf(d.status, d.hours) })));
+    return {
+      worked: r.days.reduce((s, d) => s + WEIGHT[d.status], 0),
+      planned: r.days.filter((d) => d.planned).length,
+      hours: Math.round(weeks.reduce((s, w) => s + w.hours, 0) * 10) / 10,
+      norm: r.days.filter((d) => d.planned).length * 8,
+      weeks,
+    };
+  };
+  /** 7 хоног бүрийн нийлбэр (Да–Ня); 40-өөс давсан бол улбар шар */
+  const weekChips = (weeks: ReturnType<typeof sumOf>["weeks"]) => (
+    <span className="flex flex-wrap justify-end gap-1">
+      {weeks.map((w) => (
+        <span
+          key={w.week}
+          title={`${w.from} – ${w.to}: ${w.hours} цаг${w.overtime > 0 ? ` (${WEEKLY_NORM}-өөс ${w.overtime} илүү)` : ""}`}
+          className={`rounded-md px-1.5 py-0.5 text-[11px] tabular-nums ${w.overtime > 0 ? "bg-amber-100 font-medium text-amber-900" : "bg-canvas text-ink-soft"}`}
+        >
+          {w.hours}
+        </span>
+      ))}
+    </span>
+  );
 
   if (rows.length === 0) return <p className="text-[15px] text-ink-soft">{A.empty}</p>;
 
@@ -71,6 +95,7 @@ export function AttendanceGrid({ days, rows, holidays, lockedDays, canEdit }: { 
                 </th>
               ))}
               <th className="border-b border-hairline px-3 py-2 text-right font-medium text-ink-soft">{A.worked} / {A.planned}</th>
+              <th className="border-b border-hairline px-3 py-2 text-right font-medium text-ink-soft" title="Ажилласан цаг / нормын цаг; доор — 7 хоног бүрийн цаг (40-өөс давсан нь улбар шар)">Цаг / норм</th>
             </tr>
           </thead>
           <tbody>
@@ -86,6 +111,10 @@ export function AttendanceGrid({ days, rows, holidays, lockedDays, canEdit }: { 
                     <td key={d.date} className="border-b border-hairline px-0.5 py-1.5 text-center">{cell(r, d)}</td>
                   ))}
                   <td className="border-b border-hairline px-3 text-right tabular-nums">{s.worked} / {s.planned}</td>
+                  <td className="border-b border-hairline px-3 py-1.5 text-right tabular-nums">
+                    <span className="block whitespace-nowrap">{s.hours} / {s.norm}</span>
+                    {weekChips(s.weeks)}
+                  </td>
                 </tr>
               );
             })}
@@ -102,10 +131,11 @@ export function AttendanceGrid({ days, rows, holidays, lockedDays, canEdit }: { 
               <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium">{r.name}</span>
-                  <span className="block text-[13px] text-ink-soft">{A.worked}: {s.worked} / {s.planned}</span>
+                  <span className="block text-[13px] text-ink-soft">{A.worked}: {s.worked} / {s.planned} · Цаг: {s.hours} / {s.norm}</span>
                 </span>
                 <ChevronDown className="size-5 text-ink-soft transition group-open:rotate-180" aria-hidden />
               </summary>
+              <div className="px-3 pb-2">{weekChips(s.weeks)}</div>
               <div className="grid grid-cols-7 gap-1.5 px-3 pb-4">
                 {WD.map((w, i) => (
                   <span key={w} className="text-center text-[11px] text-ink-faint">{WD[(i + 1) % 7]}</span>
@@ -172,8 +202,8 @@ function EditDay({ row, day, onClose }: { row: GridRow; day: GridDay; onClose: (
             ))}
           </div>
         </fieldset>
-        <Field label={A.hours} htmlFor="att-hours" error={fieldErrors.hours}>
-          <Input id="att-hours" type="number" inputMode="decimal" min={0} max={24} step={0.5} value={hours} onChange={(e) => setHours(e.target.value)} className="max-w-32" />
+        <Field label={A.hours} htmlFor="att-hours" error={fieldErrors.hours} hint={`Хоосон бол ${DEFAULT_HOURS[status]} цаг (ажилласан 8, хагас өдөр 4)`}>
+          <Input id="att-hours" type="number" inputMode="decimal" min={0} max={24} step={0.5} placeholder={String(DEFAULT_HOURS[status])} value={hours} onChange={(e) => setHours(e.target.value)} className="max-w-32" />
         </Field>
         <Field label={A.note} htmlFor="att-note" error={fieldErrors.note}>
           <Input id="att-note" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />

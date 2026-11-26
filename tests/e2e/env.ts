@@ -38,6 +38,9 @@ export function e2eEnv(): NodeJS.ProcessEnv {
     RESEND_API_KEY: "",
     // `next start` .env-ийг уншдаг — E2E хэзээ ч жинхэнэ SMS/имэйл илгээхгүй (код → EMAIL_FILE_DIR)
     WESEND_API_KEY: "",
+    // Зураг — локал диск (public/uploads); .env-ийн Supabase Storage руу E2E хэзээ ч бичихгүй
+    SUPABASE_URL: "",
+    SUPABASE_SERVICE_ROLE_KEY: "",
     SEED_ADMIN_PASSWORD: seedPassword(),
     INTERNAL_REVALIDATE_SECRET: E2E_INTERNAL_SECRET,
     APP_INTERNAL_URL: E2E_BASE_URL,

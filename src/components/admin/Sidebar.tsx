@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Landmark,
+  ReceiptText,
   Activity, BadgePercent, CalendarCheck, CalendarOff, HandCoins, PiggyBank, BarChart3, Banknote, Boxes, Calculator, CalendarDays, CalendarRange, ChevronDown, ChevronsLeft, ChevronsRight, Contact, CreditCard,
   DoorOpen, FileText, Flower2, FolderTree, Inbox, LayoutDashboard, LogOut, Mail, Menu, Package, Receipt, Settings, ShoppingBag,
   Sparkles, Store, UserCog, UserRound, Users, Wallet, X, type LucideIcon,
@@ -47,6 +49,8 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   attendance: CalendarCheck,
   wallet: PiggyBank,
   holiday: CalendarOff,
+  finance: Landmark,
+  expense: ReceiptText,
 };
 
 const n = t.admin.nav;

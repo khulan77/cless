@@ -367,6 +367,7 @@ model User {
   markedWorkDays        WorkDay[]           @relation("WorkDayMarkedBy")
   salaryHistory         SalaryHistory[]     @relation("SalaryHistoryStaff")
   payrollAdjustments    PayrollAdjustment[] @relation("PayrollAdjustmentStaff")
+  expensesCreated       Expense[]           @relation("ExpenseCreatedBy")
   approvedPayrolls      PayrollPeriod[]     @relation("PayrollApprovedBy")
   confirmedRateSets     PayrollRateSet[]    @relation("RateSetConfirmedBy")
 
@@ -1323,6 +1324,7 @@ model PayrollPeriod {
   approvedBy  User?               @relation("PayrollApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
   lines       PayrollLine[]
   adjustments PayrollAdjustment[]
+  expenses    Expense[]
 
   @@unique([startDate, endDate])
 }
@@ -1602,4 +1604,63 @@ model ReportDispatch {
   sentBy User? @relation("ReportDispatchSentBy", fields: [sentById], references: [id], onDelete: SetNull)
 
   @@index([day, createdAt])
+}
+
+// ─────────────────────── Санхүү (PROMPT 18) ───────────────────────
+
+enum ExpenseKind {
+  UTILITY
+  INTERNET
+  OTHER
+  /// Системийн (цалингаас автоматаар) — гараар бүртгэхгүй
+  PAYROLL
+  SOCIAL_INSURANCE
+  PIT
+}
+
+/// Зардлын ангилал. code — нягтлангийн данс/код (TODO: нягтлан баталгаажуулна).
+model ExpenseCategory {
+  id        String      @id @default(cuid())
+  code      String      @unique
+  name      String
+  kind      ExpenseKind
+  /// PAYROLL / SOCIAL_INSURANCE / PIT — цалин батлагдахад автоматаар, гараар засахгүй
+  isSystem  Boolean     @default(false)
+  isActive  Boolean     @default(true)
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  expenses Expense[]
+}
+
+/// Зардал (Clessiin зарлага). amount — НӨАТ-тэй нийт дүн (₮), vatAmount — vatOf()-оор.
+model Expense {
+  id              String     @id @default(cuid())
+  categoryId      String
+  date            DateTime   @db.Date
+  amount          Int
+  vatIncluded     Boolean    @default(false)
+  vatAmount       Int        @default(0)
+  /// Төлбөрийн код: хэрэглэгчийн код / гэрээний № / нэхэмжлэхийн № (ашиглалт, интернэтэд заавал)
+  reference       String?
+  vendor          String?
+  note            String?
+  /// Бэлэн (CASH) / данс (TRANSFER, CARD, QPAY); системийн мөрөнд null
+  paidVia         PayMethod?
+  /// Хувийн storage-ийн түлхүүр (зураг/PDF) — нийтэд биш
+  receiptPath     String?
+  /// Системийн мөр (цалингийн үе)
+  payrollPeriodId String?
+  createdById     String
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  category      ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  payrollPeriod PayrollPeriod?  @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  createdBy     User            @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([payrollPeriodId, categoryId])
+  @@index([date])
+  @@index([categoryId, date])
 }

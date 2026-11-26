@@ -11,6 +11,8 @@ import { z } from "zod";
 import type { PayrollKind, Prisma } from "@/generated/prisma/client";
 import { t } from "@/i18n";
 import { audit } from "@/server/audit";
+import { removePayrollExpenses, syncPayrollExpenses } from "@/server/modules/finance/expenses";
+import { hoursOf, periodHours } from "./hours";
 import { db } from "@/server/db";
 import { UserError } from "@/server/errors";
 import { basePay, computeFinal, computeLine, daysBetween, monthDays, monthOf, resolveAttendance, type WorkStatus } from "./calc";
@@ -78,6 +80,10 @@ export type LineDetails = {
   rates: null | { effectiveFrom: string; confirmed: boolean; employeeBp: number; employerBp: number; category: string | null; siCap: number | null; pitBp: number };
   tax: null | { siBase: number; taxable: number; pitBefore: number; credit: number };
   month: null | { from: string; base: number; serviceCommission: number; productCommission: number; gross: number; siEmployee: number; pit: number; net: number; advanceNet: number };
+  /** PROMPT 18 §3: урамшууллын суурь (тооцоолсон хугацааны — FINAL бол бүтэн сар), NET = НӨАТ-гүй */
+  bases?: { service: number; product: number; on: "NET" | "GROSS" };
+  /** Ажилласан / нормын / илүү цаг (тооцоолсон хугацааны). Илүү цаг — зөвхөн мэдээлэл, цалинд ороогүй. */
+  hours?: { worked: number; norm: number; overtime: number; weeks: { week: string; hours: number; overtime: number }[] };
   warnings: string[];
 };
 
@@ -146,7 +152,7 @@ export async function calculatePeriod(id: string, actorId: string) {
     workCalendars(ids, md[0]!, md.at(-1)!),
     markedDays(ids, earnFrom, to),
     db.salaryHistory.findMany({ where: { staffId: { in: ids } } }),
-    commissionsByStaff(earnFrom, to, ids),
+    commissionsByStaff(earnFrom, to, ids, { base: settings.commissionBase }),
     db.payrollAdjustment.findMany({ where: { periodId: { in: [id, ...(advance ? [advance.id] : [])] } } }),
   ]);
 
@@ -206,6 +212,12 @@ export async function calculatePeriod(id: string, actorId: string) {
         : null,
       tax,
       month: monthInfo,
+      bases: { service: c.serviceBase, product: c.productBase, on: settings.commissionBase },
+      hours: (() => {
+        const hrs = new Map(marked.filter((m) => m.staffId === s.id).map((m) => [m.date, m.hours]));
+        const ph = periodHours(att.map((d) => ({ date: d.date, planned: d.planned, hours: hoursOf(d.status, hrs.get(d.date)) })));
+        return { worked: ph.worked, norm: ph.norm, overtime: ph.overtime, weeks: ph.weeks.map((w) => ({ week: w.week, hours: w.hours, overtime: w.overtime })) };
+      })(),
       warnings: [...new Set([...base.warnings, ...warnings])],
     };
     return [{ staffId: s.id, plannedDays: base.plannedDays, workedDays: base.workedDays, ...line, details }];
@@ -286,6 +298,8 @@ export async function approvePeriod(id: string, actorId: string) {
       data: { status: "APPROVED", approvedById: actorId, approvedAt: new Date() },
     });
     if (r.count !== 1) throw new UserError(P.recalcFirst);
+    // Зардал: нийт цалин, ажил олгогчийн НДШ, ХХОАТ (PROMPT 18 §1) — давхардахгүй
+    await syncPayrollExpenses(tx, id, actorId);
     await audit(tx, { userId: actorId, action: "payroll.approve", entity: "PayrollPeriod", entityId: id, after: { lines: p.lines.length } });
   });
 }
@@ -307,6 +321,7 @@ export async function unapprovePeriod(raw: z.input<typeof unapproveSchema>, acto
   }
   await db.$transaction(async (tx) => {
     await tx.payrollPeriod.update({ where: { id }, data: { status: "DRAFT", approvedById: null, approvedAt: null, calculatedAt: null } });
+    await removePayrollExpenses(tx, id);
     await audit(tx, { userId: actorId, action: "payroll.unapprove", entity: "PayrollPeriod", entityId: id, before: { status: "APPROVED" }, after: { status: "DRAFT", reason } });
   });
 }

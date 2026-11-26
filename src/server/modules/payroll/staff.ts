@@ -18,15 +18,16 @@ const P = t.admin.payroll;
 
 export async function staffPayrollInfo() {
   const staff = await payrollStaff();
-  const [history, bank] = await Promise.all([
+  const [history, bank, commission] = await Promise.all([
     db.salaryHistory.findMany({ where: { staffId: { in: staff.map((s) => s.id) } }, orderBy: { effectiveFrom: "desc" } }),
     db.user.findMany({ where: { id: { in: staff.map((s) => s.id) } }, select: { id: true, bankAccountEnc: true } }),
+    staffCommissionRates(staff.map((s) => s.id)),
   ]);
   const today = ubDateKey();
   return staff.map((s) => {
     const h = history.filter((x) => x.staffId === s.id).map((x) => ({ id: x.id, effectiveFrom: fromDbDate(x.effectiveFrom), monthly: x.monthly, note: x.note }));
     const enc = bank.find((b) => b.id === s.id)?.bankAccountEnc ?? null;
-    return { ...s, history: h, current: salaryAt(h, today, s.baseSalary), bankMasked: maskAccount(decryptField(enc)), hasBank: !!enc };
+    return { ...s, history: h, current: salaryAt(h, today, s.baseSalary), bankMasked: maskAccount(decryptField(enc)), hasBank: !!enc, commission: commission.get(s.id)! };
   });
 }
 
@@ -97,4 +98,53 @@ export async function saveStaffPayroll(raw: z.input<typeof staffPayrollSchema>, 
 export async function bankAccounts(staffIds: string[]) {
   const rows = await db.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, bankAccountEnc: true } });
   return new Map(rows.map((r) => [r.id, decryptField(r.bankAccountEnc)]));
+}
+
+// ───────────────────────── Урамшууллын хувь (PROMPT 18 §3) ─────────────────────────
+
+/**
+ * Ажилтны энгийн хувь — ар талдаа CommissionRule (staffId + төрөл, бусад шүүлтүүргүй, PERCENT).
+ * Илүү нарийн дүрэм (үйлчилгээ/бүтээгдэхүүн/ангиллаар) давуу эрхтэй хэвээр (staff/commission.ts).
+ */
+export async function staffCommissionRates(staffIds: string[]) {
+  const rules = await db.commissionRule.findMany({
+    where: { staffId: { in: staffIds }, serviceId: null, productId: null, collectionId: null, type: "PERCENT", isActive: true },
+    select: { staffId: true, kind: true, value: true },
+  });
+  const out = new Map<string, { service: number | null; product: number | null }>();
+  for (const id of staffIds) out.set(id, { service: null, product: null });
+  for (const r of rules) {
+    const x = out.get(r.staffId!)!;
+    x[r.kind === "SERVICE" ? "service" : "product"] = r.value / 100;
+  }
+  return out;
+}
+
+const pct = z
+  .union([z.literal(""), z.null(), z.coerce.number({ error: P.badNumber }).min(0, "0–100%").max(100, "0–100%")])
+  .transform((v) => (v === "" || v === null ? null : Math.round(v * 100)));
+
+export const staffCommissionSchema = z.object({ staffId: z.string().min(1), servicePct: pct, productPct: pct });
+
+export async function setStaffCommission(raw: z.input<typeof staffCommissionSchema>, actorId: string) {
+  const v = staffCommissionSchema.parse(raw);
+  await db.$transaction(async (tx) => {
+    const before: Record<string, number | null> = {};
+    for (const [kind, bp] of [["SERVICE", v.servicePct], ["PRODUCT", v.productPct]] as const) {
+      const where = { staffId: v.staffId, kind, serviceId: null, productId: null, collectionId: null, type: "PERCENT" as const };
+      const existing = await tx.commissionRule.findMany({ where });
+      before[kind] = existing[0]?.value ?? null;
+      if (bp === null) {
+        if (existing.length) await tx.commissionRule.deleteMany({ where });
+      } else if (existing.length) {
+        await tx.commissionRule.update({ where: { id: existing[0]!.id }, data: { value: bp, isActive: true } });
+        if (existing.length > 1) await tx.commissionRule.deleteMany({ where: { id: { in: existing.slice(1).map((r) => r.id) } } });
+      } else {
+        await tx.commissionRule.create({ data: { ...where, value: bp } });
+      }
+    }
+    // Ноорог үеүүдийг дахин тооцоолуулна
+    await invalidateFrom("1970-01-01", tx);
+    await audit(tx, { userId: actorId, action: "payroll.commission.set", entity: "User", entityId: v.staffId, before, after: { SERVICE: v.servicePct, PRODUCT: v.productPct } });
+  });
 }

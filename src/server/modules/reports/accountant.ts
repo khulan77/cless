@@ -21,6 +21,7 @@ import { emailSupportsAttachments, sendEmail } from "@/server/modules/notificati
 import { SITE_URL } from "@/lib/site-url";
 import { renderAccountantEmail } from "@/server/modules/notifications/accountant-email";
 import { enqueue } from "@/server/modules/outbox/service";
+import { exportToken } from "@/server/modules/finance/export";
 import { rangeBounds } from "./definitions";
 import { loadReport, type BreakdownRow } from "./queries";
 
@@ -225,7 +226,9 @@ export async function deliverAccountantReport(jobId: string, dispatchId: string)
     const [salon, excel] = await Promise.all([getCurrentBranch().then((b) => b.name), buildDailyExcel(full)]);
     // WeSend хавсралт дамжуулдаггүй → Excel-ийг системээс татах холбоос (report:send эрхтэй, нэвтэрсэн)
     const downloadUrl = emailSupportsAttachments() ? null : `${SITE_URL}/api/admin/reports/accountant/${d.id}`;
-    const mail = await renderAccountantEmail({ salonName: salon, summary, lines: summaryLines(summary), downloadUrl });
+    // PROMPT 18 §2.5: "Бүх системийн тайлан" (сарын эхнээс тухайн өдөр хүртэл) — хувийн, 7 хоногийн хугацаатай холбоос
+    const fullReportUrl = `${SITE_URL}/api/finance/export/${exportToken({ from: `${d.day.slice(0, 8)}01`, to: d.day })}`;
+    const mail = await renderAccountantEmail({ salonName: salon, summary, lines: summaryLines(summary), downloadUrl, fullReportUrl });
     await sendEmail({
       id: jobId,
       to: d.recipients,

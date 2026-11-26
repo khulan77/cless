@@ -55,6 +55,9 @@ const MATRIX: Row[] = [
   ["payroll:read", false, false, true, true],
   ["payroll:write", false, false, true, true],
   ["payroll:settings", false, false, true, true],
+  ["expense:read", false, false, true, true],
+  ["expense:write", false, false, true, true],
+  ["finance:read", false, false, true, true],
   ["user:write", false, false, false, true],
   ["user:write:staff", false, true, false, true],
   ["settings:write", false, true, false, true],
@@ -85,7 +88,7 @@ describe("permission matrix", () => {
     expect(homePathFor("STAFF")).toBe("/admin/schedule");
     expect(homePathFor("MANAGER")).toBe("/admin");
     expect(homePathFor("ADMIN")).toBe("/admin");
-    expect(homePathFor("ACCOUNTANT")).toBe("/admin");
+    expect(homePathFor("ACCOUNTANT")).toBe("/admin/finance");
   });
 
   it("read-only mode only for ACCOUNTANT", () => {
