@@ -9,6 +9,7 @@ import { ForbiddenError, UserError } from "@/server/errors";
 import { storage } from "@/server/storage";
 import { z } from "zod";
 import { productInputSchema, type ProductInput } from "@/lib/validation/product";
+import { bulkArchiveProducts as archiveMany, bulkDeleteMessage, bulkDeleteProducts as deleteMany, bulkIdsSchema } from "@/server/modules/products/bulk";
 import { parseInput, runAction } from "./result";
 
 const TX_OPTS = { maxWait: 10_000, timeout: 30_000 } as const;
@@ -286,5 +287,29 @@ export async function searchProducts(query: string) {
       select: { id: true, name: true, kind: true },
     });
     return rows.map((p) => ({ id: p.id, label: p.name, hint: p.kind === "BUNDLE" ? "BUNDLE" : undefined }));
+  });
+}
+
+/** Олноор архивлах (сайтаас нуух) — ADMIN/MANAGER (product:write) */
+export async function bulkArchiveProducts(input: { ids: string[] }) {
+  return runAction(async () => {
+    const user = await requirePermission("product:write");
+    const { ids } = parseInput(bulkIdsSchema, input);
+    const r = await archiveMany(ids, user.id);
+    refreshStorefront(r.slugs);
+    return { archived: r.archived };
+  });
+}
+
+/** Олноор устгах: гүйлгээгүйг устгана, гүйлгээтэйг архивлана */
+export async function bulkDeleteProducts(input: { ids: string[] }) {
+  return runAction(async () => {
+    const user = await requirePermission("product:write");
+    const { ids } = parseInput(bulkIdsSchema, input);
+    const r = await deleteMany(ids, user.id);
+    // DB-ээс устсаны дараа л storage-ийн зураг (алдаа гарвал зураг үлдэх нь хор хөнөөлгүй)
+    await Promise.all(r.removedImageUrls.map((u) => storage.remove(u).catch(() => undefined)));
+    refreshStorefront(r.slugs);
+    return { deleted: r.deleted, archived: r.archived, message: bulkDeleteMessage(r) };
   });
 }

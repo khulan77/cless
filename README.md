@@ -103,6 +103,8 @@ Vercel дээр зөвхөн вэб апп ажиллана. Worker (имэйл,
 | `WESEND_WEBHOOK_SECRET` |  | WeSend webhook-ийн гарын үсэг (`/api/wesend/webhook`) |
 | `NOTIFY_BRAND` |  | Брэнд: имэйлийн илгээгчийн нэр (анхдагч `CLÉSS`); SMS/кодонд автоматаар ASCII (`CLESS`, ≤20 тэмдэгт) — WeSend verify ASCII биш брэндийг `invalid_request`-ээр буцаадаг |
 | `RESEND_API_KEY`, `EMAIL_FROM` |  | **Хуучирсан** — WeSend тохируулаагүй үед л имэйлд |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | ✓ (Vercel) | Админаас оруулах зураг (бүтээгдэхүүн, үйлчилгээ, ангилал, контент) — Supabase Storage. Vercel-ийн диск read-only тул заавал; service role key зөвхөн сервер талд |
+| `SUPABASE_STORAGE_BUCKET` | | Анхдагч `media`. Supabase → Storage дээр **Public** bucket үүсгэнэ. Зураг 4MB хүртэл (Vercel-ийн 4.5MB хүсэлтийн хязгаар) |
 | `DB_POOL_MAX` | | Нэг instance-ийн pg холболт. Default 3 (Vercel) |
 | `NEXT_IMAGE_UNOPTIMIZED` | | `1` — `/_next/image`-ийг алгасаж зургийг шууд өгнө (Hobby-ийн Image Optimization хязгаар дуусаж 402 өгвөл). Default зургууд, upload-ууд sharp-аар webp болсон тул чанар алдагдахгүй; зөвхөн дэлгэцийн өргөнөөр жижигрүүлсэн хувилбар (srcset) байхгүй болно. Build үед уншигдана — өөрчилбөл redeploy |
 | `QPAY_*` | | Зөвхөн CHECKOUT горимд |

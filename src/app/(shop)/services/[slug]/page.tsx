@@ -6,7 +6,7 @@ import { BookingSheetButton } from "@/components/salon/BookingSheet";
 import { ServiceCard, servicePrice } from "@/components/services/ServiceCard";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Container } from "@/components/ui/Container";
-import { Img } from "@/components/ui/Img";
+import { BrandFallback, Img } from "@/components/ui/Img";
 import { JsonLd } from "@/components/ui/JsonLd";
 import { t } from "@/i18n";
 import { realImageSrc } from "@/lib/placeholder";
@@ -69,12 +69,10 @@ async function ServiceView({ params }: Props) {
       />
       <Container className="pb-16 pt-6 md:pt-10">
         <Breadcrumbs items={[{ name: S.title, href: "/services" }]} current={{ name: s.name, href }} />
-        <div className={`mt-6 grid gap-8 ${src ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14" : "max-w-[720px]"}`}>
-          {src && (
-            <div className="relative aspect-[4/3] bg-card">
-              <Img src={src} alt={s.name} fill priority sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
-            </div>
-          )}
+        <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
+          <div className="relative aspect-[4/3] bg-card">
+            {src ? <Img src={src} alt={s.name} fill priority sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" /> : <BrandFallback fill />}
+          </div>
           <div>
             {s.category && <p className="text-micro text-muted">{s.category}</p>}
             <h1 className="text-section mt-2 text-left">{s.name}</h1>

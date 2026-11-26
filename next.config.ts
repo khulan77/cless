@@ -42,6 +42,8 @@ const nextConfig: NextConfig = {
   images: {
     // Hero is served at quality 90 (sharp edges on large screens); everything else at the default 75
     qualities: [75, 85, 90],
+    // Админаас оруулсан зураг (Supabase Storage, PROMPT 17)
+    remotePatterns: process.env.SUPABASE_URL ? [{ protocol: "https", hostname: new URL(process.env.SUPABASE_URL).hostname, pathname: "/storage/v1/object/public/**" }] : [],
     // NEXT_IMAGE_UNOPTIMIZED=1: serve files as they are, skipping /_next/image (Vercel Hobby's
     // optimization quota returns 402 once used up). Defaults and uploads are already webp from sharp.
     unoptimized: process.env.NEXT_IMAGE_UNOPTIMIZED === "1",

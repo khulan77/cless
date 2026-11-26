@@ -15,6 +15,7 @@
  * Нэг transaction — алдаа гарвал юу ч өөрчлөгдөхгүй.
  */
 import pg from "pg";
+import { CUSTOMER_WHERE, describeTarget, transactionCounts, transactionSteps } from "./lib/reset-sql";
 
 const args = new Set(process.argv.slice(2));
 const confirm = args.has("--confirm");
@@ -29,30 +30,8 @@ if (!url) {
   console.error("DATABASE_URL / DIRECT_URL алга.");
   process.exit(1);
 }
-const target = (() => {
-  const u = new URL(url);
-  return `${u.hostname}:${u.port || 5432}${u.pathname}`;
-})();
-
-/** Цаг захиалга, хэтэвчгүй (зөвхөн туршилтын POS-оос үүссэн) үйлчлүүлэгчид */
-const CUSTOMER_WHERE = `NOT EXISTS (SELECT 1 FROM "Appointment" a WHERE a."customerId" = c."id")
-  AND NOT EXISTS (SELECT 1 FROM "Wallet" w WHERE w."customerId" = c."id")`;
-
-const COUNTS: [string, string][] = [
-  ["Борлуулалт", `SELECT count(*) FROM "Sale"`],
-  ["Борлуулалтын мөр", `SELECT count(*) FROM "SaleItem"`],
-  ["Төлбөр", `SELECT count(*) FROM "Payment"`],
-  ["QPay гүйлгээ", `SELECT count(*) FROM "PaymentTransaction"`],
-  ["Буцаалт", `SELECT count(*) FROM "Refund"`],
-  ["eBarimt", `SELECT count(*) FROM "EbarimtReceipt"`],
-  ["Айлчлал", `SELECT count(*) FROM "Visit"`],
-  ["Зөвлөмж", `SELECT count(*) FROM "VisitRecommendation"`],
-  ["Кассын ээлж", `SELECT count(*) FROM "CashShift"`],
-  ["Кассын хөдөлгөөн", `SELECT count(*) FROM "CashMovement"`],
-  ["Борлуулалтын StockMovement", `SELECT count(*) FROM "StockMovement" WHERE "saleId" IS NOT NULL`],
-  ["POS outbox ажил", `SELECT count(*) FROM "OutboxJob" WHERE "type" IN ('VISIT_EMAIL', 'QPAY_CANCEL_INVOICE')`],
-  ...(keepCustomers ? [] : ([["Үйлчлүүлэгч", `SELECT count(*) FROM "Customer" c WHERE ${CUSTOMER_WHERE}`]] as [string, string][])),
-];
+const target = describeTarget(url);
+const COUNTS = transactionCounts(keepCustomers);
 
 const client = new pg.Client({ connectionString: url });
 await client.connect();
@@ -82,23 +61,7 @@ try {
     process.exitCode = 1;
   } else {
     await client.query("BEGIN");
-    const steps = [
-      `DELETE FROM "CashMovement"`,
-      `DELETE FROM "PaymentTransaction"`,
-      `DELETE FROM "Payment"`,
-      `DELETE FROM "Refund"`,
-      `DELETE FROM "EbarimtReceipt"`,
-      `DELETE FROM "CashShift"`,
-      `DELETE FROM "VisitRecommendation"`,
-      `DELETE FROM "Visit"`,
-      `DELETE FROM "StockMovement" WHERE "saleId" IS NOT NULL`,
-      `UPDATE "WalletTxn" SET "saleId" = NULL WHERE "saleId" IS NOT NULL`,
-      `DELETE FROM "SaleItem"`,
-      `DELETE FROM "Sale"`,
-      `DELETE FROM "SaleCounter"`,
-      `DELETE FROM "OutboxJob" WHERE "type" IN ('VISIT_EMAIL', 'QPAY_CANCEL_INVOICE')`,
-      ...(keepCustomers ? [] : [`DELETE FROM "Customer" c WHERE ${CUSTOMER_WHERE}`]),
-    ];
+    const steps = transactionSteps(keepCustomers);
     for (const sql of steps) await client.query(sql);
 
     // Variant.stock = үлдсэн movement-уудын нийлбэр (кэш), нөөц 0

@@ -4,7 +4,7 @@ import { CalendarDays, Check, ChevronLeft, ChevronRight, Plus, Search } from "lu
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Avatar, Button, SegmentedTabs, Select, pastelFor } from "@/components/admin/ui";
+import { Avatar, Button, ButtonLink, SegmentedTabs, Select, pastelFor } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { addDays, formatHm, formatTime, ubAt, ubDateKey, ubMinuteOfDay, ubWeekday } from "@/lib/time";
@@ -252,7 +252,20 @@ export function CalendarBoard(p: Props) {
       </div>
 
       {p.columns.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center text-[15px] text-ink-soft">{p.by === "room" ? c.noRooms : c.noStaff}</p>
+        p.by === "room" ? (
+          <p className="mt-6 rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center text-[15px] text-ink-soft">{c.noRooms}</p>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-dashed border-hairline bg-white px-6 py-12 text-center">
+            <p className="text-[15px] font-medium text-ink">{c.noStaff}</p>
+            <p className="mx-auto mt-2 max-w-md text-[14px] text-ink-soft">{c.noStaffHint}</p>
+            {(p.perms.canInvite || p.perms.canSchedule) && (
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
+                {p.perms.canInvite && <ButtonLink href="/admin/users/new">{c.noStaffInvite}</ButtonLink>}
+                {p.perms.canSchedule && <ButtonLink href="/admin/staff-schedules" variant="secondary">{c.noStaffSchedule}</ButtonLink>}
+              </div>
+            )}
+          </div>
+        )
       ) : (
         <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-hairline bg-white">
           <div className="min-h-0 flex-1 overflow-auto">

@@ -24,7 +24,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "db",
-          include: ["src/**/*.db.test.ts"],
+          include: ["src/**/*.db.test.ts", "scripts/**/*.db.test.ts"],
           environment: "node",
           globalSetup: ["tests/db-global-setup.ts"],
           env: { DATABASE_URL: TEST_DATABASE_URL, TEST_DATABASE_URL },

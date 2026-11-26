@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from "lucide-react";
 import Image from "next/image";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
+import { imageFileError } from "@/lib/upload-limits";
 import { uploadImages } from "@/server/actions/upload";
 import { t } from "@/i18n";
 
@@ -14,6 +15,12 @@ async function uploadFiles(files: File[], folder: UploadFolder): Promise<string[
   const urls: string[] = [];
   // One file per request (server action body limit)
   for (const file of files) {
+    // Урьдчилан шалгана — том файл серверт хүрэхээс өмнө (Vercel 4.5MB) ойлгомжтой мессеж
+    const invalid = imageFileError(file);
+    if (invalid) {
+      toast.error(invalid);
+      continue;
+    }
     const fd = new FormData();
     fd.set("folder", folder);
     fd.append("files", file);
