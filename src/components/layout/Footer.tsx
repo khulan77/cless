@@ -132,7 +132,7 @@ export function Footer({
 
       <div className="px-[15px] pb-[30px] md:px-[50px]">
         <Link href="/" aria-label={t.layout.homeLink(wordmark.join(" "))} className="inline-block">
-          <BrandLogo className="h-[34px] w-[114.4px]" />
+          <BrandLogo className="h-[64px] w-[134.4px]" />
         </Link>
         <p data-br="footer.copyright" className="mt-4 text-copyright">
           © <CurrentYear /> {siteName}

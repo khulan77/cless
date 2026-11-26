@@ -36,7 +36,7 @@ export function Header({ wordmark, nav, salon, shopMode, cartCount = 0 }: Props)
         </div>
 
         <Link href="/" aria-label={t.layout.homeLink(wordmark.join(" "))} className="relative block before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']">
-          <BrandLogo data-br="header.logo" className="h-[34px] w-[114.4px] md:h-[42px] md:w-[141.3px]" />
+          <BrandLogo data-br="header.logo" className="h-[44px] w-[92.4px] md:h-[58px] md:w-[121.8px]" />
         </Link>
 
         <div className="flex items-center justify-end gap-6 md:gap-[30px]">
