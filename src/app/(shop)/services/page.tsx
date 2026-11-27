@@ -32,7 +32,15 @@ export default async function ServicesPage() {
       </header>
 
       {groups.length === 0 ? (
-        <p className="mt-12 text-center text-muted">{S.empty}</p>
+        // PROMPT 23: хоосон үед — бүлгийн гарчиг, 0₮ карт үгүй; утас + цаг захиалах товч (дээр)
+        <div className="mx-auto mt-12 max-w-[520px] text-center">
+          <p className="text-muted">{S.empty}</p>
+          {salon.phone && (
+            <a href={`tel:${salon.phone.replace(/[^\d+]/g, "")}`} className="mt-4 inline-block text-body underline underline-offset-4">
+              {salon.phone}
+            </a>
+          )}
+        </div>
       ) : (
         groups.map((g, i) => (
           <section key={g.category ?? "other"} aria-labelledby={`svc-group-${i}`} className="mt-12 md:mt-16">
@@ -47,7 +55,7 @@ export default async function ServicesPage() {
           </section>
         ))
       )}
-      <p className="mt-12 text-center text-body text-muted">{S.bookingNote}</p>
+      {groups.length > 0 && <p className="mt-12 text-center text-body text-muted">{S.bookingNote}</p>}
     </Container>
   );
 }

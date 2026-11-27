@@ -128,3 +128,94 @@ export async function resetCatalog(q: Queryable, opts: { target: string }) {
   );
   return { deleted: before, imagesLeftInStorage: images };
 }
+
+// ───────────────────────── Demo (reset-demo, PROMPT 23) ─────────────────────────
+
+/** Demo үйлчлүүлэгч: ONLINE биш, seed/туршилтын тэмдэгтэй эсвэл 2026-11-25-аас өмнө үүссэн */
+export const DEMO_CUTOFF = "2026-11-25";
+export function demoCustomerWhere(includeOnline: boolean) {
+  const demo = `(c."email" ILIKE '%example.%' OR c."email" ILIKE '%demo%' OR c."name" ILIKE '%туршилт%' OR c."name" ILIKE '%demo%' OR c."createdAt" < '${DEMO_CUTOFF}')`;
+  return includeOnline ? demo : `c."registeredVia"::text <> 'ONLINE' AND ${demo}`;
+}
+
+/** Demo ажилтан (seed) — ирц, цалин, зардлыг нь устгана; User өөрөө үлдэнэ */
+const DEMO_STAFF = `SELECT "id" FROM "User" WHERE "email" ILIKE '%@example.mn'`;
+/** Зөвхөн demo ажилтантай (эсвэл мөргүй) цалингийн үе */
+const DEMO_PERIOD = `NOT EXISTS (SELECT 1 FROM "PayrollLine" l WHERE l."periodId" = p."id" AND l."staffId" NOT IN (${DEMO_STAFF}))`;
+
+export function demoCounts(includeOnline: boolean): Count[] {
+  return [
+    ["Үйлчилгээ", `SELECT count(*) FROM "Service"`],
+    ["Үйлчилгээ × ажилтан", `SELECT count(*) FROM "ServiceStaff"`],
+    ["Үйлчилгээний урамшууллын дүрэм", `SELECT count(*) FROM "CommissionRule" WHERE "serviceId" IS NOT NULL`],
+    ["Цаг захиалга", `SELECT count(*) FROM "Appointment"`],
+    ["Айлчлалын зураг (DB)", `SELECT count(*) FROM "VisitPhoto"`],
+    ["Outbox (PENDING / FAILED)", `SELECT count(*) FROM "OutboxJob" WHERE "status"::text IN ('PENDING', 'FAILED')`],
+    ["Demo үйлчлүүлэгч", `SELECT count(*) FROM "Customer" c WHERE ${demoCustomerWhere(includeOnline)}`],
+    ["Demo цалингийн үе", `SELECT count(*) FROM "PayrollPeriod" p WHERE ${DEMO_PERIOD}`],
+    ["Demo зардал (гараар)", `SELECT count(*) FROM "Expense" WHERE "payrollPeriodId" IS NULL AND "createdById" IN (${DEMO_STAFF})`],
+    ["Demo ирц (WorkDay)", `SELECT count(*) FROM "WorkDay" WHERE "staffId" IN (${DEMO_STAFF})`],
+    ["Demo ирц (Ирлээ/Явлаа)", `SELECT count(*) FROM "AttendanceEvent" WHERE "staffId" IN (${DEMO_STAFF})`],
+  ];
+}
+
+export const DEMO_KEEP_COUNTS: Count[] = [
+  ["Ангилал (Collection)", `SELECT count(*) FROM "Collection"`],
+  ["Хэрэглэгч (User)", `SELECT count(*) FROM "User"`],
+  ["Салбар", `SELECT count(*) FROM "Branch"`],
+  ["Тохиргоо", `SELECT count(*) FROM "SiteSetting"`],
+  ["НДШ/ХХОАТ-ын хувь", `SELECT count(*) FROM "PayrollRateSet"`],
+  ["Зардлын ангилал", `SELECT count(*) FROM "ExpenseCategory"`],
+];
+
+/** Dry-run-д: устах demo үйлчлүүлэгчид (нэр + маск утас), ихдээ 200 */
+export async function demoCustomers(q: Queryable, includeOnline: boolean) {
+  const r = await q.query<{ name: string; phone: string; registeredVia: string }>(
+    `SELECT c."name", c."phone", c."registeredVia"::text AS "registeredVia" FROM "Customer" c WHERE ${demoCustomerWhere(includeOnline)} ORDER BY c."createdAt" LIMIT 200`,
+  );
+  const mask = (p: string) => (p.length >= 4 ? `${p.slice(0, 2)}****${p.slice(-2)}` : "****");
+  return r.rows.map((x) => ({ name: x.name, phone: mask(x.phone), online: x.registeredVia === "ONLINE" }));
+}
+
+/**
+ * Demo өгөгдлийг цэвэрлэнэ (дуудагчийн BEGIN…COMMIT дотор): гүйлгээ → outbox → айлчлал/зураг → цаг захиалга →
+ * үйлчилгээ → үлдсэн бүтээгдэхүүн → demo үйлчлүүлэгч → demo цалин/зардал/ирц. Буцаана: устгасан тоо ба
+ * private storage-аас устгах айлчлалын зургийн object path-ууд (commit-ийн ДАРАА устгана).
+ */
+export async function resetDemo(q: Queryable, opts: { target: string; includeOnline?: boolean }) {
+  const includeOnline = !!opts.includeOnline;
+  const before = await countAll(q, [...transactionCounts(true), ...demoCounts(includeOnline), ...CATALOG_COUNTS]);
+  const photos = (await q.query<{ storageKey: string }>(`SELECT "storageKey" FROM "VisitPhoto"`)).rows.map((r) => r.storageKey);
+
+  for (const sql of transactionSteps(true)) await q.query(sql);
+  const steps = [
+    `DELETE FROM "OutboxJob" WHERE "status"::text IN ('PENDING', 'FAILED')`,
+    `DELETE FROM "VisitPhoto"`,
+    `DELETE FROM "Visit"`,
+    `DELETE FROM "Appointment"`,
+    `DELETE FROM "CommissionRule" WHERE "serviceId" IS NOT NULL`,
+    `DELETE FROM "ServiceConsumable"`,
+    `DELETE FROM "ServiceStaff"`,
+    `DELETE FROM "Service"`,
+    ...CATALOG_STEPS,
+    // Demo үйлчлүүлэгч: хэтэвч / бэлгийн карт → дараа нь үйлчлүүлэгч (тэмдэглэл, session, имэйл — cascade)
+    `DELETE FROM "WalletTxn" WHERE "walletId" IN (SELECT w."id" FROM "Wallet" w JOIN "Customer" c ON c."id" = w."customerId" WHERE ${demoCustomerWhere(includeOnline)})`,
+    `DELETE FROM "Wallet" w USING "Customer" c WHERE c."id" = w."customerId" AND ${demoCustomerWhere(includeOnline)}`,
+    `DELETE FROM "Customer" c WHERE ${demoCustomerWhere(includeOnline)}`,
+    // Demo цалин (зөвхөн demo ажилтантай үе — системийн зардал cascade), demo зардал, ирц
+    `DELETE FROM "PayrollPeriod" p WHERE ${DEMO_PERIOD}`,
+    `DELETE FROM "Expense" WHERE "payrollPeriodId" IS NULL AND "createdById" IN (${DEMO_STAFF})`,
+    `DELETE FROM "WorkDay" WHERE "staffId" IN (${DEMO_STAFF})`,
+    `DELETE FROM "AttendanceEvent" WHERE "staffId" IN (${DEMO_STAFF})`,
+    `DELETE FROM "AttendanceNote" WHERE "staffId" IN (${DEMO_STAFF})`,
+  ];
+  for (const sql of steps) await q.query(sql);
+
+  const deleted = Object.fromEntries(before.map((c) => [c.label, c.count]));
+  await q.query(
+    `INSERT INTO "AuditLog" ("id", "userId", "action", "entity", "entityId", "after", "createdAt")
+     VALUES ($1, NULL, 'demo.reset', 'System', 'demo', $2::jsonb, now())`,
+    [`reset_${Date.now().toString(36)}`, JSON.stringify({ deleted, visitPhotos: photos.length, includeOnline, target: opts.target })],
+  );
+  return { deleted: before, photoKeys: photos };
+}

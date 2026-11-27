@@ -114,7 +114,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: SP 
 
       {products.length === 0 ? (
         total === 0 && !q && !collection && !status ? (
-          <EmptyState icon={Package} title="Бүтээгдэхүүн алга">
+          <EmptyState
+            icon={Package}
+            title="Бүтээгдэхүүн алга"
+            action={
+              readOnly ? null : (
+                <ButtonLink href="/admin/products/new">
+                  <Plus className="size-[18px]" strokeWidth={2} /> Эхний бүтээгдэхүүнээ нэмэх
+                </ButtonLink>
+              )
+            }
+          >
             «Бүтээгдэхүүн нэмэх»-ээр нэр, ангилал, үнэ, зургаа оруулна уу. Хадгалж «Сайтад» болгоход дэлгүүрт шууд харагдана.
           </EmptyState>
         ) : (

@@ -108,6 +108,7 @@ const MANAGER: readonly Permission[] = PERMISSIONS.filter((p) => !ADMIN_ONLY.inc
 
 /**
  * ACCOUNTANT (11/25): менежерийн харж буй бүх хэсгийг зөвхөн харна + цалин бүрэн + "Нягтланд илгээх".
+ * 11/26–27 (PROMPT 20, 23): каталог — бараа + үйлчилгээ + үнэ + үлдэгдэл бичнэ; санхүү, зардал. POS / борлуулалт — үгүй.
  * Айлчлалын зураг (visit-photo:*) — эрүүл мэндийн хувийн мэдээлэл тул үгүй. Бичих эрх (…:write, pos:use, shift:*) үгүй.
  */
 const ACCOUNTANT: readonly Permission[] = [
@@ -117,9 +118,11 @@ const ACCOUNTANT: readonly Permission[] = [
   "customer:contact:read",
   "sale:read",
   "stock:read",
-  // PROMPT 20: нягтлан бараа бүртгэнэ (нэг каталог — POS, сайт шууд харна)
+  // PROMPT 20/23: нягтлан каталогийг бүртгэнэ — бараа, үйлчилгээ (нэр, хугацаа, үнэ, зураг, ангилал), үнэ,
+  // үлдэгдэл (нэг каталог — POS, календарь, сайт шууд харна). Үйлчилгээг хэн хийх (service-staff:write) — менежер.
   "stock:write",
   "product:write",
+  "service:write",
   "price:write",
   "cost:read",
   "report:read",

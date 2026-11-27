@@ -30,6 +30,8 @@ const ACCOUNTANT_DOMAIN: Permission[] = [
   "product:write",
   "stock:write",
   "price:write",
+  // PROMPT 23: үйлчилгээ (нэр, хугацаа, үнэ, зураг, ангилал)
+  "service:write",
 ];
 
 /** Менежерийн хэсгээс зөвхөн УНШИХ action-ууд (өгөгдөл өөрчлөхгүй) */
@@ -68,7 +70,7 @@ describe("ACCOUNTANT is read-only outside payroll / finance (PROMPT 14 §1, 18 �
   });
 
   it("no write permission of the manager area is granted", () => {
-    const writes = ["appointment:write", "appointment:status", "customer:write", "visit:write", "pos:use", "sale:create", "sale:refund", "sale:void-paid", "sale:seller", "shift:own", "shift:all", "service:write", "settings:write", "user:write", "staff-schedule:write", "room:write", "attendance:write", "inquiry:manage"] as const;
+    const writes = ["appointment:write", "appointment:status", "customer:write", "visit:write", "pos:use", "sale:create", "sale:refund", "sale:void-paid", "sale:seller", "shift:own", "shift:all", "service-staff:write", "settings:write", "user:write", "staff-schedule:write", "room:write", "attendance:write", "inquiry:manage"] as const;
     for (const p of writes) expect(can("ACCOUNTANT", p), p).toBe(false);
   });
 
