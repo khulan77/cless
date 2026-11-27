@@ -149,7 +149,7 @@ export function StaffScheduleCard({ staff, services }: { staff: StaffCardData; s
   const toggle = useServerAction(saveStaffServicesAction);
   const startOf = (d: number) => staff.schedule.filter((x) => x.weekday === d);
   return (
-    <article className={`flex flex-col rounded-2xl border border-hairline bg-white p-5 ${staff.isBookable ? "" : "opacity-75"}`}>
+    <article id={`staff-${staff.id}`} className={`flex scroll-mt-24 flex-col rounded-2xl border border-hairline bg-white p-5 ${staff.isBookable ? "" : "opacity-75"}`}>
       <header className="flex items-start gap-3">
         <Avatar name={staff.name} id={staff.id} size={44} />
         <div className="min-w-0 flex-1">
