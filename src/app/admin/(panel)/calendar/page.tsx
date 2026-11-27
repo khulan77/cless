@@ -108,6 +108,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           canPos: can(user.role, "sale:create"),
           canInvite: can(user.role, "user:write") || can(user.role, "user:write:staff"),
           canSchedule: can(user.role, "staff-schedule:write"),
+          canIssue: can(user.role, "stock:issue"),
         }}
       />
     </>

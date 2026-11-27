@@ -58,7 +58,7 @@ const product = (sku: string) => ({
   sortOrder: 0,
   collectionIds: [],
   images: [],
-  variants: [{ sku, barcode: null, size: "100 мл", price: 95_000, costPrice: 40_000, lowStockAt: 3, isActive: true }],
+  variants: [{ sku, barcode: null, size: "100 мл", price: 95_000, costPrice: 40_000, lowStockAt: 3, isActive: true, initialStock: 12 }],
   relations: [],
   bundleItems: [],
 });
@@ -73,6 +73,9 @@ describe("нягтлан — каталог", () => {
     const hits = await searchPosCatalog("ТОНИК");
     expect(JSON.stringify(hits)).toContain("ACC-TONIK-1");
     const v = await db.variant.findUniqueOrThrow({ where: { sku: "ACC-TONIK-1" } });
+    // PROMPT 27: эхний үлдэгдэл → орлого (PURCHASE)
+    expect(v.stock).toBe(12);
+    expect(await db.stockMovement.findFirstOrThrow({ where: { variantId: v.id } })).toMatchObject({ type: "PURCHASE", qty: 12, unitCost: 40_000, note: "Эхний үлдэгдэл" });
     const sale = await posCheckout({ cart: { items: [{ kind: "PRODUCT", variantId: v.id, qty: 1 }] } });
     expect(sale.ok).toBe(false);
     expect(await db.sale.count()).toBe(0);

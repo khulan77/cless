@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StockActions } from "@/components/admin/inventory/StockActions";
 import { Pagination, parsePage } from "@/components/admin/Pagination";
-import { Badge, Card, PageHeader, Table, btnClass, tdClass, thClass } from "@/components/admin/ui";
+import { Badge, Card, PageHeader, SegmentedTabs, Table, btnClass, tdClass, thClass } from "@/components/admin/ui";
 import type { StockMoveType } from "@/generated/prisma/enums";
 import { formatMNT } from "@/lib/money";
 import { db } from "@/server/db";
@@ -32,7 +32,12 @@ export default async function VariantHistoryPage({
 }) {
   const user = await requirePagePermission("stock:read");
   const { variantId } = await params;
-  const page = parsePage((await searchParams).page);
+  const sp = await searchParams;
+  const page = parsePage(sp.page);
+  // PROMPT 27: хөдөлгөөний шүүлтүүр — зарагдсан (борлуулалт + буцаалт) / үйлчилгээнд / орлого / тооллого
+  const FILTERS = { sold: ["SALE", "RETURN"], service: ["SERVICE_USE"], received: ["PURCHASE"], count: ["ADJUSTMENT"] } as const satisfies Record<string, readonly StockMoveType[]>;
+  const filter = (Object.keys(FILTERS) as (keyof typeof FILTERS)[]).find((k) => k === sp.type) ?? null;
+  const typeWhere = filter ? { type: { in: [...FILTERS[filter]] } } : {};
 
   const access = inventoryAccess(user.role);
   const found = await db.variant.findUnique({ where: { id: variantId }, select: inventoryVariantSelect(user.role) });
@@ -40,9 +45,9 @@ export default async function VariantHistoryPage({
   const variant = redactCost(found, user.role);
 
   const [total, rawMovements, sum] = await Promise.all([
-    db.stockMovement.count({ where: { variantId } }),
+    db.stockMovement.count({ where: { variantId, ...typeWhere } }),
     db.stockMovement.findMany({
-      where: { variantId },
+      where: { variantId, ...typeWhere },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -80,6 +85,18 @@ export default async function VariantHistoryPage({
         </Card>
       </div>
 
+      <SegmentedTabs
+        className="mb-4"
+        label="Хөдөлгөөн"
+        value={filter ?? "all"}
+        items={[
+          { value: "all", label: "Бүгд", href: `/admin/inventory/${variant.id}` },
+          { value: "sold", label: "Зарагдсан", href: `/admin/inventory/${variant.id}?type=sold` },
+          { value: "service", label: "Үйлчилгээнд", href: `/admin/inventory/${variant.id}?type=service` },
+          { value: "received", label: "Орлого", href: `/admin/inventory/${variant.id}?type=received` },
+          { value: "count", label: "Тооллого", href: `/admin/inventory/${variant.id}?type=count` },
+        ]}
+      />
       <Table>
         <thead>
           <tr>
@@ -101,13 +118,13 @@ export default async function VariantHistoryPage({
               <td className={tdClass}><Badge tone={m.qty > 0 ? "green" : "amber"}>{TYPE_LABEL[m.type]}</Badge></td>
               <td className={`${tdClass} text-right tabular-nums ${m.qty > 0 ? "text-ok" : "text-danger"}`}>{m.qty > 0 ? `+${m.qty}` : m.qty}</td>
               {canCost && <td className={`${tdClass} text-right tabular-nums`}>{m.unitCost != null ? formatMNT(m.unitCost) : "—"}</td>}
-              <td className={`${tdClass} max-w-[320px]`}>{m.sale ? `Борлуулалт ${m.sale.number}` : (m.note ?? "—")}</td>
+              <td className={`${tdClass} max-w-[320px]`}>{m.sale ? `Борлуулалт ${m.sale.number}` : m.type === "SERVICE_USE" ? [m.service?.name, m.staff?.name, m.note].filter(Boolean).join(" · ") || "—" : (m.note ?? "—")}</td>
               <td className={tdClass}>{m.createdBy?.name ?? "—"}</td>
             </tr>
           ))}
         </tbody>
       </Table>
-      <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath={`/admin/inventory/${variant.id}`} params={{}} />
+      <Pagination page={page} pageSize={PAGE_SIZE} total={total} basePath={`/admin/inventory/${variant.id}`} params={{ type: filter ?? undefined }} />
     </>
   );
 }

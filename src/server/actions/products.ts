@@ -7,6 +7,7 @@ import { can } from "@/server/auth/permissions";
 import { requirePermission } from "@/server/auth/session";
 import { ForbiddenError, UserError } from "@/server/errors";
 import { storage } from "@/server/storage";
+import { getCurrentBranch } from "@/server/modules/branches/service";
 import { z } from "zod";
 import { productInputSchema, type ProductInput } from "@/lib/validation/product";
 import { bulkArchiveProducts as archiveMany, bulkDeleteMessage, bulkDeleteProducts as deleteMany, bulkIdsSchema } from "@/server/modules/products/bulk";
@@ -181,8 +182,15 @@ export async function saveProduct(input: ProductInput) {
           }
           sentIds.push(v.id);
         } else {
-          // Шинэ хувилбар — үлдэгдэл 0, орлогыг "Үлдэгдэл" хэсгээс авна.
-          const created = await tx.variant.create({ data: { ...vf, productId: product.id } });
+          // Шинэ хувилбар. PROMPT 27: "Эхний үлдэгдэл" өгвөл орлого (PURCHASE, өртгөөр) — stock:write эрхтэйд
+          const initial = v.initialStock ?? 0;
+          if (initial > 0 && !can(user.role, "stock:write")) throw new ForbiddenError("Үлдэгдэл бүртгэх эрх танд байхгүй.");
+          const created = await tx.variant.create({ data: { ...vf, productId: product.id, stock: initial } });
+          if (initial > 0) {
+            await tx.stockMovement.create({
+              data: { branchId: (await getCurrentBranch(tx)).id, variantId: created.id, type: "PURCHASE", qty: initial, unitCost: v.costPrice, note: "Эхний үлдэгдэл", createdById: user.id },
+            });
+          }
           await tx.priceHistory.create({
             data: {
               variantId: created.id,
