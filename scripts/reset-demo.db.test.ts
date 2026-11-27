@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/server/db";
 import { checkout } from "@/server/modules/sales/service";
 import { makeBookableStaff, makeService, makeUser, makeVariant, resetDb } from "../tests/db-helpers";
-import { demoCustomers, resetDemo } from "./lib/reset-sql";
+import { PACKAGE_COUNTS, demoCustomers, hasPackageTables, resetDemo } from "./lib/reset-sql";
 
 beforeEach(resetDb);
 
@@ -77,5 +77,43 @@ describe("reset-demo", () => {
     expect(await db.customer.count()).toBe(2);
     await withClient((c) => resetDemo(c, { target: "test", includeOnline: true }));
     expect(await db.customer.findMany({ select: { name: true } })).toEqual([{ name: "Бодит Хүн" }]);
+  });
+});
+
+describe("reset-demo — багц (PROMPT 27, migration 20261209000000_packages)", () => {
+  it("PackageRedemption → CustomerPackage → PackageTemplateService → PackageTemplate устана; хүснэгтгүй DB-д алдаагүй", async () => {
+    const has = await withClient((c) => hasPackageTables(c));
+    const admin = await makeUser("ADMIN", { email: "admin@example.mn" });
+    const staff = await makeBookableStaff("Сараа");
+    const service = await makeService({ price: 100_000 });
+    const demo = await db.customer.create({ data: { name: "Туршилт Багц", phone: "99110002", email: "pkg@example.mn" } });
+    if (has) {
+      // Prisma client энэ салбарт багцын модельгүй байж болно — raw SQL
+      await db.$executeRawUnsafe(`INSERT INTO "PackageTemplate" ("id","name","paidSessions","price","updatedAt") VALUES ('pt1','10+1',10,1000000,now())`);
+      await db.$executeRawUnsafe(`INSERT INTO "PackageTemplateService" ("packageId","serviceId") VALUES ('pt1',$1)`, service.id);
+      const s = await checkout({ customerId: demo.id, items: [{ kind: "SERVICE", serviceId: service.id, qty: 1, staffId: staff.id }] }, { id: admin.id, role: "ADMIN" });
+      const item = await db.saleItem.findFirstOrThrow({ where: { saleId: s.saleId } });
+      await db.$executeRawUnsafe(`UPDATE "SaleItem" SET "packageTemplateId" = 'pt1' WHERE "id" = $1`, item.id);
+      await db.$executeRawUnsafe(
+        `INSERT INTO "CustomerPackage" ("id","customerId","templateId","saleItemId","name","totalSessions","paidAmount","updatedAt") VALUES ('cp1',$1,'pt1',$2,'10+1',11,1000000,now())`,
+        demo.id,
+        item.id,
+      );
+      await db.$executeRawUnsafe(`INSERT INTO "PackageRedemption" ("id","customerPackageId","serviceId","unitValue") VALUES ('pr1','cp1',$1,90909)`, service.id);
+    }
+
+    const r = await withClient((c) => resetDemo(c, { target: "test" }));
+    if (has) {
+      const labels = PACKAGE_COUNTS.map(([l]) => l);
+      expect(r.deleted.filter((d) => labels.includes(d.label)).map((d) => d.count)).toEqual([1, 1, 1, 1]);
+      for (const t of ["PackageRedemption", "CustomerPackage", "PackageTemplateService", "PackageTemplate"]) {
+        const rows = await db.$queryRawUnsafe<{ n: number }[]>(`SELECT count(*)::int AS n FROM "${t}"`);
+        expect(rows[0]!.n, t).toBe(0);
+      }
+    } else {
+      expect(r.deleted.some((d) => PACKAGE_COUNTS.some(([l]) => l === d.label))).toBe(false);
+    }
+    expect(await db.service.count()).toBe(0);
+    expect(await db.customer.count({ where: { id: demo.id } })).toBe(0);
   });
 });

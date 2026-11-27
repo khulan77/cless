@@ -14,7 +14,7 @@
  */
 import { createInterface } from "node:readline/promises";
 import pg from "pg";
-import { CATALOG_COUNTS, DEMO_KEEP_COUNTS, countAll, demoCounts, demoCustomers, describeTarget, launchedAt, resetDemo, transactionCounts } from "./lib/reset-sql";
+import { CATALOG_COUNTS, DEMO_KEEP_COUNTS, countAll, demoCounts, demoCustomers, describeTarget, hasPackageTables, launchedAt, resetDemo, transactionCounts } from "./lib/reset-sql";
 
 const args = new Set(process.argv.slice(2));
 const confirm = args.has("--confirm");
@@ -66,7 +66,7 @@ try {
     process.exitCode = 1;
   } else {
     console.log(confirm ? "Устгагдах:" : "Устгагдах (dry run — --confirm өгөөгүй тул юу ч өөрчлөхгүй):");
-    table(await countAll(client, [...transactionCounts(true), ...demoCounts(includeOnline), ...CATALOG_COUNTS]));
+    table(await countAll(client, [...transactionCounts(true), ...demoCounts(includeOnline, await hasPackageTables(client)), ...CATALOG_COUNTS]));
     const people = await demoCustomers(client, includeOnline);
     console.log(`\nDemo үйлчлүүлэгчид${includeOnline ? " (ONLINE-ийг оруулсан)" : " (ONLINE-аар бүртгүүлсэн бодит хүмүүсийг ҮЛДЭЭНЭ)"}:`);
     for (const p of people) console.log(`    · ${p.name} (${p.phone})${p.online ? " — ONLINE" : ""}`);
