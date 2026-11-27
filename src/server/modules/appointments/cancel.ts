@@ -9,7 +9,7 @@ export const CANCEL_CATEGORY_LABELS: Record<CancelCategory | (typeof SYSTEM_CANC
   REJECTED: "Ресепшн татгалзсан (онлайн)",
   ONLINE: "Үйлчлүүлэгч сайтаас цуцалсан",
   CUSTOMER: "Үйлчлүүлэгч цуцалсан",
-  NO_SHOW: "Ирээгүй",
+  NO_SHOW: "Ороогүй",
   STAFF_SICK: "Ажилтан өвчтэй",
   DUPLICATE: "Давхардсан",
   OTHER: "Бусад",

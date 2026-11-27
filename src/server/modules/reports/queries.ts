@@ -8,7 +8,10 @@ import { db } from "@/server/db";
 import { getCurrentBranch } from "@/server/modules/branches/service";
 import { REPORT_SALE_STATUSES, daysOf, rangeBounds, type ReportRange } from "./definitions";
 
+export type SaleChannelKey = "POS" | "ONLINE";
+
 type LineRow = {
+  channel: SaleChannelKey;
   day: string;
   kind: "SERVICE" | "PRODUCT";
   serviceId: string | null;
@@ -55,6 +58,8 @@ export type Report = {
   byStaff: StaffRow[];
   byProduct: BreakdownRow[];
   payments: { method: PayMethod; amount: number }[];
+  /** PROMPT 27: Касс (POS) / Онлайн (сайт) — буцаалт хассан орлого, борлуулалтын тоо */
+  byChannel: { channel: SaleChannelKey; amount: number; service: number; product: number; sales: number }[];
 };
 
 export async function loadReport(range: ReportRange, opts: { canCost: boolean }): Promise<Report> {
@@ -62,13 +67,17 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
   const { start, end } = rangeBounds(range);
   const saleWhere = { branchId: branch.id, status: { in: [...REPORT_SALE_STATUSES] }, paidAt: { gte: start, lt: end } } satisfies Prisma.SaleWhereInput;
 
-  const [rows, sales, refunds, payments, refundsByMethod, pending, appts] = await Promise.all([
+  const [rows, sales, refunds, payments, refundsByMethod, pending, appts, channelSales] = await Promise.all([
     db.$queryRaw<LineRow[]>(Prisma.sql`
       WITH s AS (
-        SELECT "id", "paidAt" FROM "Sale"
-        WHERE "branchId" = ${branch.id}
-          AND "status"::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
-          AND "paidAt" >= ${start} AND "paidAt" < ${end}
+        SELECT sa."id", sa."paidAt",
+          -- Суваг (PROMPT 27): сайтаас — Sale.channel ONLINE эсвэл сайтаар захиалсан цагийн борлуулалт
+          (CASE WHEN sa."channel"::text = 'ONLINE' OR ap."source"::text = 'ONLINE' THEN 'ONLINE' ELSE 'POS' END) AS channel
+        FROM "Sale" sa
+        LEFT JOIN "Appointment" ap ON ap."id" = sa."appointmentId"
+        WHERE sa."branchId" = ${branch.id}
+          AND sa."status"::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
+          AND sa."paidAt" >= ${start} AND sa."paidAt" < ${end}
       ),
       r AS (
         SELECT (e->>'saleItemId') AS "itemId", SUM((e->>'qty')::int) AS qty, SUM((e->>'amount')::int) AS amount
@@ -79,6 +88,7 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
         GROUP BY 1
       )
       SELECT
+        s.channel,
         to_char((s."paidAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ulaanbaatar', 'YYYY-MM-DD') AS day,
         i."kind"::text AS kind,
         i."serviceId", i."variantId", i."staffId",
@@ -90,7 +100,7 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
       FROM "SaleItem" i
       JOIN s ON s."id" = i."saleId"
       LEFT JOIN r ON r."itemId" = i."id"
-      GROUP BY 1, 2, 3, 4, 5
+      GROUP BY 1, 2, 3, 4, 5, 6
     `),
     db.sale.count({ where: saleWhere }),
     db.refund.aggregate({ where: { status: "COMPLETED", sale: saleWhere }, _count: true, _sum: { amount: true } }),
@@ -106,6 +116,13 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
       where: { startsAt: { gte: start, lt: end }, status: { in: ["DONE", "NO_SHOW", "CANCELLED"] } },
       _count: true,
     }),
+    db.$queryRaw<{ channel: SaleChannelKey; count: number }[]>(Prisma.sql`
+      SELECT (CASE WHEN sa."channel"::text = 'ONLINE' OR ap."source"::text = 'ONLINE' THEN 'ONLINE' ELSE 'POS' END) AS channel, COUNT(*)::int AS count
+      FROM "Sale" sa LEFT JOIN "Appointment" ap ON ap."id" = sa."appointmentId"
+      WHERE sa."branchId" = ${branch.id} AND sa."status"::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
+        AND sa."paidAt" >= ${start} AND sa."paidAt" < ${end}
+      GROUP BY 1
+    `),
   ]);
 
   // ── KPI ──
@@ -195,5 +212,11 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
       services: sorted(m.values()).map((x) => strip(x, false)),
     })),
     payments: [...methods.entries()].map(([method, amount]) => ({ method, amount })).filter((p) => p.amount !== 0).sort((a, b) => b.amount - a.amount),
+    byChannel: (["POS", "ONLINE"] as const).map((channel) => {
+      const mine = rows.filter((r) => r.channel === channel);
+      const service = mine.filter((r) => r.kind === "SERVICE").reduce((s, r) => s + r.amount, 0);
+      const product = mine.filter((r) => r.kind === "PRODUCT").reduce((s, r) => s + r.amount, 0);
+      return { channel, amount: service + product, service, product, sales: channelSales.find((c) => c.channel === channel)?.count ?? 0 };
+    }),
   };
 }

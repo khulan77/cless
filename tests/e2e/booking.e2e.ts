@@ -98,7 +98,7 @@ test("calendar → overlap refused → same-day POS → paid → DONE", async ({
   const future = page.getByRole("dialog", { name: "Дэлгэрэнгүй" });
   await expect(future.getByRole("button", { name: "Ирсэн — POS нээх" })).toBeDisabled();
   await expect(future).toContainText("Зөвхөн цагийн өдөр");
-  await expect(future.getByRole("button", { name: "Гараар дуусгах" })).toHaveCount(0); // manager + BOOKED
+  await expect(future.getByRole("button", { name: "Орсон (гараар)" })).toHaveCount(0); // manager + BOOKED
   await page.keyboard.press("Escape");
 
   // ── 4. Today: "Ирсэн — POS нээх" → draft prefilled ──
@@ -141,7 +141,7 @@ test("calendar → overlap refused → same-day POS → paid → DONE", async ({
   // ── 7. Appointment is DONE; sale shows "number · status" ──
   await page.goto(`/admin/calendar?date=${TODAY}`);
   await card.click();
-  await expect(panel).toContainText("Дууссан");
+  await expect(panel).toContainText("Орсон");
   await expect(panel.getByRole("link", { name: /^CL-\d{8}-\d{4} · Төлсөн$/ })).toBeVisible();
 
   // Close the shift so the next spec can open its own (0 + 250,000)

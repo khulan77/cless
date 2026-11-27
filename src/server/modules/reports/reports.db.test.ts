@@ -143,3 +143,28 @@ describe("reports", () => {
     expect(r.kpi).toMatchObject({ pending: 150_000, pendingCount: 1, total: 0, sales: 0 });
   });
 });
+
+describe("суваг (PROMPT 27)", () => {
+  it("Касс (POS) / Онлайн (Sale.channel ONLINE эсвэл сайтаар захиалсан цаг) — нийлбэр нийт орлоготой тэнцүү", async () => {
+    await sale("2026-03-10T04:00:00Z", [{ kind: "PRODUCT", name: "SERUM", unitPrice: 100_000 }], [["CASH", 100_000]]);
+    const onl = await sale("2026-03-10T05:00:00Z", [{ kind: "SERVICE", name: "FACIAL", unitPrice: 300_000 }], [["CARD", 300_000]]);
+    await db.sale.update({ where: { id: onl.id }, data: { channel: "ONLINE" } });
+    // Сайтаар захиалсан цагийн борлуулалт (POS-оор төлсөн ч) → онлайн
+    const viaAppt = await sale("2026-03-10T06:00:00Z", [{ kind: "SERVICE", name: "FACIAL", unitPrice: 200_000 }], [["QPAY", 200_000]]);
+    const customer = await db.customer.create({ data: { name: "Онлайн Захиалагч", phone: "99887766" } });
+    const svc = await db.service.findFirstOrThrow({ where: { name: "FACIAL" } });
+    const branch = await getCurrentBranch();
+    const at = new Date("2026-03-10T05:30:00Z");
+    const appt = await db.appointment.create({
+      data: { customerId: customer.id, serviceId: svc.id, staffId: staff.id, branchId: branch.id, startsAt: at, endsAt: new Date(at.getTime() + 3_600_000), blockedUntil: new Date(at.getTime() + 3_600_000), source: "ONLINE" },
+    });
+    await db.sale.update({ where: { id: viaAppt.id }, data: { appointmentId: appt.id } });
+
+    const r = await loadReport({ from: "2026-03-10", to: "2026-03-10" }, { canCost: false });
+    expect(r.byChannel).toEqual([
+      { channel: "POS", amount: 100_000, service: 0, product: 100_000, sales: 1 },
+      { channel: "ONLINE", amount: 500_000, service: 500_000, product: 0, sales: 2 },
+    ]);
+    expect(r.byChannel.reduce((s, c) => s + c.amount, 0)).toBe(r.kpi.total);
+  });
+});

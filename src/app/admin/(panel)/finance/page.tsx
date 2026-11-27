@@ -5,6 +5,7 @@ import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { requireFinancePage } from "@/server/modules/finance/access";
 import { CASH_METHODS, dailyCash } from "@/server/modules/finance/daily-cash";
+import { loadReport } from "@/server/modules/reports/queries";
 import { balanceSheet, cashFlow, compare, financeRange, previousFinanceRange, profitAndLoss, vatReport } from "@/server/modules/finance/reports";
 
 export const metadata = { title: "Санхүүгийн тайлан" };
@@ -72,7 +73,7 @@ export default async function FinancePage({ searchParams }: { searchParams: SP }
 
 async function PL({ period, range }: { period: Parameters<typeof previousFinanceRange>[0]; range: { from: string; to: string } }) {
   const prevRange = previousFinanceRange(period, range);
-  const [pl, prev] = await Promise.all([profitAndLoss(range), profitAndLoss(prevRange)]);
+  const [pl, prev, rep] = await Promise.all([profitAndLoss(range), profitAndLoss(prevRange), loadReport(range, { canCost: false })]);
   const c = compare(pl, prev);
   const R = pl.revenue;
   return (
@@ -105,6 +106,17 @@ async function PL({ period, range }: { period: Parameters<typeof previousFinance
         </table>
         <p className="mt-3 text-[13px] text-ink-soft">Буцаалтыг зарсан хугацаандаа хасна. ХХОАТ ажилтны цалингаас суутгагддаг тул цалингийн зардалд багтсан — нийлбэрт дахин нэмээгүй.</p>
       </Card>
+      <div className="space-y-6">
+      <Card title="Сувгаар (НӨАТ-тэй)" description="Онлайн — сайтаас захиалсан цаг эсвэл онлайн төлбөр">
+        <dl className="space-y-3 text-[14px]">
+          {rep.byChannel.map((c) => (
+            <div key={c.channel} className="flex items-baseline justify-between gap-3">
+              <dt className="text-ink-soft">{c.channel === "POS" ? "Касс (POS)" : "Онлайн (сайт)"} · {c.sales}</dt>
+              <dd className="tabular-nums">{money(c.amount)}</dd>
+            </div>
+          ))}
+        </dl>
+      </Card>
       <Card title="Өмнөх үетэй" description={`${prevRange.from} — ${prevRange.to}`}>
         <dl className="space-y-3 text-[14px]">
           {(
@@ -124,6 +136,7 @@ async function PL({ period, range }: { period: Parameters<typeof previousFinance
           ))}
         </dl>
       </Card>
+      </div>
     </div>
   );
 }

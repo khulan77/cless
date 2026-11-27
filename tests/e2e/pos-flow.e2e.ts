@@ -1,13 +1,12 @@
-import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setCashShifts } from "./settings-db";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { E2E_EMAIL_DIR, seedPassword } from "./env";
+import { seedPassword } from "./env";
 
 /**
  * Full POS flow on a fresh DB:
  * open shift → DRAFT cart (autosave) → reload → cart intact → split payment
- * (QPay manual + cash) → visit e-mail SENT → shift closed via the confirm dialog.
+ * (QPay manual + cash) → sale detail → shift closed via the confirm dialog.
  *
  * Money inputs are typed key by key and the button is clicked with the mouse
  * right away (no Enter / no blur) — the case reported as "click does nothing".
@@ -40,7 +39,7 @@ async function waitAction(page: Page, click: () => Promise<void>) {
   await res;
 }
 
-test("POS: shift → draft survives reload → split payment → e-mail SENT → close shift", async ({ page }) => {
+test("POS: shift → draft survives reload → split payment → sale detail → close shift", async ({ page }) => {
   // No browser-native confirm/alert anywhere in the flow
   page.on("dialog", (d) => {
     throw new Error(`Unexpected browser dialog: ${d.type()} ${d.message()}`);
@@ -85,15 +84,7 @@ test("POS: shift → draft survives reload → split payment → e-mail SENT →
   await waitAction(page, () => page.locator("dialog[open]").getByRole("button", { name: "Хадгалах" }).click());
   await expect(page.getByText("88003344")).toBeVisible();
 
-  await search.fill("LOTION P50");
-  await page.getByRole("button", { name: /Зөвлөмжид нэмэх: LOTION P50$/ }).first().click();
-  await page.selectOption("#pos-skin", "OILY");
-  await page.getByRole("button", { name: "Пигментаци ба толбо" }).click();
-  await page.getByRole("button", { name: "Батга ба арьсны согог" }).click();
-  await page.fill("#pos-notes", "Тослог, T бүсэд толботой.");
-  const instructions = page.getByLabel("Хэрэглэх заавар");
-  await expect(instructions).not.toHaveValue(""); // howToUse prefilled
-  await instructions.fill("Өглөө, орой хөвөн самбайгаар.");
+  // PROMPT 27: «Айлчлал / оношлогоо» хэсэг нуугдсан — зөвлөмж, оношлогоо POS дээр байхгүй
 
   // Sale discount 20,000 typed, reason
   await typeMoney(page.getByRole("textbox", { name: "Нийт хөнгөлөлт" }), "20000");
@@ -109,9 +100,6 @@ test("POS: shift → draft survives reload → split payment → e-mail SENT →
   await expect(page.locator("section", { hasText: "Сагс" }).last()).toContainText("LOTION P50");
   await expect(page.getByRole("link", { name: "E2E Номин" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Нийт хөнгөлөлт" })).toHaveValue("20,000");
-  await expect(page.locator("#pos-notes")).toHaveValue("Тослог, T бүсэд толботой.");
-  await expect(page.getByRole("button", { name: "Пигментаци ба толбо" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel("Хэрэглэх заавар")).toHaveValue("Өглөө, орой хөвөн самбайгаар.");
   await expect(totals).toContainText("420,000₮");
   await shot(page, "1-pos-after-reload");
 
@@ -138,31 +126,12 @@ test("POS: shift → draft survives reload → split payment → e-mail SENT →
   await expect(dlg).toContainText("Төлбөр бүрэн төлөгдлөө");
   await expect(dlg).toContainText("Хариулт: 10,000₮");
 
-  // ── 5. E-mail: worker sends it, success screen shows SENT, file exists ──
-  await expect(dlg).toContainText("e2e-nomin@example.mn руу илгээгдлээ ✓", { timeout: 45_000 });
-  await shot(page, "2-paid-email-sent");
-  // Other specs (booking) also write e-mails here — find this visit's e-mail by recipient
-  const files = readdirSync(E2E_EMAIL_DIR)
-    .filter((f) => f.endsWith(".html"))
-    .map((f) => readFileSync(join(E2E_EMAIL_DIR, f), "utf8"))
-    .filter((h) => h.includes("to: e2e-nomin@example.mn"));
-  expect(files).toHaveLength(1);
-  const html = files[0]!;
-  expect(html).toContain("e2e-nomin@example.mn");
-  expect(html).toContain("Пигментаци ба толбо");
-  expect(html).toContain("Өглөө, орой хөвөн самбайгаар.");
-
-  // ── 6. Sale detail shows the diagnosis ──
+  // ── 5. Sale detail (PROMPT 27: айлчлал/оношлогоо, айлчлалын имэйл POS-оос үүсэхгүй) ──
   await dlg.getByRole("link", { name: "Дэлгэрэнгүй" }).click();
-  // Next keeps the previous route hidden in the DOM (<Activity>) — check the visible copy
-  await expect(page.getByText("Айлчлал / оношлогоо").filter({ visible: true })).toBeVisible();
   const main = page.locator("main");
-  await expect(main).toContainText("Тослог");
-  await expect(main).toContainText("Батга ба арьсны согог");
-  await expect(main).toContainText("Тослог, T бүсэд толботой.");
-  await expect(main).toContainText("Өглөө, орой хөвөн самбайгаар.");
-  await expect(main).toContainText("Илгээсэн");
-  await shot(page, "3-sale-detail-visit");
+  await expect(main.filter({ visible: true })).toContainText("LOTION P50");
+  await expect(page.getByText("Айлчлал / оношлогоо").filter({ visible: true })).toHaveCount(0);
+  await shot(page, "3-sale-detail");
 
   // ── 7. Close shift: expected 50,000 − 5,000 + 120,000 = 165,000 (type → mouse click → dialog) ──
   await page.goto("/admin/shifts");

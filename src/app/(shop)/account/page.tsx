@@ -21,9 +21,9 @@ const STATUS: Record<string, string> = {
   CONFIRMED: "Баталгаажсан",
   ARRIVED: "Ирсэн",
   IN_PROGRESS: "Үйлчилгээнд",
-  DONE: "Дууссан",
+  DONE: "Орсон",
   CANCELLED: "Цуцлагдсан",
-  NO_SHOW: "Ирээгүй",
+  NO_SHOW: "Ороогүй",
 };
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
