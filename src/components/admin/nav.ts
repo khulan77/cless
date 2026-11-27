@@ -75,6 +75,7 @@ export const ADMIN_NAV: NavEntry[] = [
     icon: "spa",
     children: [
       { href: "/admin/services", label: n.services, icon: "service", permission: "service:write", view: "admin:view" },
+      { href: "/admin/services/packages", label: "Багц үйлчилгээ", icon: "service", permission: "package:write", view: "package:redeem" },
       { href: "/admin/staff-schedules", label: n.staffSchedules, icon: "staffSchedule", permission: "staff-schedule:write", view: "admin:view" },
     ],
   },

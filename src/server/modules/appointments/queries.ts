@@ -29,6 +29,8 @@ const apptSelect = (canContact: boolean) =>
     service: { select: { id: true, name: true, durationMin: true, bufferMin: true } },
     room: { select: { id: true, name: true } },
     staff: { select: { name: true } },
+    // PROMPT 27: «Багц 8/11» шошго
+    customerPackage: { select: { usedSessions: true, totalSessions: true } },
   }) satisfies Prisma.AppointmentSelect;
 
 export type CalendarAppt = {
@@ -47,6 +49,7 @@ export type CalendarAppt = {
   service: { id: string; name: string; durationMin: number; bufferMin: number };
   room: { id: string; name: string } | null;
   staff: { name: string };
+  customerPackage: { usedSessions: number; totalSessions: number } | null;
 };
 
 /** Харуулах цагийн тэнхлэг: салбарын ажлын цаг (амралтын өдөр бол 7 хоногийн хамгийн өргөн) */

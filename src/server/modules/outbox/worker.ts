@@ -12,6 +12,7 @@ import { deliverInquiryEmail } from "@/server/modules/notifications/inquiry-deli
 import { deliverVisitEmail, markVisitEmailFailed } from "@/server/modules/notifications/service";
 import { getQPayProvider } from "@/server/modules/payments/providers/qpay";
 import { deliverAccountantReport, markAccountantFailed } from "@/server/modules/reports/accountant";
+import { deliverPackageExpirySms } from "@/server/modules/packages/service";
 import { MAX_ATTEMPTS, backoffMs } from "./service";
 
 type Handler = { run: (job: OutboxJob) => Promise<void>; onFinalFailure?: (job: OutboxJob, error: string) => Promise<void> };
@@ -52,6 +53,11 @@ export const handlers: Partial<Record<OutboxJob["type"], Handler>> = {
       await deliverAccountantReport(job.id, payload(job).dispatchId!);
     },
     onFinalFailure: (job, error) => markAccountantFailed(payload(job).dispatchId!, error),
+  },
+  PACKAGE_EXPIRY: {
+    run: async (job) => {
+      await deliverPackageExpirySms(job.id, payload(job).customerPackageId!);
+    },
   },
   QPAY_CANCEL_INVOICE: {
     run: async (job) => {

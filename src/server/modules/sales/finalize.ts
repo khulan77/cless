@@ -2,6 +2,7 @@
  * Төлбөр SUCCEEDED болох бүрт дуудагдана (transaction дотор).
  * Idempotent: хэдэн ч удаа (зэрэг ч) дуудсан үлдэгдэл, имэйл нэг л удаа.
  */
+import { activatePackagesForSale } from "@/server/modules/packages/service";
 import { getNotifySettings } from "@/server/modules/notifications/settings";
 import { queueVisitReport } from "@/server/modules/notifications/service";
 import type { Prisma } from "@/generated/prisma/client";
@@ -93,6 +94,9 @@ export async function applyPayment(tx: Tx, saleId: string, actorId: string | nul
 
   // Холбогдсон цаг → DONE (яг энэ transaction дотор; idempotent — аль хэдийн DONE/цуцлагдсан бол юу ч хийхгүй)
   if (full.appointmentId) await completeForSale(tx, full.appointmentId, actorId);
+
+  // PROMPT 27: багцын мөр — бүтэн төлөгдсөн тул үйлчлүүлэгчийн багц идэвхжинэ (idempotent)
+  await activatePackagesForSale(tx, saleId);
 
   // Айлчлалын имэйл — commit-ийн дараа worker илгээнэ; dedupeKey давхардлаас хамгаална
   if (full.visit) {

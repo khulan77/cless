@@ -1320,7 +1320,7 @@ export const mn = {
     customers: {
       history: {
         tabsLabel: "Үйлчлүүлэгчийн түүх",
-        tabs: { services: "Үйлчилгээний түүх", products: "Авсан бүтээгдэхүүн", visits: "Айлчлал, оношлогоо", sales: "Борлуулалт", notes: "Тэмдэглэл", photos: "Өмнө / дараах зураг" },
+        tabs: { services: "Үйлчилгээний түүх", products: "Авсан бүтээгдэхүүн", packages: "Багц", visits: "Айлчлал, оношлогоо", sales: "Борлуулалт", notes: "Тэмдэглэл", photos: "Өмнө / дараах зураг" },
         totalProduct: "Бүтээгдэхүүн",
         totalService: "Үйлчилгээ",
         total: "Нийт",
@@ -1507,7 +1507,7 @@ export const mn = {
       netTitle: (net: string) => `НӨАТ-гүй: ${net}`,
       service: "Үйлчилгээний орлого",
       serviceHint: (n: number, pct: number) => `${n} үйлчилгээ · нийтийн ${pct}%`,
-      serviceSplit: (oneTime: string, course: string) => `Нэг удаагийн: ${oneTime} · Курс/багц: ${course}`,
+      serviceSplit: (oneTime: string, course: string) => `Нэг удаагийн: ${oneTime} · Курс/багц (ашигласан): ${course}`,
       product: "Бүтээгдэхүүний орлого",
       productHint: (n: number, pct: number) => `${n} ширхэг · нийтийн ${pct}%`,
       pending: "Хүлээгдэж буй",

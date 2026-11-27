@@ -18,6 +18,8 @@ import { noteViews } from "@/server/modules/customers/notes";
 import { photoPanel } from "@/server/modules/visits/photos";
 import { customerProfile } from "@/server/modules/customers/service";
 import { VisitPhotos } from "@/components/admin/visits/VisitPhotos";
+import { CustomerPackages } from "@/components/admin/packages/CustomerPackages";
+import { customerPackageViews } from "@/server/modules/packages/service";
 
 export const metadata = { title: "Үйлчлүүлэгч" };
 export const instant = false;
@@ -25,7 +27,7 @@ export const instant = false;
 const H = t.admin.customers.history;
 // PROMPT 27: "айлчлал" ойлголтгүй — үйлчилгээ (орсон / ороогүй / цуцалсан), бүтээгдэхүүн, зураг, тэмдэглэл.
 // Visit өгөгдөл устахгүй (түүх) — ?tab=visits-ээр хандвал үйлчилгээний түүх рүү.
-const TABS = ["services", "products", "photos", "notes", "sales"] as const;
+const TABS = ["services", "products", "packages", "photos", "notes", "sales"] as const;
 type Tab = (typeof TABS)[number];
 
 /** Онлайн бүртгэл, зөвшөөрөл, ирээгүйн хаалт, илгээсэн тайлангийн түүх */
@@ -44,12 +46,13 @@ export default async function CustomerPage({ params, searchParams }: { params: P
   const user = await requirePagePermission("customer:read");
   const { id } = await params;
   const tab: Tab = (TABS as readonly string[]).includes((await searchParams).tab ?? "") ? ((await searchParams).tab as Tab) : "services";
-  const [profile, history, notes, photos, online] = await Promise.all([
+  const [profile, history, notes, photos, online, packages] = await Promise.all([
     customerProfile(id),
     customerHistory(id),
     tab === "notes" ? noteViews(id, user) : null,
     tab === "photos" && can(user.role, "visit-photo:read") ? photoPanel(id, user) : null,
     onlineInfo(id),
+    tab === "packages" ? customerPackageViews(id) : null,
   ]);
   if (!profile) notFound();
   const { customer: c, sales } = profile;
@@ -203,6 +206,12 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           targets={photos.targets.map((x) => ({ appointmentId: x.appointmentId, label: `${formatDateLabel(x.startsAt)} ${formatTime(x.startsAt)} · ${x.service}` }))}
           canWrite={can(user.role, "visit-photo:write")}
         />
+      )}
+
+      {tab === "packages" && packages && (
+        <Card title={H.tabs.packages}>
+          <CustomerPackages packages={packages} canReverse={can(user.role, "package:redeem")} canRefund={can(user.role, "package:refund")} />
+        </Card>
       )}
 
       {tab === "notes" && notes && (

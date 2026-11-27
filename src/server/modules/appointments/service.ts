@@ -3,6 +3,7 @@
  * Давхардлаас 2 давхар хамгаалалт: (1) checkSlot (availability), (2) DB-ийн EXCLUDE constraint.
  * Next-ээс хамааралгүй — server action эрх шалгаад энд дуудна.
  */
+import { onAppointmentStatus } from "@/server/modules/packages/service";
 import type { Prisma, Role } from "@/generated/prisma/client";
 import { addMinutes, ubDateKey } from "@/lib/time";
 import { audit } from "@/server/audit";
@@ -442,6 +443,8 @@ export async function changeStatus(raw: ApptStatusInput, actor: Actor, now = new
       after: { status, reason: input.reason ?? null, ...(input.category ? { category: input.category } : {}) },
     });
     if (input.action === "cancel") await notify(tx, current.id, "cancelled", now);
+    // PROMPT 27: «Орсон» → багцаас 1 удаа; «Ороогүй» → тохиргоогоор (анхдагч хасахгүй); цуцалбал хасахгүй
+    if (status === "DONE" || status === "NO_SHOW") await onAppointmentStatus(tx, current.id, status, actor.id, now);
     if (input.action === "approve") await notify(tx, current.id, "approved", now);
     if (input.action === "reject") await notify(tx, current.id, "rejected", now);
     return updated;

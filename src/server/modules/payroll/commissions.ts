@@ -4,6 +4,7 @@
  * Дүн, тоо — буцаалт хассан. Дүрэм: CommissionRule (staff/commission.ts). Үйлчлүүлэгчийн мэдээлэл сонгохгүй.
  */
 import { db } from "@/server/db";
+import { getTaxSettings } from "@/server/modules/settings/pos-settings";
 import { rangeBounds } from "@/server/modules/reports/definitions";
 import { LINE_SELLER } from "@/server/modules/reports/attribution";
 import { commissionFor, pickRule, type CommissionRuleLite } from "@/server/modules/staff/commission";
@@ -41,6 +42,8 @@ const ruleLabel = (r: CommissionRuleLite) => (r.type === "PERCENT" ? `${r.value 
 /** Урамшууллын суурь: GROSS (анхдагч) — НӨАТ-тэй дүн, NET — НӨАТ-гүй цэвэр дүн */
 export async function commissionsByStaff(from: string, to: string, staffIds: string[], opts: { base?: "NET" | "GROSS" } = {}) {
   const onNet = opts.base === "NET";
+  const tax = await getTaxSettings();
+  const vatBp = tax.vatIncluded ? tax.vatRateBp : 0;
   const { start, end } = rangeBounds({ from, to });
   const [rows, rules] = await Promise.all([
     staffIds.length === 0
@@ -64,6 +67,19 @@ export async function commissionsByStaff(from: string, to: string, staffIds: str
         LEFT JOIN "Variant" v ON v."id" = i."variantId"
         WHERE s."status"::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
           AND s."paidAt" >= ${start} AND s."paidAt" < ${end}
+          -- PROMPT 27: багц худалдсан мөрөөс урамшуулал бодохгүй — ашиглах үед (redemption) бодно
+          AND i."packageTemplateId" IS NULL
+        UNION ALL
+        -- Багцаас хийсэн үйлчилгээ: 1 удаагийн өртгөөр (unitValue), цагийн гоо сайханчид
+        SELECT pr."staffId",
+          to_char((pr."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ulaanbaatar', 'YYYY-MM-DD') AS day,
+          'SERVICE' AS kind, (sv."name" || ' (багц)') AS name, NULL AS receipt, pr."serviceId", NULL AS "productId",
+          NULL::text[] AS "collectionIds",
+          1 AS qty, pr."unitValue" AS amount,
+          ROUND(pr."unitValue"::numeric * ${vatBp} / (10000 + ${vatBp}))::int AS vat,
+          pr."createdAt" AS "paidAt", 0 AS "sortOrder"
+        FROM "PackageRedemption" pr JOIN "Service" sv ON sv."id" = pr."serviceId"
+        WHERE pr."reversedAt" IS NULL AND pr."createdAt" >= ${start} AND pr."createdAt" < ${end}
       )
       SELECT "staffId", day, kind, name, receipt, "serviceId", "productId", "collectionIds", qty, amount, vat
       FROM lines WHERE "staffId" = ANY(${staffIds}) ORDER BY "paidAt", "sortOrder"`,

@@ -467,7 +467,14 @@ function ApptCard({ a, byRoom, top, h, bufferH, extraH = 0, draggable, onOpen, o
         <span className="flex items-center gap-1.5 font-mono text-[13px] leading-4 tabular-nums" style={{ color: color.bar }}>
           {formatTime(new Date(a.startsAt))}–{formatTime(new Date(a.endsAt))}
         </span>
-        <span className={`block truncate text-[14px] font-semibold leading-5 ${a.status === "CANCELLED" ? "line-through" : ""}`}>{a.customer.name}</span>
+        <span className={`block truncate text-[14px] font-semibold leading-5 ${a.status === "CANCELLED" ? "line-through" : ""}`}>
+          {a.customer.name}
+          {a.customerPackage && (
+            <span className="ml-1.5 rounded bg-white/70 px-1 text-[11px] font-medium tabular-nums text-ink-soft">
+              Багц {a.customerPackage.usedSessions + (a.status === "DONE" ? 0 : 1)}/{a.customerPackage.totalSessions}
+            </span>
+          )}
+        </span>
         {!short && (
           <span className="block truncate text-[13px] leading-[18px] text-ink-soft">
             {a.service.name}

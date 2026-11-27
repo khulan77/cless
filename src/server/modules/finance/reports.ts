@@ -26,6 +26,8 @@ import { getCurrentBranch } from "@/server/modules/branches/service";
 import { toDbDate } from "@/server/modules/payroll/dates";
 import { change, dayCount, previousRange, rangeBounds, type ReportRange } from "@/server/modules/reports/definitions";
 import { getFinanceSettings } from "./settings";
+import { packageLiability } from "@/server/modules/packages/service";
+import { getTaxSettings } from "@/server/modules/settings/pos-settings";
 
 // ───────────────────────── Хугацаа ─────────────────────────
 
@@ -69,10 +71,10 @@ export function previousFinanceRange(period: FinancePeriod, r: ReportRange): Rep
 export type RevenueLine = { gross: number; discount: number; total: number; vat: number; net: number; cost: number; qty: number };
 const emptyLine = (): RevenueLine => ({ gross: 0, discount: 0, total: 0, vat: 0, net: 0, cost: 0, qty: 0 });
 
-type KindRow = { kind: "SERVICE" | "PRODUCT"; gross: number; discount: number; total: number; vat: number; cost: number; qty: number };
+type KindRow = { kind: "SERVICE" | "PRODUCT"; pkg: boolean; gross: number; discount: number; total: number; vat: number; cost: number; qty: number };
 
 /** Төрөл бүрээр (буцаалт хассан). Мөр бүрийн НӨАТ-ыг бөөрөнхийлөөд нийлүүлнэ. */
-export async function revenueByKind(range: ReportRange): Promise<{ service: RevenueLine; product: RevenueLine }> {
+export async function revenueByKind(range: ReportRange): Promise<{ service: RevenueLine; product: RevenueLine; packagePrepaid: RevenueLine }> {
   const branch = await getCurrentBranch();
   const { start, end } = rangeBounds(range);
   const rows = await db.$queryRaw<KindRow[]>(Prisma.sql`
@@ -86,6 +88,7 @@ export async function revenueByKind(range: ReportRange): Promise<{ service: Reve
       WHERE rf."status"::text = 'COMPLETED' GROUP BY 1
     ), l AS (
       SELECT i."kind"::text AS kind,
+        (i."packageTemplateId" IS NOT NULL) AS pkg,
         (i."qty" - COALESCE(r.qty, 0)) AS qty,
         i."qty" AS "origQty",
         i."unitPrice", i."unitCostSnapshot",
@@ -94,18 +97,19 @@ export async function revenueByKind(range: ReportRange): Promise<{ service: Reve
         (i."lineTotal" - COALESCE(r.amount, 0)) AS total
       FROM "SaleItem" i JOIN s ON s."id" = i."saleId" LEFT JOIN r ON r."itemId" = i."id"
     )
-    SELECT kind,
+    SELECT kind, pkg,
       SUM("unitPrice" * qty)::int AS gross,
       SUM(ROUND(CASE WHEN "origQty" > 0 THEN discount::numeric * qty / "origQty" ELSE 0 END))::int AS discount,
       SUM(total)::int AS total,
       SUM(ROUND(CASE WHEN "lineTotal" > 0 THEN "vatAmount"::numeric * total / "lineTotal" ELSE 0 END))::int AS vat,
       SUM("unitCostSnapshot" * qty)::int AS cost,
       SUM(qty)::int AS qty
-    FROM l GROUP BY kind
+    FROM l GROUP BY kind, pkg
   `);
-  const out = { service: emptyLine(), product: emptyLine() };
+  // PROMPT 27: багц худалдсан мөр — урьдчилгаа (P&L-д ашиглах үед танигдана)
+  const out = { service: emptyLine(), product: emptyLine(), packagePrepaid: emptyLine() };
   for (const r of rows) {
-    const x = r.kind === "SERVICE" ? out.service : out.product;
+    const x = r.pkg ? out.packagePrepaid : r.kind === "SERVICE" ? out.service : out.product;
     Object.assign(x, { gross: r.gross, discount: r.discount, total: r.total, vat: r.vat, net: r.total - r.vat, cost: r.cost, qty: r.qty });
   }
   return out;
@@ -145,7 +149,8 @@ async function payrollCommission(range: ReportRange) {
 
 export type ProfitAndLoss = {
   range: ReportRange;
-  revenue: { service: RevenueLine; product: RevenueLine; total: RevenueLine };
+  /** course — багцаас ашигласан удаагийн танигдсан орлого; packagePrepaid — худалдсан багцын мөнгө (P&L-д ороогүй) */
+  revenue: { service: RevenueLine; product: RevenueLine; course: RevenueLine; packagePrepaid: RevenueLine; total: RevenueLine };
   cogs: number;
   grossProfit: number;
   expenses: { code: string; name: string; net: number; vat: number; info?: boolean }[];
@@ -155,9 +160,20 @@ export type ProfitAndLoss = {
 };
 
 export async function profitAndLoss(range: ReportRange): Promise<ProfitAndLoss> {
-  const [rev, exp, comm] = await Promise.all([revenueByKind(range), expensesByCategory(range), payrollCommission(range)]);
+  const { start, end } = rangeBounds(range);
+  const [rev, exp, comm, recognized, tax] = await Promise.all([
+    revenueByKind(range),
+    expensesByCategory(range),
+    payrollCommission(range),
+    db.packageRedemption.aggregate({ where: { reversedAt: null, createdAt: { gte: start, lt: end } }, _sum: { unitValue: true }, _count: true }),
+    getTaxSettings(),
+  ]);
+  // Багцаас ашигласан удаа — танигдсан орлого (НӨАТ нь худалдах үед төлөгдсөн; P&L-д цэвэр дүнгээр)
+  const courseTotal = recognized._sum.unitValue ?? 0;
+  const courseVat = tax.vatIncluded ? Math.round((courseTotal * tax.vatRateBp) / (10_000 + tax.vatRateBp)) : 0;
+  const course: RevenueLine = { ...emptyLine(), gross: courseTotal, total: courseTotal, vat: courseVat, net: courseTotal - courseVat, qty: recognized._count };
   const total = emptyLine();
-  for (const k of ["gross", "discount", "total", "vat", "net", "cost", "qty"] as const) total[k] = rev.service[k] + rev.product[k];
+  for (const k of ["gross", "discount", "total", "vat", "net", "cost", "qty"] as const) total[k] = rev.service[k] + rev.product[k] + course[k];
   const cogs = total.cost;
   const grossProfit = total.net - cogs;
   const commissionTotal = comm.service + comm.product;
@@ -174,7 +190,7 @@ export async function profitAndLoss(range: ReportRange): Promise<ProfitAndLoss> 
     expenses.push({ code: "COMM-P", name: "Урамшуулал — бүтээгдэхүүн", net: comm.product, vat: 0 });
   }
   const expensesTotal = expenses.filter((e) => !e.info).reduce((s, e) => s + e.net, 0);
-  return { range, revenue: { ...rev, total }, cogs, grossProfit, expenses, commission: comm, expensesTotal, netProfit: grossProfit - expensesTotal };
+  return { range, revenue: { service: rev.service, product: rev.product, course, packagePrepaid: rev.packagePrepaid, total }, cogs, grossProfit, expenses, commission: comm, expensesTotal, netProfit: grossProfit - expensesTotal };
 }
 
 export function compare(now: ProfitAndLoss, before: ProfitAndLoss) {
@@ -289,7 +305,7 @@ export type Balance = {
 export async function balanceSheet(asOf: string): Promise<Balance> {
   const branch = await getCurrentBranch();
   const monthFrom = `${asOf.slice(0, 8)}01`;
-  const [money, inventory, receivable, unpaidPayroll, taxes, vat] = await Promise.all([
+  const [money, inventory, receivable, unpaidPayroll, taxes, vat, pkgLiability] = await Promise.all([
     balanceAtStartOf(addDays(asOf, 1)),
     db.$queryRaw<{ v: number }[]>`SELECT COALESCE(SUM(GREATEST("stock", 0)::bigint * "costPrice"), 0)::float8 AS v FROM "Variant"`,
     db.sale.aggregate({ where: { branchId: branch.id, status: "PARTIALLY_PAID" }, _sum: { total: true, paidAmount: true } }),
@@ -299,6 +315,7 @@ export async function balanceSheet(asOf: string): Promise<Balance> {
       _sum: { siEmployee: true, siEmployer: true, pit: true },
     }),
     vatForRange({ from: monthFrom, to: asOf }),
+    packageLiability(),
   ]);
   const assets: Balance["assets"] = [
     { label: "Бэлэн мөнгө", amount: money?.cash ?? null, note: money ? undefined : "Эхний үлдэгдэл тохируулаагүй" },
@@ -311,6 +328,7 @@ export async function balanceSheet(asOf: string): Promise<Balance> {
     { label: "Төлөх НДШ (ажилтан + ажил олгогч)", amount: (taxes._sum.siEmployee ?? 0) + (taxes._sum.siEmployer ?? 0), note: "Энэ сарын үеүүд — төлсөн эсэхийг бүртгэдэггүй" },
     { label: "Төлөх ХХОАТ", amount: taxes._sum.pit ?? 0, note: "Энэ сарын үеүүд — төлсөн эсэхийг бүртгэдэггүй" },
     { label: "Төлөх НӨАТ (борлуулалтын − зардлын)", amount: Math.max(0, vat.payable), note: "Энэ сарын эхнээс" },
+    { label: "Багцын үлдэгдэл өр (ашиглаагүй удаа × өртөг)", amount: pkgLiability, note: "Идэвхтэй багц — үйлчилгээ үзүүлэх үүрэг" },
   ];
   const totalAssets = assets.reduce((s, a) => s + (a.amount ?? 0), 0);
   const totalLiabilities = liabilities.reduce((s, l) => s + l.amount, 0);
@@ -327,9 +345,10 @@ async function vatForRange(range: ReportRange) {
     db.expense.aggregate({ where: { payrollPeriodId: null, date: { gte: toDbDate(range.from), lte: toDbDate(range.to) } }, _sum: { vatAmount: true } }),
     ebarimtVat(range),
   ]);
-  const salesVat = rev.service.vat + rev.product.vat;
+  // Багцын НӨАТ — худалдах үед бүтэн дүнгээр (PROMPT 27)
+  const salesVat = rev.service.vat + rev.product.vat + rev.packagePrepaid.vat;
   const expenseVat = exp._sum.vatAmount ?? 0;
-  return { salesNet: rev.service.net + rev.product.net, salesVat, expenseVat, payable: salesVat - expenseVat, ebarimtVat: eb };
+  return { salesNet: rev.service.net + rev.product.net + rev.packagePrepaid.net, salesVat, expenseVat, payable: salesVat - expenseVat, ebarimtVat: eb };
 }
 
 /** eBarimt илгээгдсэн (DONE) борлуулалтын НӨАТ — тулгалт. PosAPI 3.0-ийн дүн ирэхээр солино. */

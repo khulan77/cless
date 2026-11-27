@@ -664,3 +664,16 @@ export async function searchStorefront(raw: string): Promise<{ products: Product
   ]);
   return { products: products.map(toCard), services };
 }
+
+/** PROMPT 27: /services-д тусдаа харагдах багцууд (идэвхтэй, нийтэлсэн) */
+export async function getPublicPackages() {
+  "use cache";
+  cacheLife(HOME_CACHE);
+  cacheTag("catalog", "packages");
+  const rows = await db.packageTemplate.findMany({
+    where: { isActive: true, isPublic: true },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, description: true, paidSessions: true, bonusSessions: true, price: true, validDays: true, services: { select: { service: { select: { name: true } } } } },
+  });
+  return rows.map((r) => ({ ...r, services: r.services.map((s) => s.service.name) }));
+}
