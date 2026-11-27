@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ServiceUseSuggestions } from "./ServiceUseSuggestions";
+import { PackageSection } from "./PackageSection";
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useServerAction } from "@/components/admin/use-action";
@@ -241,6 +242,7 @@ export function AppointmentPanel({
         {perms.canWrite && locked && detail.status !== "DONE" && <NoteEditor key={detail.note ?? ""} id={id} initial={detail.note ?? ""} onSaved={() => (load(), router.refresh())} />}
 
         {perms.canIssue && ["ARRIVED", "IN_PROGRESS", "DONE"].includes(detail.status) && <ServiceUseSuggestions appointmentId={id} reloadKey={reloadKey} />}
+        {perms.canRedeem && <PackageSection appointmentId={id} status={detail.status} reloadKey={reloadKey} onChanged={load} />}
 
         {detail.history.length > 0 && (
           <section>

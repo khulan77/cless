@@ -22,6 +22,8 @@ type LineRow = {
   amount: number;
   vat: number;
   cost: number;
+  /** PROMPT 27: багц худалдсан мөр (урьдчилгаа) */
+  pkg: boolean;
 };
 
 export type ReportKpi = {
@@ -31,8 +33,10 @@ export type ReportKpi = {
   service: number;
   /** A12: нэг удаагийн үйлчилгээ (одоогийн бүх үйлчилгээний мөр) */
   serviceOneTime: number;
-  /** A12: курс/багцын ашиглалт — B хэсэг (Package) хэрэгжих хүртэл 0 */
+  /** A12 / PROMPT 27: курс/багцын ашиглалт — танигдсан орлого (Σ PackageRedemption.unitValue) */
   serviceCourse: number;
+  /** PROMPT 27: худалдсан багцын мөнгө — «Курс/багц — урьдчилгаа» (нийт орлогод багтана, үйлчилгээнд биш) */
+  packagePrepaid: number;
   product: number;
   serviceQty: number;
   productQty: number;
@@ -67,7 +71,7 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
   const { start, end } = rangeBounds(range);
   const saleWhere = { branchId: branch.id, status: { in: [...REPORT_SALE_STATUSES] }, paidAt: { gte: start, lt: end } } satisfies Prisma.SaleWhereInput;
 
-  const [rows, sales, refunds, payments, refundsByMethod, pending, appts, channelSales] = await Promise.all([
+  const [rows, sales, refunds, payments, refundsByMethod, pending, appts, channelSales, course] = await Promise.all([
     db.$queryRaw<LineRow[]>(Prisma.sql`
       WITH s AS (
         SELECT sa."id", sa."paidAt",
@@ -92,6 +96,7 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
         to_char((s."paidAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Ulaanbaatar', 'YYYY-MM-DD') AS day,
         i."kind"::text AS kind,
         i."serviceId", i."variantId", i."staffId",
+        (i."packageTemplateId" IS NOT NULL) AS pkg,
         MAX(i."nameSnapshot") AS name,
         SUM(i."qty" - COALESCE(r.qty, 0))::int AS qty,
         SUM(i."lineTotal" - COALESCE(r.amount, 0))::int AS amount,
@@ -100,7 +105,7 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
       FROM "SaleItem" i
       JOIN s ON s."id" = i."saleId"
       LEFT JOIN r ON r."itemId" = i."id"
-      GROUP BY 1, 2, 3, 4, 5, 6
+      GROUP BY 1, 2, 3, 4, 5, 6, 7
     `),
     db.sale.count({ where: saleWhere }),
     db.refund.aggregate({ where: { status: "COMPLETED", sale: saleWhere }, _count: true, _sum: { amount: true } }),
@@ -123,12 +128,15 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
         AND sa."paidAt" >= ${start} AND sa."paidAt" < ${end}
       GROUP BY 1
     `),
+    db.packageRedemption.aggregate({ where: { reversedAt: null, createdAt: { gte: start, lt: end } }, _sum: { unitValue: true } }),
   ]);
 
   // ── KPI ──
-  let service = 0, product = 0, serviceQty = 0, productQty = 0, vat = 0;
+  let service = 0, product = 0, serviceQty = 0, productQty = 0, vat = 0, packagePrepaid = 0;
   for (const r of rows) {
-    if (r.kind === "SERVICE") {
+    if (r.pkg) {
+      packagePrepaid += r.amount;
+    } else if (r.kind === "SERVICE") {
       service += r.amount;
       serviceQty += r.qty;
     } else {
@@ -137,14 +145,16 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
     }
     vat += r.vat;
   }
-  const total = service + product;
+  // Нийт = мөнгөн орлого (үйлчилгээ + бүтээгдэхүүн + багцын урьдчилгаа)
+  const total = service + product + packagePrepaid;
   const count = (s: string) => appts.find((a) => a.status === s)?._count ?? 0;
   const kpi: ReportKpi = {
     total,
     net: Math.round(total - vat),
     service,
     serviceOneTime: service,
-    serviceCourse: 0,
+    serviceCourse: course._sum.unitValue ?? 0,
+    packagePrepaid,
     product,
     serviceQty,
     productQty,
@@ -178,6 +188,11 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
   const prod = new Map<string, BreakdownRow & { cost: number }>();
   const staff = new Map<string, StaffRow & { svc: Map<string, BreakdownRow & { cost: number }> }>();
   for (const r of rows) {
+    // Багцын урьдчилгаа — үйлчилгээний задаргаанд тусдаа мөр ("… (багц 10+1)"), ажилтанд хуваарилахгүй
+    if (r.pkg) {
+      add(svc, `pkg:${r.name}`, r.name, r);
+      continue;
+    }
     if (r.kind === "SERVICE") add(svc, r.serviceId ?? r.name, r.name, r);
     else add(prod, r.variantId ?? r.name, r.name, r);
     const key = r.staffId ?? "none";

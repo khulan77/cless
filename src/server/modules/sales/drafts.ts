@@ -29,6 +29,8 @@ export const draftDataSchema = z.object({
         discount,
         discountReason: text(200),
         howToUse: z.array(z.string().max(2000)).max(30).optional(),
+        /** PROMPT 27: багц худалдах мөр */
+        packageTemplateId: z.string().max(64).optional(),
       }),
     )
     .max(100)

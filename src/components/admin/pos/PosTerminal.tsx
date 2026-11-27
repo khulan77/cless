@@ -264,6 +264,13 @@ export function PosTerminal({
       { key: lineKey(), kind: "SERVICE", refId: sv.id, name: sv.name, detail: `${sv.durationMin}′`, unitPrice: sv.price, qty: 1, staffId: staff.length === 1 ? staff[0]!.id : "", sellerId: "", discount: null, discountReason: "" },
     ]);
   };
+  // PROMPT 27: багц — нэг ширхэг, ажилтангүй; үйлчлүүлэгч заавал (сервер шалгана)
+  const addPackage = (p: Catalog["packages"][number]) => {
+    setLines((ls) => [
+      ...ls,
+      { key: lineKey(), kind: "SERVICE", refId: p.serviceId, packageTemplateId: p.id, name: `${p.name} (багц)`, detail: `${p.label} = ${p.sessions} удаа${p.validDays ? ` · ${p.validDays} хоног` : ""}`, unitPrice: p.price, qty: 1, staffId: "", sellerId: "", discount: null, discountReason: "" },
+    ]);
+  };
   const update = (key: string, patch: Partial<CartLine>) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
   const addRecommendation = (v: Catalog["products"][number]) => {
@@ -317,8 +324,9 @@ export function PosTerminal({
           variantId: l.kind === "PRODUCT" ? l.refId : null,
           serviceId: l.kind === "SERVICE" ? l.refId : null,
           qty: l.qty,
-          staffId: l.kind === "SERVICE" ? l.staffId || null : null,
+          staffId: l.kind === "SERVICE" && !l.packageTemplateId ? l.staffId || null : null,
           sellerId: l.kind === "PRODUCT" ? l.sellerId || null : null,
+          packageTemplateId: l.packageTemplateId ?? null,
           lineDiscount: toField(l.discount),
           lineDiscountReason: l.discountReason || null,
         })),
@@ -428,6 +436,20 @@ export function PosTerminal({
             </button>
           ))}
         </CatalogList>
+
+        {(catalog?.packages.length ?? 0) > 0 && (
+          <CatalogList title="Багц үйлчилгээ" empty={false}>
+            {catalog!.packages.map((p) => (
+              <button key={p.id} type="button" onClick={() => addPackage(p)} className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-canvas">
+                <span className="min-w-0">
+                  <span className="block truncate text-[14px]">{p.name}</span>
+                  <span className="text-[13px] text-ink-soft">{p.label} = {p.sessions} удаа</span>
+                </span>
+                <span className="shrink-0 text-[14px] tabular-nums">{formatMNT(p.price)}</span>
+              </button>
+            ))}
+          </CatalogList>
+        )}
 
         <CatalogList title={s.products} empty={!catalog?.products.length}>
           {catalog?.products.map((v) => (
@@ -602,6 +624,8 @@ export function PosTerminal({
                             </option>
                           ))}
                         </Select>
+                      ) : l.packageTemplateId ? (
+                        <span className="text-[13px] text-ink-soft">Багц — үйлчлүүлэгч заавал</span>
                       ) : (
                         <Select aria-label={s.staff} value={l.staffId} onChange={(e) => update(l.key, { staffId: e.target.value })} className="h-10 w-44 text-[14px]" aria-invalid={!l.staffId}>
                           <option value="">{s.chooseStaff}</option>

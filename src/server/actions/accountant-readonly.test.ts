@@ -32,6 +32,8 @@ const ACCOUNTANT_DOMAIN: Permission[] = [
   "price:write",
   // PROMPT 23: үйлчилгээ (нэр, хугацаа, үнэ, зураг, ангилал)
   "service:write",
+  // PROMPT 27: багцын загвар (үнэ, удаа)
+  "package:write",
 ];
 
 /** Менежерийн хэсгээс зөвхөн УНШИХ action-ууд (өгөгдөл өөрчлөхгүй) */

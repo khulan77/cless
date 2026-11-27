@@ -13,7 +13,7 @@ import { ubDayRange } from "@/lib/time";
 export async function searchPosCatalog(q: string) {
   const term = q.trim();
   const code = normBarcode(term);
-  const [variants, services] = await Promise.all([
+  const [variants, services, packages] = await Promise.all([
     db.variant.findMany({
       where: {
         isActive: true,
@@ -38,6 +38,13 @@ export async function searchPosCatalog(q: string) {
       take: 20,
       select: { id: true, name: true, price: true, durationMin: true },
     }),
+    // PROMPT 27: багц (идэвхтэй загвар)
+    db.packageTemplate.findMany({
+      where: { isActive: true, ...(term ? { name: { contains: term, mode: "insensitive" } } : {}) },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      take: 10,
+      select: { id: true, name: true, price: true, paidSessions: true, bonusSessions: true, validDays: true, services: { select: { serviceId: true }, take: 1 } },
+    }),
   ]);
   const isExact = (v: { sku: string; barcode: string | null }) => v.sku.toLowerCase() === term.toLowerCase() || (code !== "" && v.barcode === code);
   const exact = variants.filter(isExact);
@@ -53,6 +60,7 @@ export async function searchPosCatalog(q: string) {
       howToUse: v.product.howToUse,
     })),
     services,
+    packages: packages.map((p) => ({ id: p.id, name: p.name, price: p.price, sessions: p.paidSessions + p.bonusSessions, label: `${p.paidSessions}${p.bonusSessions ? `+${p.bonusSessions}` : ""}`, validDays: p.validDays, serviceId: p.services[0]?.serviceId ?? "" })),
     exactSku: exact.length === 1 ? exact[0]!.id : null,
   };
 }

@@ -281,6 +281,8 @@ enum JobType {
   INQUIRY_EMAIL
   /// Өдрийн тайлан → нягтлан (Excel хавсралттай)
   ACCOUNTANT_REPORT
+  /// PROMPT 27: багцын хугацаа дуусахаас 7 хоногийн өмнө SMS
+  PACKAGE_EXPIRY
 }
 
 enum DispatchStatus {
@@ -377,6 +379,8 @@ model User {
   serviceStockUses      StockMovement[]     @relation("StockMovementStaff")
   approvedPayrolls      PayrollPeriod[]     @relation("PayrollApprovedBy")
   confirmedRateSets     PayrollRateSet[]    @relation("RateSetConfirmedBy")
+
+  packageRedemptionsAsStaff PackageRedemption[] @relation("PackageRedemptionStaff")
 
   @@index([role, isActive])
 }
@@ -659,6 +663,9 @@ model Service {
   staff           ServiceStaff[]
   stockUses       StockMovement[]
 
+  packageTemplates   PackageTemplateService[]
+  packageRedemptions PackageRedemption[]
+
   @@index([isActive, sortOrder])
 }
 
@@ -710,6 +717,7 @@ model Customer {
   sales        Sale[]
   giftCards    GiftCard[]
   wallet       Wallet?
+  packages     CustomerPackage[]
   notesLog     CustomerNote[]
   photos       VisitPhoto[]
   sessions     CustomerSession[]
@@ -728,35 +736,37 @@ model Customer {
 ///   WHERE status NOT IN ('CANCELLED','NO_SHOW')
 /// POS-тэй холбоо: Sale.appointmentId (идэвхтэй нэг л Sale — partial unique index), Visit.appointmentId.
 model Appointment {
-  id             String     @id @default(cuid())
-  branchId       String
-  customerId     String
+  id                String     @id @default(cuid())
+  branchId          String
+  customerId        String
   /// Үйлчилгээ хийх хүн (STAFF/MANAGER/ADMIN — isBookable)
-  staffId        String
-  serviceId      String
-  roomId         String?
-  startsAt       DateTime   @db.Timestamptz(3)
+  staffId           String
+  serviceId         String
+  roomId            String?
+  startsAt          DateTime   @db.Timestamptz(3)
   /// startsAt + service.durationMin (buffer ОРОХГҮЙ)
-  endsAt         DateTime   @db.Timestamptz(3)
+  endsAt            DateTime   @db.Timestamptz(3)
   /// endsAt + service.bufferMin + extraMin — давхцлын constraint үүн дээр
-  blockedUntil   DateTime   @db.Timestamptz(3)
+  blockedUntil      DateTime   @db.Timestamptz(3)
   /// "Нэмэлт цаг": өрөө бэлдэх, цэвэрлэх (0 / 10 / 15 / 30 мин) — buffer-ээс гадна
-  extraMin       Int        @default(0)
-  status         ApptStatus @default(BOOKED)
-  source         ApptSource @default(PHONE)
-  note           String?
-  cancelReason   String?
+  extraMin          Int        @default(0)
+  status            ApptStatus @default(BOOKED)
+  /// PROMPT 27: энэ цагт ашиглах багц (менежер сонгоно) — «Орсон» болоход 1 удаа хасагдана
+  customerPackageId String?
+  source            ApptSource @default(PHONE)
+  note              String?
+  cancelReason      String?
   /// Цуцалсан ангилал (CANCEL_CATEGORIES — appointments/cancel.ts); cancelReason нь тайлбар
-  cancelCategory String?
+  cancelCategory    String?
   /// Хэн, хэзээ цуцалсан
-  cancelledById  String?
-  cancelledAt    DateTime?  @db.Timestamptz(3)
+  cancelledById     String?
+  cancelledAt       DateTime?  @db.Timestamptz(3)
   /// Захиалах үеийн үнэ (мэдээлэл) — POS дээр үнэ дахин тооцогдоно
-  priceSnapshot  Int        @default(0)
-  createdById    String?
-  version        Int        @default(0)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  priceSnapshot     Int        @default(0)
+  createdById       String?
+  version           Int        @default(0)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
   branch      Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
   customer    Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -769,6 +779,9 @@ model Appointment {
   sales       Sale[]
   photos      VisitPhoto[]
   stockUses   StockMovement[]
+
+  customerPackage   CustomerPackage?   @relation(fields: [customerPackageId], references: [id], onDelete: SetNull)
+  packageRedemption PackageRedemption?
 
   @@index([branchId, startsAt])
   @@index([staffId, startsAt])
@@ -1013,6 +1026,8 @@ model SaleItem {
   staffId               String?
   /// Бүтээгдэхүүнийг зарсан ажилтан (PRODUCT): POS-д анхдагч = цагийн гоо сайханч, эсвэл кассчин
   sellerId              String?
+  /// PROMPT 27: багц худалдсан мөр (kind = SERVICE, serviceId = багцын эхний үйлчилгээ). Орлого — ашиглах үед танигдана
+  packageTemplateId     String?
   nameSnapshot          String
   skuSnapshot           String?
   unitPrice             Int
@@ -1030,11 +1045,13 @@ model SaleItem {
   sortOrder             Int      @default(0)
   createdAt             DateTime @default(now())
 
-  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  variant Variant? @relation(fields: [variantId], references: [id], onDelete: Restrict)
-  service Service? @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  staff   User?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
-  seller  User?    @relation("SaleItemSeller", fields: [sellerId], references: [id], onDelete: SetNull)
+  sale             Sale              @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  variant          Variant?          @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  service          Service?          @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staff            User?             @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  seller           User?             @relation("SaleItemSeller", fields: [sellerId], references: [id], onDelete: SetNull)
+  packageTemplate  PackageTemplate?  @relation(fields: [packageTemplateId], references: [id], onDelete: Restrict)
+  customerPackages CustomerPackage[]
 
   @@index([saleId])
   @@index([serviceId])
@@ -1744,4 +1761,104 @@ model AttendanceNote {
   createdBy User? @relation("AttendanceNoteBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([staffId, date])
+}
+
+// ─────────────────────── Багц үйлчилгээ (PROMPT 27 §4, docs/plan-packages.md) ───────────────────────
+
+enum CustomerPackageStatus {
+  ACTIVE
+  USED_UP
+  EXPIRED
+  REFUNDED
+}
+
+/// Багцын загвар (ACCOUNTANT/ADMIN): "Нүүрний эмчилгээ 10+1" — төлөх 10 + бонус 1 = 11 удаа
+model PackageTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  paidSessions  Int
+  bonusSessions Int      @default(0)
+  /// Багцын үнэ (₮, НӨАТ-тэй). Анхдагч = үйлчилгээний үнэ × төлөх тоо (засаж болно)
+  price         Int
+  /// Худалдсанаас хойш хүчинтэй хоног (null = хугацаагүй)
+  validDays     Int?
+  isActive      Boolean  @default(true)
+  /// Сайтын /services дээр харагдах
+  isPublic      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  services         PackageTemplateService[]
+  customerPackages CustomerPackage[]
+  saleItems        SaleItem[]
+}
+
+model PackageTemplateService {
+  packageId String
+  serviceId String
+
+  package PackageTemplate @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  service Service         @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@id([packageId, serviceId])
+}
+
+/// Үйлчлүүлэгчийн худалдаж авсан багц. usedSessions — КЭШ: Σ буцаагдаагүй PackageRedemption
+model CustomerPackage {
+  id            String                @id @default(cuid())
+  customerId    String
+  templateId    String
+  /// Худалдсан POS мөр (бүтэн төлөгдөхөд үүснэ — нэг мөрт нэг)
+  saleItemId    String?               @unique
+  name          String
+  /// Ашиглаж болох үйлчилгээ (худалдах үеийн snapshot)
+  serviceIds    String[]
+  totalSessions Int
+  usedSessions  Int                   @default(0)
+  /// Бодит төлсөн дүн (хөнгөлөлтийн дараа)
+  paidAmount    Int
+  purchasedAt   DateTime              @default(now())
+  expiresAt     DateTime?
+  status        CustomerPackageStatus @default(ACTIVE)
+  /// Буцаалт (ADMIN): буцаасан дүн, торгууль
+  refundAmount  Int?
+  refundPenalty Int?
+  refundedAt    DateTime?
+  /// Хугацаа дуусахын сануулга илгээсэн
+  remindedAt    DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  customer     Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  template     PackageTemplate     @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  saleItem     SaleItem?           @relation(fields: [saleItemId], references: [id], onDelete: SetNull)
+  redemptions  PackageRedemption[]
+  appointments Appointment[]
+
+  @@index([customerId, status])
+  @@index([status, expiresAt])
+}
+
+/// Нэг удаагийн ашиглалт. unitValue = төлсөн ÷ нийт удаа (сүүлийн удаа үлдэгдлийг авна). Нэг цагт нэг.
+model PackageRedemption {
+  id                String    @id @default(cuid())
+  customerPackageId String
+  appointmentId     String?   @unique
+  serviceId         String
+  staffId           String?
+  unitValue         Int
+  reversedAt        DateTime?
+  reverseReason     String?
+  createdById       String?
+  createdAt         DateTime  @default(now())
+
+  customerPackage CustomerPackage @relation(fields: [customerPackageId], references: [id], onDelete: Restrict)
+  appointment     Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  service         Service         @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staff           User?           @relation("PackageRedemptionStaff", fields: [staffId], references: [id], onDelete: SetNull)
+
+  @@index([customerPackageId])
+  @@index([createdAt])
 }

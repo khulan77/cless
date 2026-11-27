@@ -147,7 +147,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
           label={R.service}
           value={formatMNT(k.service)}
           hint={R.serviceHint(k.serviceQty, pct(k.service))}
-          sub={R.serviceSplit(formatMNT(k.serviceOneTime), formatMNT(k.serviceCourse))}
+          sub={`${R.serviceSplit(formatMNT(k.serviceOneTime), formatMNT(k.serviceCourse))}${k.packagePrepaid ? ` · Багц худалдсан (урьдчилгаа): ${formatMNT(k.packagePrepaid)}` : ""}`}
           delta={change(k.service, p.service)}
           big
         />

@@ -39,6 +39,8 @@ type ResolvedLine = {
   unitCostSnapshot: number;
   qty: number;
   lineDiscountReason: string | null;
+  /** PROMPT 27: багц худалдсан мөр */
+  packageTemplateId?: string | null;
 };
 
 /** Мөр бүрийн үнэ, нэр, өртгийг DB-ээс уншина (client-ийн үнийг үл тооно) */
@@ -47,7 +49,8 @@ async function resolveLines(client: Tx | typeof db, cart: Cart, defaultSeller: s
   const serviceIds = cart.items.flatMap((i) => (i.kind === "SERVICE" && i.serviceId ? [i.serviceId] : []));
   const staffIds = cart.items.flatMap((i) => (i.kind === "SERVICE" && i.staffId ? [i.staffId] : i.kind === "PRODUCT" && i.sellerId ? [i.sellerId] : []));
 
-  const [variants, services, staff] = await Promise.all([
+  const packageIds = cart.items.flatMap((i) => (i.kind === "SERVICE" && i.packageTemplateId ? [i.packageTemplateId] : []));
+  const [variants, services, staff, packages] = await Promise.all([
     client.variant.findMany({
       where: { id: { in: variantIds } },
       select: { id: true, sku: true, size: true, price: true, costPrice: true, isActive: true, product: { select: { name: true, kind: true } } },
@@ -63,7 +66,11 @@ async function resolveLines(client: Tx | typeof db, cart: Cart, defaultSeller: s
       },
     }),
     client.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, role: true, isActive: true } }),
+    packageIds.length
+      ? client.packageTemplate.findMany({ where: { id: { in: packageIds } }, select: { id: true, name: true, price: true, isActive: true, paidSessions: true, bonusSessions: true, services: { select: { serviceId: true } } } })
+      : Promise.resolve([]),
   ]);
+  const pMap = new Map(packages.map((p) => [p.id, p]));
   const vMap = new Map(variants.map((v) => [v.id, v]));
   const sMap = new Map(services.map((s) => [s.id, s]));
   const staffMap = new Map(staff.map((u) => [u.id, u]));
@@ -90,6 +97,27 @@ async function resolveLines(client: Tx | typeof db, cart: Cart, defaultSeller: s
         unitCostSnapshot: v.costPrice,
         qty: item.qty,
         lineDiscountReason: item.lineDiscountReason ?? null,
+      };
+    }
+    // PROMPT 27: багц — үнэ, нэр загвараас; ажилтан шаардахгүй (үйлчилгээ хийгдэхэд цагийн гоо сайханч тооцогдоно)
+    if (item.packageTemplateId) {
+      const p = pMap.get(item.packageTemplateId);
+      if (!p || !p.isActive) throw new UserError("Багц олдсонгүй эсвэл идэвхгүй байна.", { [`items.${i}.packageTemplateId`]: ["Идэвхгүй."] });
+      if (!cart.customerId) throw new UserError("Багц худалдахад үйлчлүүлэгч сонгоно уу.", { customerId: ["Үйлчлүүлэгч заавал."] });
+      if (item.qty !== 1) throw new UserError(`${p.name}: багцыг нэг нэгээр нь худалдана.`);
+      return {
+        kind: "SERVICE",
+        variantId: null,
+        serviceId: p.services[0]!.serviceId,
+        staffId: null,
+        sellerId: null,
+        nameSnapshot: `${p.name} (багц ${p.paidSessions}${p.bonusSessions ? `+${p.bonusSessions}` : ""})`,
+        skuSnapshot: null,
+        unitPrice: p.price,
+        unitCostSnapshot: 0,
+        qty: 1,
+        lineDiscountReason: item.lineDiscountReason ?? null,
+        packageTemplateId: p.id,
       };
     }
     const s = sMap.get(item.serviceId!);
@@ -286,6 +314,7 @@ export async function checkout(raw: CartInput, actor: Actor, approval?: Approval
           lineTotal: p.lineTotal,
           vatAmount: p.vatAmount,
           sortOrder: i,
+          packageTemplateId: l.packageTemplateId ?? null,
         };
       }),
     });

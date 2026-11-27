@@ -4,7 +4,8 @@ import { ServiceCard } from "@/components/services/ServiceCard";
 import { Container } from "@/components/ui/Container";
 import { t } from "@/i18n";
 import { absoluteUrl } from "@/lib/site-url";
-import { getPublicServiceGroups } from "@/server/queries/catalog";
+import { getPublicPackages, getPublicServiceGroups } from "@/server/queries/catalog";
+import { formatMNT } from "@/lib/money";
 import { getSetting } from "@/server/queries/settings";
 import { getSalonInfo } from "@/server/queries/storefront";
 
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 
 /** From the Service table (active, bookable, public), grouped by category. Booking = call / DM, never online. */
 export default async function ServicesPage() {
-  const [groups, banner, salon] = await Promise.all([getPublicServiceGroups(), getSetting("servicesBanner"), getSalonInfo()]);
+  const [groups, banner, salon, packages] = await Promise.all([getPublicServiceGroups(), getSetting("servicesBanner"), getSalonInfo(), getPublicPackages()]);
   const single = groups.length === 1;
   return (
     <Container as="section" className="py-12 md:py-16">
@@ -55,7 +56,31 @@ export default async function ServicesPage() {
           </section>
         ))
       )}
-      {groups.length > 0 && <p className="mt-12 text-center text-body text-muted">{S.bookingNote}</p>}
+      {packages.length > 0 && (
+        <section aria-labelledby="svc-packages" className="mt-12 md:mt-16">
+          <h2 id="svc-packages" className="text-micro mb-5 text-center">
+            Багц үйлчилгээ
+          </h2>
+          <ul className="grid gap-1.5 md:grid-cols-2">
+            {packages.map((p) => (
+              <li key={p.id} className="bg-card p-6">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="text-product">{p.name}</h3>
+                  <span className="shrink-0 tabular-nums">{formatMNT(p.price)}</span>
+                </div>
+                <p className="mt-1 text-[14px] text-muted">
+                  {p.paidSessions}
+                  {p.bonusSessions > 0 ? ` + ${p.bonusSessions} бэлэг` : ""} = {p.paidSessions + p.bonusSessions} удаа
+                  {p.validDays ? ` · ${p.validDays} хоногт` : ""}
+                </p>
+                {p.services.length > 0 && <p className="mt-1 text-[14px] text-muted">{p.services.join(", ")}</p>}
+                {p.description && <p className="mt-2 text-[14px]">{p.description}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {(groups.length > 0 || packages.length > 0) && <p className="mt-12 text-center text-body text-muted">{S.bookingNote}</p>}
     </Container>
   );
 }

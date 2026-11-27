@@ -55,6 +55,11 @@ export const PERMISSIONS = [
   "stock:issue",
   "product:write",
   "service:write",
+  // Багц үйлчилгээ (PROMPT 27 §4): загвар — ACCOUNTANT, ADMIN; цагт ашиглах / буруу хасалт буцаах — MANAGER, ADMIN;
+  // багц цуцлах (мөнгө буцаах) — зөвхөн ADMIN
+  "package:write",
+  "package:redeem",
+  "package:refund",
   "price:write",
   "cost:read",
   "report:read",
@@ -97,7 +102,10 @@ export type Permission = (typeof PERMISSIONS)[number];
 const STAFF: readonly Permission[] = ["schedule:own", "me:read", "customer-note:write", "visit-photo:read", "visit-photo:write", "attendance:self"];
 
 /** Зөвхөн ADMIN: хэрэглэгч нэмэх/хасах, интеграцийн нууц тохиргоо, ирцийн гар засвар (PROMPT 20) */
-const ADMIN_ONLY: readonly Permission[] = ["user:write", "integration:write", "attendance:write"];
+const ADMIN_ONLY: readonly Permission[] = ["user:write", "integration:write", "attendance:write", "package:refund"];
+
+/** Багцын загвар (үнэ, удаа) — нягтлан, админ; менежерт үгүй */
+const PACKAGE_TEMPLATES: readonly Permission[] = ["package:write"];
 
 /** Цалин — ADMIN ба ACCOUNTANT (11/25). Цалингийн мэдээлэл эмзэг тул MANAGER-т үгүй. */
 const PAYROLL: readonly Permission[] = ["payroll:read", "payroll:write", "payroll:settings"];
@@ -106,7 +114,7 @@ const PAYROLL: readonly Permission[] = ["payroll:read", "payroll:write", "payrol
 const FINANCE: readonly Permission[] = ["expense:read", "expense:write", "finance:read"];
 
 /** MANAGER = ADMIN-аас ADMIN_ONLY, цалинг хассан (11/24: менежер бүгдийг харж, засна; 10%-иас дээш хөнгөлөлт ч өгнө) */
-const MANAGER: readonly Permission[] = PERMISSIONS.filter((p) => !ADMIN_ONLY.includes(p) && !PAYROLL.includes(p) && !FINANCE.includes(p));
+const MANAGER: readonly Permission[] = PERMISSIONS.filter((p) => !ADMIN_ONLY.includes(p) && !PAYROLL.includes(p) && !FINANCE.includes(p) && !PACKAGE_TEMPLATES.includes(p));
 
 /**
  * ACCOUNTANT (11/25): менежерийн харж буй бүх хэсгийг зөвхөн харна + цалин бүрэн + "Нягтланд илгээх".
@@ -126,6 +134,7 @@ const ACCOUNTANT: readonly Permission[] = [
   "product:write",
   "service:write",
   "price:write",
+  "package:write",
   "cost:read",
   "report:read",
   "report:send",

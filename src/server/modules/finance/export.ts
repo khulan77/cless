@@ -102,6 +102,8 @@ export async function financeWorkbook(range: ReportRange): Promise<Uint8Array> {
     ["Бүтээгдэхүүний орлого (үнийн дүн)", R.product.gross, null],
     ["  Хөнгөлөлт", -R.product.discount, null],
     ["  Бүтээгдэхүүний орлого (буцаалт, хөнгөлөлт хассан)", R.product.net, R.product.vat],
+    ["Курс/багц — ашигласан (танигдсан)", R.course.net, R.course.vat],
+    ["  (мэдээлэл) Курс/багц — худалдсан урьдчилгаа", R.packagePrepaid.net, R.packagePrepaid.vat],
     ["Нийт цэвэр орлого", R.total.net, R.total.vat],
     ["Борлуулсан бүтээгдэхүүний өртөг", -pl.cogs, null],
     ["Нийт ашиг", pl.grossProfit, null],

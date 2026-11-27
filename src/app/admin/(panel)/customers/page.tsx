@@ -10,6 +10,7 @@ import { formatDateLabel, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { listCustomersRanked, type CustomerSort } from "@/server/modules/customers/history";
+import { db } from "@/server/db";
 
 export const metadata = { title: "Үйлчлүүлэгчид" };
 export const instant = false;
@@ -25,6 +26,12 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const bday = str(sp.bday) === "month" ? "month" : undefined;
   const thisMonth = Number(ubDateKey().slice(5, 7));
   const { rows, count, page, pageSize, sort, dir } = await listCustomersRanked({ q, sort: str(sp.sort), dir: str(sp.dir), page: parsePage(sp.page), online: Boolean(online), birthMonth: bday ? thisMonth : undefined });
+  // PROMPT 27: идэвхтэй багц (үлдэгдэл удаа) — хуудсан дээрх мөрүүдэд нэг query
+  const activePkgs = rows.length
+    ? await db.customerPackage.findMany({ where: { customerId: { in: rows.map((r) => r.id) }, status: "ACTIVE" }, select: { customerId: true, totalSessions: true, usedSessions: true } })
+    : [];
+  const pkgLeft = new Map<string, number>();
+  for (const p of activePkgs) pkgLeft.set(p.customerId, (pkgLeft.get(p.customerId) ?? 0) + p.totalSessions - p.usedSessions);
   const showContact = can(user.role, "customer:contact:read");
 
   const params = (over: Record<string, string | undefined>) => {
@@ -90,6 +97,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
               {head("visits", L.visits)}
               {head("noShows", "Ороогүй")}
               {head("lastVisit", L.lastVisit)}
+              <th className={`${thClass} text-right`}>Идэвхтэй багц</th>
             </tr>
           </thead>
           <tbody>
@@ -110,6 +118,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                 <td className={`${tdClass} text-right tabular-nums`}>{c.visits}</td>
                 <td className={`${tdClass} text-right tabular-nums ${c.noShows > 0 ? "text-err" : "text-ink-soft"}`}>{c.noShows}</td>
                 <td className={`${tdClass} text-right tabular-nums`}>{c.lastVisit ? formatDateLabel(c.lastVisit) : "—"}</td>
+                <td className={`${tdClass} text-right tabular-nums`}>{pkgLeft.has(c.id) ? `${pkgLeft.get(c.id)} удаа үлдсэн` : "—"}</td>
               </tr>
             ))}
           </tbody>

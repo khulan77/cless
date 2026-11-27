@@ -32,6 +32,8 @@ export const cartItemSchema = z
     sellerId: idSchema.nullish(),
     lineDiscount: discountSchema,
     lineDiscountReason: reason,
+    /** PROMPT 27: багц худалдах (kind SERVICE, serviceId = багцын эхний үйлчилгээ) */
+    packageTemplateId: idSchema.nullish(),
   })
   .superRefine((i, ctx) => {
     if (i.kind === "PRODUCT" && !i.variantId) ctx.addIssue({ code: "custom", path: ["variantId"], message: "Бүтээгдэхүүн сонгоно уу." });

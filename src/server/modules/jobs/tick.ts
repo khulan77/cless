@@ -15,13 +15,14 @@ import { pollProcessingQPayPayments } from "@/server/modules/payments/service";
 import { purgeStaleDrafts } from "@/server/modules/sales/drafts";
 import { unlockStaleSales } from "@/server/modules/sales/service";
 import { getPosSettings } from "@/server/modules/settings/pos-settings";
+import { expireAndRemindPackages } from "@/server/modules/packages/service";
 import { skipStaleNotifications } from "./stale";
 
 export const LOCK_KEY = 72_270_221; // "cless-tick"
 
 export type TickResult =
   | { skipped: true; reason: "locked" }
-  | { skipped: false; staleSkipped: number; outbox: number; qpayPaid: number; unlocked: number; drafts: number | null; attendanceClosed: number; ms: number };
+  | { skipped: false; staleSkipped: number; outbox: number; qpayPaid: number; unlocked: number; drafts: number | null; attendanceClosed: number; packagesExpired: number; packagesReminded: number; ms: number };
 
 /** Алхам бүрийн алдааг тусгаарлана — нэг нь унасан ч бусад нь ажиллана */
 async function step<T>(name: string, fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -48,9 +49,11 @@ export async function runTick(now = new Date()): Promise<TickResult> {
       if (unlocked.length > 0) await step("revalidate", () => requestStorefrontRevalidate("stale-unlock"), undefined);
       const drafts = now.getUTCMinutes() % 10 === 0 ? await step("drafts", () => purgeStaleDrafts(24), 0) : null;
       const attendanceClosed = await step("attendance", () => autoCloseOpenSessions(now), 0);
+      // PROMPT 27: багцын хугацаа (EXPIRED) + 7 хоногийн өмнөх SMS
+      const packages = await step("packages", () => expireAndRemindPackages(now), { expired: 0, reminded: 0 });
       const ms = Date.now() - started;
       await step("heartbeat", () => beat({ source: "cron", outbox, ms }), undefined);
-      return { skipped: false as const, staleSkipped, outbox, qpayPaid: qpay.paid, unlocked: unlocked.length, drafts: typeof drafts === "number" ? drafts : null, attendanceClosed, ms };
+      return { skipped: false as const, staleSkipped, outbox, qpayPaid: qpay.paid, unlocked: unlocked.length, drafts: typeof drafts === "number" ? drafts : null, attendanceClosed, packagesExpired: packages.expired, packagesReminded: packages.reminded, ms };
     },
     { maxWait: 5_000, timeout: 55_000 },
   );

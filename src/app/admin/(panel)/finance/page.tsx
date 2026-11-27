@@ -94,6 +94,12 @@ async function PL({ period, range }: { period: Parameters<typeof previousFinance
             <Row label="Бүтээгдэхүүн — үнийн дүн" value={R.product.gross} vat={null} muted />
             <Row label="Хөнгөлөлт" value={-R.product.discount} vat={null} indent muted />
             <Row label="Бүтээгдэхүүний орлого" value={R.product.net} vat={R.product.vat} />
+            {(R.course.total > 0 || R.packagePrepaid.total > 0) && (
+              <>
+                <Row label={`Курс/багц — ашигласан (${R.course.qty} удаа, танигдсан)`} value={R.course.net} vat={R.course.vat} />
+                <Row label="Курс/багц — худалдсан (урьдчилгаа, энд ороогүй)" value={R.packagePrepaid.net} vat={R.packagePrepaid.vat} indent muted />
+              </>
+            )}
             <Row label="Нийт цэвэр орлого" value={R.total.net} vat={R.total.vat} strong />
             <Row label="Борлуулсан бүтээгдэхүүний өртөг" value={-pl.cogs} vat={null} />
             <Row label="Нийт ашиг" value={pl.grossProfit} vat={null} strong />

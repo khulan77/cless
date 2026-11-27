@@ -32,6 +32,8 @@ export type CalAppt = {
   service: { id: string; name: string; durationMin: number; bufferMin: number };
   room: { id: string; name: string } | null;
   staff: { name: string };
+  /** PROMPT 27: холбосон багц — «Багц 8/11» */
+  customerPackage?: { usedSessions: number; totalSessions: number } | null;
 };
 
 /**
@@ -49,4 +51,4 @@ export type CalColumn = {
   timeOff: { start: string; end: string; reason: string }[];
 };
 
-export type CalPerms = { canWrite: boolean; canStatus: boolean; canDoneManual: boolean; canPos: boolean; canInvite?: boolean; canSchedule?: boolean; /** PROMPT 27: үйлчилгээнд бүтээгдэхүүн олгох */ canIssue?: boolean };
+export type CalPerms = { canWrite: boolean; canStatus: boolean; canDoneManual: boolean; canPos: boolean; canInvite?: boolean; canSchedule?: boolean; /** PROMPT 27: үйлчилгээнд бүтээгдэхүүн олгох */ canIssue?: boolean; /** PROMPT 27: цагт багц ашиглах */ canRedeem?: boolean };

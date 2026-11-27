@@ -18,6 +18,7 @@ import { pollProcessingQPayPayments } from "@/server/modules/payments/service";
 import { unlockStaleSales } from "@/server/modules/sales/service";
 import { getPosSettings } from "@/server/modules/settings/pos-settings";
 import { autoCloseOpenSessions, purgeOldCoordinates } from "@/server/modules/attendance/service";
+import { expireAndRemindPackages } from "@/server/modules/packages/service";
 
 const OUTBOX_MS = 5_000;
 const MINUTE_MS = 60_000;
@@ -73,6 +74,7 @@ void Promise.all([
   }),
   loop("stale-drafts", 10 * MINUTE_MS, () => purgeStaleDrafts(24)),
   loop("attendance-autoclose", 5 * MINUTE_MS, () => autoCloseOpenSessions()),
+  loop("packages-expiry", 60 * MINUTE_MS, async () => (await expireAndRemindPackages()).reminded),
   loop("attendance-geo-purge", 60 * MINUTE_MS, () => purgeOldCoordinates()),
   loop("heartbeat", 30_000, () => beat({ pid: process.pid }).then(() => 0)),
 ]).then(() => process.exit(0));
