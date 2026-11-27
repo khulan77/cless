@@ -46,6 +46,18 @@ bun run worker      # зөвхөн worker
 - `WESEND_API_KEY` байхгүй үед SMS, имэйл, код илгээгдэхгүй — `.emails/` хавтсанд файл болно (SMS: `sms-*.txt`, код: `verify-*.txt`). `RESEND_API_KEY`, `EMAIL_FROM` (хуучирсан) байхгүй үед ч мөн адил — `.emails/<job-id>.html` файл болж үүснэ (gitignore), `Visit.emailStatus` = SENT.
 - Production deploy: [deploy/README.md](deploy/README.md)
 
+### «Удахгүй нээгдэнэ» горим
+
+Сайт бэлэн болохоос өмнө нийтийн хуудсыг хаана. Админ, API (cron tick, QPay callback, нэвтрэлт), статик файл нээлттэй үлдэнэ.
+
+- **Асаах:** Vercel → Environment Variables → `SITE_MODE=coming_soon` (+ `SITE_PREVIEW_SECRET`, 16+ тэмдэгт, `openssl rand -hex 16`) → Redeploy.
+  - Бүх нийтийн хуудас (URL өөрчлөгдөхгүй) «Удахгүй нээгдэнэ»-г **503** + `Retry-After: 86400`-тэй харуулна.
+  - `robots.txt` → `Disallow: /`, `sitemap.xml` хоосон, бүх хариу `X-Robots-Tag: noindex`.
+- **Урьдчилан харах:** `https://www.cless.mn/?preview=<SITE_PREVIEW_SECRET>` → 14 хоногийн httpOnly cookie тавьж жинхэнэ сайтыг харуулна. `?preview=off` — cookie устгана. Secret-ийг солиход хуучин cookie хүчингүй болно.
+  - Админд нэвтэрсэн ADMIN / MANAGER / ACCOUNTANT мөн жинхэнэ сайтыг харна.
+- **Унтраах (нээх):** `SITE_MODE`-г устгах эсвэл `open` → Redeploy.
+- «Удахгүй нээгдэнэ» хуудсын утас, Instagram, Facebook нь Админ → Тохиргоо → Салоны мэдээллээс авна. Хоосон бол нуугдана.
+
 ### Арын ажил (Vercel) — минут тутам `/api/cron/tick`
 
 Vercel дээр worker процесс ажилладаггүй. Иймээс outbox (SMS, имэйл, сануулга, нягтланд илгээх, QPay invoice цуцлах), QPay шалгалт, POS-ийн удаан түгжээ тайлах, ноорог цэвэрлэх, ирцийн AUTO_CLOSE-ийг **гаднаас минут тутам** дуудна:
@@ -151,6 +163,8 @@ Vercel дээр зөвхөн вэб апп ажиллана. Worker (имэйл,
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | ✓ (Vercel) | Админаас оруулах зураг (бүтээгдэхүүн, үйлчилгээ, ангилал, контент) — Supabase Storage. Vercel-ийн диск read-only тул заавал; service role key зөвхөн сервер талд |
 | `SUPABASE_PRIVATE_BUCKET` | | Анхдагч `visit-photos`. Айлчлалын өмнө/дараах зураг (`visits/…`), зардлын баримт (`receipts/…`). Supabase → Storage → New bucket **`visit-photos`, Public: OFF**. Нэмэлт env хэрэггүй (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`-ийг ашиглана). Файл зөвхөн эрх шалгадаг route-оор (сервер татаж) харагдана — public / signed URL үүсгэхгүй |
 | `SUPABASE_STORAGE_BUCKET` | | Анхдагч `media`. Supabase → Storage дээр **Public** bucket үүсгэнэ. Зураг 4MB хүртэл (Vercel-ийн 4.5MB хүсэлтийн хязгаар) |
+| `SITE_MODE` | | `coming_soon` — «Удахгүй нээгдэнэ» горим (README → «Удахгүй нээгдэнэ» горим). Байхгүй / `open` — нээлттэй |
+| `SITE_PREVIEW_SECRET` | | Coming soon үед `?preview=<secret>`-ээр жинхэнэ сайтыг харах (16+ тэмдэгт) |
 | `CRON_SECRET` | ✓ (Vercel) | Vercel Cron-ийн нууц (`openssl rand -hex 32`, 16+ тэмдэгт). `vercel.json`-ий cron өдөр бүр 23:50 (УБ, `50 15 * * *` UTC) `/api/cron/attendance`-ийг `Authorization: Bearer <CRON_SECRET>`-ээр дуудна: «Явлаа» дараагүй ирцийг хаах, 90 хоногоос хуучин байршил устгах. Vercel → Settings → Environment Variables (Production) — нэмээгүй бол cron 401 буцаана |
 | `DB_POOL_MAX` | | Нэг instance-ийн pg холболт. Default 3 (Vercel) |
 | `NEXT_IMAGE_UNOPTIMIZED` | | `1` — `/_next/image`-ийг алгасаж зургийг шууд өгнө (Hobby-ийн Image Optimization хязгаар дуусаж 402 өгвөл). Default зургууд, upload-ууд sharp-аар webp болсон тул чанар алдагдахгүй; зөвхөн дэлгэцийн өргөнөөр жижигрүүлсэн хувилбар (srcset) байхгүй болно. Build үед уншигдана — өөрчилбөл redeploy |
