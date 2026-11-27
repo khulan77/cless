@@ -16,18 +16,19 @@ export default async function BookingPage({ searchParams }: { searchParams: Prom
   await connection();
   const [settings, salon, customer, sp] = await Promise.all([getOnlineBookingSettings(), getSalonInfo(), getCurrentCustomer(), searchParams]);
   const contact = { phone: salon.phone, instagram: salon.instagram, messenger: salon.messenger, address: salon.address, mapsUrl: salon.mapsUrl, hoursLines: salon.hoursLines, onlineBooking: false };
-  if (!settings.enabled) {
-    return (
-      <Container as="section" className="py-16 md:py-24">
-        <div className="mx-auto max-w-[560px] text-center">
-          <h1 className="text-section">Цаг захиалах</h1>
-          <p className="mt-4 text-muted">Онлайн захиалга одоогоор хаалттай байна. Утсаар эсвэл мессежээр холбогдоно уу.</p>
-          <div className="mt-8"><BookingSheetButton salon={contact} /></div>
-        </div>
-      </Container>
-    );
-  }
+  const closed = (text: string) => (
+    <Container as="section" className="py-16 md:py-24">
+      <div className="mx-auto max-w-[560px] text-center">
+        <h1 className="text-section">Цаг захиалах</h1>
+        <p className="mt-4 text-muted">{text}</p>
+        <div className="mt-8"><BookingSheetButton salon={contact} /></div>
+      </div>
+    </Container>
+  );
+  if (!settings.enabled) return closed("Онлайн захиалга одоогоор хаалттай байна. Утсаар эсвэл мессежээр холбогдоно уу.");
   const [services, dates] = await Promise.all([onlineServices(settings), bookingDates()]);
+  // PROMPT 23: онлайн захиалах үйлчилгээ алга бол форм харуулахгүй
+  if (services.length === 0) return closed("Онлайн захиалах үйлчилгээ удахгүй нэмэгдэнэ. Утсаар эсвэл мессежээр холбогдоно уу.");
   const initial = services.find((s) => s.slug === sp.service || s.id === sp.service)?.id ?? null;
   return (
     <Container as="section" className="py-12 md:py-20">

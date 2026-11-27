@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FilterBar } from "@/components/admin/FilterBar";
 import { Pagination, parsePage, str } from "@/components/admin/Pagination";
 import { Receipt } from "lucide-react";
-import { Badge, EmptyState, PageHeader, SegmentedTabs, Select, StatCard, Table, inputClass, tdClass, thClass } from "@/components/admin/ui";
+import { Badge, ButtonLink, EmptyState, PageHeader, SegmentedTabs, Select, StatCard, Table, inputClass, tdClass, thClass } from "@/components/admin/ui";
 import { db } from "@/server/db";
 import { ubDayRange } from "@/lib/time";
 import { addDays, ubDateKey } from "@/lib/time";
@@ -11,6 +11,7 @@ import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { saleStatusTone } from "@/lib/sale-status";
 import { requirePagePermission } from "@/server/auth/session";
+import { can } from "@/server/auth/permissions";
 import { listSales } from "@/server/modules/sales/queries";
 
 export const metadata = { title: "Борлуулалт" };
@@ -19,7 +20,7 @@ export const instant = false;
 const STATUSES = Object.keys(t.admin.saleStatus) as SaleStatus[];
 
 export default async function SalesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requirePagePermission("sale:read");
+  const user = await requirePagePermission("sale:read");
   const sp = await searchParams;
   const q = str(sp.q);
   const status = STATUSES.find((s) => s === str(sp.status));
@@ -92,7 +93,13 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
         <input type="date" name="date" defaultValue={date} aria-label="Тодорхой өдөр" title="Тодорхой өдөр" className={inputClass} />
       </FilterBar>
       {rows.length === 0 ? (
-        <EmptyState icon={Receipt} title="Энэ хугацаанд борлуулалт алга">Касс дээр төлбөр авахад энд харагдана.</EmptyState>
+        <EmptyState
+          icon={Receipt}
+          title="Энэ хугацаанд борлуулалт алга"
+          action={can(user.role, "pos:use") ? <ButtonLink href="/admin/pos">Касс нээх (POS)</ButtonLink> : null}
+        >
+          Касс дээр төлбөр авахад энд харагдана.
+        </EmptyState>
       ) : (
         <Table>
           <thead>

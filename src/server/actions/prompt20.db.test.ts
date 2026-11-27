@@ -13,7 +13,7 @@ import { searchPosCatalog } from "@/server/modules/sales/queries";
 import { makeUser, makeVariant, resetDb } from "../../../tests/db-helpers";
 
 let current: { id: string; role: Role } | null = null;
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), updateTag: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), revalidateTag: vi.fn(), cacheLife: vi.fn(), cacheTag: vi.fn() }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/server/auth/session", () => {
   const need = (ok: boolean) => {
@@ -29,6 +29,9 @@ vi.mock("@/server/auth/session", () => {
 const { saveProduct } = await import("./products");
 const { posCheckout } = await import("./pos");
 const { setWorkDayAction } = await import("./payroll");
+const { saveService } = await import("./services");
+const { saveStaffServicesAction } = await import("./appointments");
+const { getPublicServiceGroups } = await import("@/server/queries/catalog");
 
 beforeEach(async () => {
   await resetDb();
@@ -73,6 +76,41 @@ describe("нягтлан — каталог", () => {
     const sale = await posCheckout({ cart: { items: [{ kind: "PRODUCT", variantId: v.id, qty: 1 }] } });
     expect(sale.ok).toBe(false);
     expect(await db.sale.count()).toBe(0);
+  });
+});
+
+describe("нягтлан — үйлчилгээ, үнэ (PROMPT 23)", () => {
+  it("ACCOUNTANT үйлчилгээ үүсгэнэ → сайтын /services, POS хайлтад шууд; ажилтан оноох (service-staff:write) — үгүй", async () => {
+    const acc = await makeUser("ACCOUNTANT");
+    const staff = await makeUser("STAFF");
+    current = { id: acc.id, role: "ACCOUNTANT" };
+    const r = await saveService({
+      name: "ЛИФТИНГ ЭМЧИЛГЭЭ",
+      slug: "lifting-test",
+      description: "Тайлбар",
+      durationMin: 60,
+      bufferMin: 0,
+      requiresRoom: false,
+      bookable: true,
+      isPublic: true,
+      category: "Нүүрний эмчилгээ",
+      shortDescription: null,
+      suitableFor: null,
+      results: null,
+      priceFrom: false,
+      price: 320_000,
+      costNote: null,
+      image: null,
+      isActive: true,
+      sortOrder: 0,
+      consumables: [],
+    });
+    expect(r.ok).toBe(true);
+    const groups = await getPublicServiceGroups();
+    expect(groups.flatMap((g) => g.services).find((x) => x.slug === "lifting-test")).toMatchObject({ price: 320_000 });
+    expect(JSON.stringify(await searchPosCatalog("ЛИФТИНГ"))).toContain("ЛИФТИНГ");
+    const svc = await db.service.findUniqueOrThrow({ where: { slug: "lifting-test" } });
+    expect(await saveStaffServicesAction({ staffId: staff.id, serviceIds: [svc.id], isBookable: true })).toMatchObject({ ok: false, status: 403 });
   });
 });
 
