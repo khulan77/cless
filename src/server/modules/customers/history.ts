@@ -3,7 +3,8 @@
  *
  * Дүн = төлөгдсөн борлуулалтын (PAID, PARTIALLY_REFUNDED, REFUNDED) мөрийн дүн (`SaleItem.lineTotal`)
  * − дууссан (COMPLETED) буцаалтын мөрийн дүн — reports/definitions.ts-тэй ижил. Тоо ширхэг ч буцаалтыг хасна.
- * Айлчлал = төлөгдсөн борлуулалт эсвэл дууссан (DONE) цагтай УБ-ын өдрүүдийн тоо; сүүлд ирсэн = тэдний хамгийн сүүлийнх.
+ * Ирсэн тоо = төлөгдсөн борлуулалт эсвэл «Орсон» (DONE) цагтай УБ-ын өдрүүдийн тоо; сүүлд ирсэн = тэдний хамгийн сүүлийнх.
+ * Ирээгүй тоо = «Ороогүй» (NO_SHOW) цаг. (PROMPT 27: "айлчлал" гэсэн ойлголтгүй — орсон / ороогүй л)
  */
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/server/db";
@@ -19,7 +20,7 @@ const NET_ITEMS = Prisma.sql`
   )`;
 const PAID = Prisma.sql`s."status"::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')`;
 
-export const CUSTOMER_SORTS = ["total", "product", "service", "visits", "lastVisit", "name"] as const;
+export const CUSTOMER_SORTS = ["total", "product", "service", "visits", "noShows", "lastVisit", "name"] as const;
 export type CustomerSort = (typeof CUSTOMER_SORTS)[number];
 
 export type RankedCustomer = {
@@ -34,6 +35,9 @@ export type RankedCustomer = {
   lastVisit: Date | null;
   /** PROMPT 15: сайтаас бүртгүүлсэн (ONLINE) эсэх */
   registeredVia: "ADMIN" | "ONLINE";
+  /** PROMPT 27 */
+  birthday: Date | null;
+  noShows: number;
 };
 
 const ORDER: Record<CustomerSort, Prisma.Sql> = {
@@ -41,12 +45,15 @@ const ORDER: Record<CustomerSort, Prisma.Sql> = {
   product: Prisma.sql`product`,
   service: Prisma.sql`service`,
   visits: Prisma.sql`visits`,
+  noShows: Prisma.sql`"noShows"`,
   lastVisit: Prisma.sql`"lastVisit"`,
   name: Prisma.sql`c."name"`,
 };
 
 /** Жагсаалт: нийт / бүтээгдэхүүн / үйлчилгээний дүн, айлчлал, сүүлд ирсэн — сонгосон баганаар эрэмбэлнэ (default: нийт ↓) */
-export async function listCustomersRanked(opts: { q?: string; sort?: string; dir?: string; page?: number; pageSize?: number; all?: boolean; online?: boolean } = {}) {
+export async function listCustomersRanked(
+  opts: { q?: string; sort?: string; dir?: string; page?: number; pageSize?: number; all?: boolean; online?: boolean; /** 1–12: энэ сард төрсөн өдөртэй */ birthMonth?: number } = {},
+) {
   const sort: CustomerSort = (CUSTOMER_SORTS as readonly string[]).includes(opts.sort ?? "") ? (opts.sort as CustomerSort) : "total";
   const dir = opts.dir === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
   const pageSize = opts.pageSize ?? 30;
@@ -57,6 +64,7 @@ export async function listCustomersRanked(opts: { q?: string; sort?: string; dir
   if (term) conds.push(Prisma.sql`(c."name" ILIKE ${`%${term}%`} OR c."email" ILIKE ${`%${term}%`}${digits.length >= 3 ? Prisma.sql` OR c."phone" LIKE ${`%${digits}%`}` : Prisma.empty})`);
   // "Сайтаас бүртгүүлсэн" шүүлтүүр (нэг жагсаалт — тусдаа биш)
   if (opts.online) conds.push(Prisma.sql`c."registeredVia"::text = 'ONLINE'`);
+  if (opts.birthMonth && opts.birthMonth >= 1 && opts.birthMonth <= 12) conds.push(Prisma.sql`EXTRACT(MONTH FROM c."birthday") = ${opts.birthMonth}`);
   const where = conds.length ? Prisma.sql`WHERE ${Prisma.join(conds, " AND ")}` : Prisma.empty;
   const limit = opts.all ? Prisma.empty : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
 
@@ -77,8 +85,10 @@ export async function listCustomersRanked(opts: { q?: string; sort?: string; dir
         UNION ALL
         SELECT "customerId", ("startsAt" AT TIME ZONE 'Asia/Ulaanbaatar')::date, "startsAt" FROM "Appointment" WHERE "status"::text = 'DONE'
       ),
-      visits AS (SELECT id, COUNT(DISTINCT d)::int AS visits, MAX(at) AS "lastVisit" FROM days GROUP BY 1)
-      SELECT c."id", c."name", c."phone", c."email", c."registeredVia"::text AS "registeredVia",
+      visits AS (SELECT id, COUNT(DISTINCT d)::int AS visits, MAX(at) AS "lastVisit" FROM days GROUP BY 1),
+      noshow AS (SELECT "customerId" AS id, COUNT(*)::int AS n FROM "Appointment" WHERE "status"::text = 'NO_SHOW' GROUP BY 1)
+      SELECT c."id", c."name", c."phone", c."email", c."registeredVia"::text AS "registeredVia", c."birthday",
+        COALESCE(ns.n, 0)::int AS "noShows",
         (COALESCE(m.product, 0) + COALESCE(m.service, 0))::int AS total,
         COALESCE(m.product, 0)::int AS product,
         COALESCE(m.service, 0)::int AS service,
@@ -87,6 +97,7 @@ export async function listCustomersRanked(opts: { q?: string; sort?: string; dir
       FROM "Customer" c
       LEFT JOIN money m ON m.id = c."id"
       LEFT JOIN visits v ON v.id = c."id"
+      LEFT JOIN noshow ns ON ns.id = c."id"
       ${where}
       ORDER BY ${ORDER[sort]} ${dir} NULLS LAST, c."name" ASC
       ${limit}`,

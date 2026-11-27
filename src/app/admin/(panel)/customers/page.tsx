@@ -6,7 +6,7 @@ import { Pagination, parsePage, str } from "@/components/admin/Pagination";
 import { Avatar, Badge, EmptyState, PageHeader, Table, btnClass, inputClass, tdClass, thClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
-import { formatDateLabel } from "@/lib/time";
+import { formatDateLabel, ubDateKey } from "@/lib/time";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { listCustomersRanked, type CustomerSort } from "@/server/modules/customers/history";
@@ -21,12 +21,15 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const q = str(sp.q);
   const online = str(sp.origin) === "online" ? "online" : undefined;
-  const { rows, count, page, pageSize, sort, dir } = await listCustomersRanked({ q, sort: str(sp.sort), dir: str(sp.dir), page: parsePage(sp.page), online: Boolean(online) });
+  // PROMPT 27: "Энэ сард төрсөн өдөртэй"
+  const bday = str(sp.bday) === "month" ? "month" : undefined;
+  const thisMonth = Number(ubDateKey().slice(5, 7));
+  const { rows, count, page, pageSize, sort, dir } = await listCustomersRanked({ q, sort: str(sp.sort), dir: str(sp.dir), page: parsePage(sp.page), online: Boolean(online), birthMonth: bday ? thisMonth : undefined });
   const showContact = can(user.role, "customer:contact:read");
 
   const params = (over: Record<string, string | undefined>) => {
     const s = new URLSearchParams();
-    for (const [k, v] of Object.entries({ q, sort, dir, origin: online, ...over })) if (v) s.set(k, v);
+    for (const [k, v] of Object.entries({ q, sort, dir, origin: online, bday, ...over })) if (v) s.set(k, v);
     return `/admin/customers?${s.toString()}`;
   };
   /** Clicking the active column flips the direction; a new column starts high → low (names A → Я) */
@@ -59,13 +62,17 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           </div>
         }
       />
-      <FilterBar action="/admin/customers" resetHref={q || online ? "/admin/customers" : undefined}>
+      <FilterBar action="/admin/customers" resetHref={q || online || bday ? "/admin/customers" : undefined}>
         <input type="hidden" name="sort" value={sort} />
         <input type="hidden" name="dir" value={dir} />
         <input name="q" defaultValue={q} placeholder="Нэр, утас, имэйлээр хайх" aria-label="Хайх" className={`${inputClass} w-80`} />
         <select name="origin" defaultValue={online ?? ""} aria-label="Бүртгэл" className={`${inputClass} w-56`}>
           <option value="">Бүх үйлчлүүлэгч</option>
           <option value="online">Сайтаас бүртгүүлсэн</option>
+        </select>
+        <select name="bday" defaultValue={bday ?? ""} aria-label="Төрсөн өдөр" className={`${inputClass} w-64`}>
+          <option value="">Төрсөн өдөр — бүгд</option>
+          <option value="month">Энэ сард төрсөн өдөртэй</option>
         </select>
       </FilterBar>
       {rows.length === 0 ? (
@@ -76,10 +83,12 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
             <tr>
               {head("name", L.name, false)}
               {showContact && <th className={thClass}>{L.phone}</th>}
+              <th className={thClass}>Төрсөн огноо</th>
               {head("total", L.total)}
               {head("product", L.product)}
               {head("service", L.service)}
               {head("visits", L.visits)}
+              {head("noShows", "Ороогүй")}
               {head("lastVisit", L.lastVisit)}
             </tr>
           </thead>
@@ -94,17 +103,19 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   {c.registeredVia === "ONLINE" && <span className="ml-11 mt-0.5 inline-block"><Badge tone="info">Онлайн</Badge></span>}
                 </td>
                 {showContact && <td className={`${tdClass} tabular-nums`}>{c.phone}</td>}
+                <td className={`${tdClass} tabular-nums text-ink-soft`}>{c.birthday ? c.birthday.toISOString().slice(0, 10) : "—"}</td>
                 <td className={`${tdClass} text-right font-semibold tabular-nums`}>{formatMNT(c.total)}</td>
                 <td className={`${tdClass} text-right tabular-nums text-ink-soft`}>{formatMNT(c.product)}</td>
                 <td className={`${tdClass} text-right tabular-nums text-ink-soft`}>{formatMNT(c.service)}</td>
                 <td className={`${tdClass} text-right tabular-nums`}>{c.visits}</td>
+                <td className={`${tdClass} text-right tabular-nums ${c.noShows > 0 ? "text-err" : "text-ink-soft"}`}>{c.noShows}</td>
                 <td className={`${tdClass} text-right tabular-nums`}>{c.lastVisit ? formatDateLabel(c.lastVisit) : "—"}</td>
               </tr>
             ))}
           </tbody>
         </Table>
       )}
-      <Pagination page={page} pageSize={pageSize} total={count} basePath="/admin/customers" params={{ q, sort, dir, origin: online }} />
+      <Pagination page={page} pageSize={pageSize} total={count} basePath="/admin/customers" params={{ q, sort, dir, origin: online, bday }} />
     </>
   );
 }

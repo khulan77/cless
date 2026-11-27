@@ -74,3 +74,20 @@ describe("customers + visits", () => {
     expect(profile?.totalSpent).toBe(0);
   });
 });
+
+describe("жагсаалт — төрсөн өдөр, ороогүй (PROMPT 27)", () => {
+  it("энэ сард төрсөн өдөртэйгээр шүүнэ; «Ороогүй» тоо", async () => {
+    const { listCustomersRanked } = await import("./history");
+    const staff = await makeUser("STAFF");
+    const svc = await db.service.create({ data: { slug: "s-bday", name: "FACIAL", description: "d", durationMin: 60, price: 1 } });
+    const branch = await db.branch.findFirstOrThrow({ where: { code: "CL" } });
+    const a = await db.customer.create({ data: { name: "Гуравдугаар Сар", phone: "99000101", birthday: new Date("1990-03-15T00:00:00Z") } });
+    await db.customer.create({ data: { name: "Тавдугаар Сар", phone: "99000102", birthday: new Date("1992-05-01T00:00:00Z") } });
+    const at = new Date("2026-03-01T03:00:00Z");
+    await db.appointment.create({ data: { customerId: a.id, serviceId: svc.id, staffId: staff.id, branchId: branch.id, startsAt: at, endsAt: new Date(at.getTime() + 3_600_000), blockedUntil: new Date(at.getTime() + 3_600_000), status: "NO_SHOW" } });
+    const march = await listCustomersRanked({ birthMonth: 3 });
+    expect(march.rows.map((r) => r.name)).toEqual(["Гуравдугаар Сар"]);
+    expect(march.rows[0]).toMatchObject({ noShows: 1, birthday: new Date("1990-03-15T00:00:00Z") });
+    expect((await listCustomersRanked({})).count).toBe(2);
+  });
+});

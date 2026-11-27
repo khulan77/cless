@@ -1,4 +1,4 @@
-import { CustomerOnlinePanel, SendVisitReportButton } from "@/components/admin/notify/CustomerOnlinePanel";
+import { CustomerOnlinePanel } from "@/components/admin/notify/CustomerOnlinePanel";
 import { customerEmailHistory } from "@/server/modules/notifications/service";
 import { onlineBlocked } from "@/server/modules/online-booking/service";
 import { db } from "@/server/db";
@@ -17,15 +17,15 @@ import { customerHistory } from "@/server/modules/customers/history";
 import { noteViews } from "@/server/modules/customers/notes";
 import { photoPanel } from "@/server/modules/visits/photos";
 import { customerProfile } from "@/server/modules/customers/service";
-import { concernNames } from "@/server/modules/visits/service";
 import { VisitPhotos } from "@/components/admin/visits/VisitPhotos";
-import { VisitSummary } from "@/components/admin/visits/VisitSummary";
 
 export const metadata = { title: "Үйлчлүүлэгч" };
 export const instant = false;
 
 const H = t.admin.customers.history;
-const TABS = ["services", "products", "visits", "photos", "notes", "sales"] as const;
+// PROMPT 27: "айлчлал" ойлголтгүй — үйлчилгээ (орсон / ороогүй / цуцалсан), бүтээгдэхүүн, зураг, тэмдэглэл.
+// Visit өгөгдөл устахгүй (түүх) — ?tab=visits-ээр хандвал үйлчилгээний түүх рүү.
+const TABS = ["services", "products", "photos", "notes", "sales"] as const;
 type Tab = (typeof TABS)[number];
 
 /** Онлайн бүртгэл, зөвшөөрөл, ирээгүйн хаалт, илгээсэн тайлангийн түүх */
@@ -52,16 +52,14 @@ export default async function CustomerPage({ params, searchParams }: { params: P
     onlineInfo(id),
   ]);
   if (!profile) notFound();
-  const { customer: c, visits, sales } = profile;
-  const slugs = [...new Set(visits.flatMap((v) => v.concerns))];
-  const concernName = new Map((await concernNames(slugs)).map((name, i) => [slugs[i]!, name]));
+  const { customer: c, sales } = profile;
 
   return (
     <>
       <PageHeader
         eyebrow="Үйлчлүүлэгч"
         title={c.name}
-        description={[c.phone, c.email].filter(Boolean).join(" · ")}
+        description={[c.phone, c.email, c.birthday ? `Төрсөн: ${c.birthday.toISOString().slice(0, 10)}` : null].filter(Boolean).join(" · ")}
         actions={
           <>
             {can(user.role, "pos:use") && (
@@ -107,7 +105,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           [H.totalProduct, formatMNT(history.totals.product)],
           [H.totalService, formatMNT(history.totals.service)],
           [H.total, formatMNT(history.totals.total)],
-          [H.visits, String(visits.length)],
+          [H.visits, `${history.services.filter((r) => r.status === "DONE").length} · ороогүй ${history.services.filter((r) => r.status === "NO_SHOW").length}`],
           [H.skinType, c.skinType ? t.admin.skinTypes[c.skinType] : "—"],
         ].map(([k, v], i) => (
           <div key={k} className={`rounded-2xl border p-4 ${i === 2 ? "border-navy/20 bg-navy/[0.03]" : "border-hairline bg-white"}`}>
@@ -196,53 +194,6 @@ export default async function CustomerPage({ params, searchParams }: { params: P
             </tbody>
           </Table>
         ))}
-
-      {tab === "visits" && (
-        <Card title={H.tabs.visits}>
-          {visits.length === 0 ? (
-            <p className="text-[14px] text-ink-soft">Айлчлал алга.</p>
-          ) : (
-            <ul className="-my-2 divide-y divide-hairline">
-              {visits.map((v) => (
-                <li key={v.id} className="space-y-2 py-3 text-[14px]">
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Badge tone={v.emailStatus === "SENT" ? "green" : v.emailStatus === "FAILED" ? "red" : "neutral"}>{t.admin.emailStatus[v.emailStatus]}</Badge>
-                    {can(user.role, "visit:write") && (
-                      <SendVisitReportButton
-                        visitId={v.id}
-                        customerId={c.id}
-                        skinType={v.skinType}
-                        summary={v.diagnosisNotes}
-                        disabledReason={!c.email ? "Үйлчлүүлэгчид имэйл хаяг алга." : !online?.emailConsentAt ? "Үйлчлүүлэгч имэйлээр хүлээн авахыг зөвшөөрөөгүй." : null}
-                      />
-                    )}
-                  </div>
-                  <VisitSummary
-                    visit={{
-                      conductedBy: v.conductedBy.name,
-                      date: ubDateKey(v.createdAt),
-                      skinType: v.skinType,
-                      concerns: v.concerns.map((slug) => concernName.get(slug) ?? slug),
-                      notes: v.diagnosisNotes,
-                      recommendations: v.recommendations.map((r) => ({
-                        id: r.id,
-                        name: `${r.variant.product.name} · ${r.variant.size}`,
-                        instructions: r.instructions,
-                        purchased: r.purchased,
-                      })),
-                    }}
-                  />
-                  {v.sale && (
-                    <Link href={`/admin/sales/${v.sale.id}`} className="text-[13px] underline underline-offset-4">
-                      {v.sale.number}
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      )}
 
       {tab === "photos" && photos && (
         <VisitPhotos

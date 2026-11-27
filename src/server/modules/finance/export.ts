@@ -1,11 +1,4 @@
-/**
- * Экспорт (PROMPT 18 §1, §2.5):
- *  - Зардлын жагсаалт — CSV / XLSX.
- *  - "Бүх системийн тайлан" — нэг XLSX, sheet бүрээр: P&L, мөнгөн гүйлгээ, баланс, НӨАТ, борлуулалт,
- *    үйлчилгээ (үйлчилгээ/ажилтнаар), бүтээгдэхүүн, касс, цалин, зардал.
- *  - Нягтлангийн имэйлд — хувийн, хугацаатай холбоос (HMAC гарын үсэг, AUTH_SECRET).
- * Үйлчлүүлэгчийн хувийн мэдээлэл (нэр, утас) аль ч sheet-д ороогүй. Цалин — ажилтнаар (нягтланд зориулсан).
- */
+
 import { createHmac, timingSafeEqual } from "node:crypto";
 import ExcelJS from "exceljs";
 import { t } from "@/i18n";
@@ -159,6 +152,8 @@ export async function financeWorkbook(range: ReportRange): Promise<Uint8Array> {
   const s = sheet(wb, "Борлуулалт", [{ header: "Өдөр", width: 12 }, { header: "Үйлчилгээ", width: 16, money: true }, { header: "Бүтээгдэхүүн", width: 16, money: true }, { header: "Нийт", width: 16, money: true }]);
   for (const d of rep.days) s.addRow([d.day, d.service, d.product, d.service + d.product]);
   s.addRow(["Нийт", rep.kpi.service, rep.kpi.product, rep.kpi.total]).font = { bold: true };
+  // PROMPT 27: суваг — Касс (POS) / Онлайн (сайтаас захиалсан цаг, онлайн төлбөр)
+  for (const c of rep.byChannel) s.addRow([c.channel === "POS" ? "Касс (POS)" : "Онлайн (сайт)", c.service, c.product, c.amount]);
   s.addRow(["Борлуулалтын тоо", rep.kpi.sales]);
   s.addRow(["Буцаалт", rep.kpi.refunds]);
 

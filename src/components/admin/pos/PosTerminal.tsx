@@ -56,6 +56,9 @@ const cleanDiscount = (d: Discount): Discount => (d && Number.isFinite(d.value) 
 let seq = 0;
 const lineKey = () => `l${Date.now().toString(36)}${seq++}`;
 
+/** PROMPT 27: "айлчлал" гэсэн ойлголт клиентэд байхгүй — дахин хэрэгтэй бол true */
+const SHOW_VISIT_SECTION = false;
+
 export function PosTerminal({
   staff,
   qpayMode,
@@ -436,13 +439,17 @@ export function PosTerminal({
                 </span>
               </button>
               <span className="shrink-0 text-[14px] tabular-nums">{formatMNT(v.price)}</span>
-              <Button size="sm" variant="ghost" onClick={() => addRecommendation(v)} title={s.recommend} aria-label={`${s.recommend}: ${v.name}`}>
-                <Plus className="size-3.5" />
-              </Button>
+              {SHOW_VISIT_SECTION && (
+                <Button size="sm" variant="ghost" onClick={() => addRecommendation(v)} title={s.recommend} aria-label={`${s.recommend}: ${v.name}`}>
+                  <Plus className="size-3.5" />
+                </Button>
+              )}
             </div>
           ))}
         </CatalogList>
 
+        {/* PROMPT 27: «Айлчлал / оношлогоо» хэсгийг клиентийн шийдвэрээр нуусан (Visit өгөгдөл, ноорогт хадгалсан утга хэвээр) */}
+        {SHOW_VISIT_SECTION && (
         <Card title={s.visit} description={s.visitHint} actions={<Button size="sm" variant="ghost" onClick={() => setVisitOpen((o) => !o)}>{visitOpen ? <Minus className="size-4" /> : <Plus className="size-4" />}</Button>}>
           {visitOpen ? (
             <div className="space-y-3">
@@ -508,6 +515,7 @@ export function PosTerminal({
             hasVisit && <Badge tone="green">{s.visit}</Badge>
           )}
         </Card>
+        )}
       </div>
 
       {/* ── Right: cart ── */}

@@ -154,6 +154,21 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
         <Kpi label={R.product} value={formatMNT(k.product)} hint={R.productHint(k.productQty, pct(k.product))} delta={change(k.product, p.product)} big />
         <Kpi accent label={R.pending} value={formatMNT(k.pending)} hint={R.pendingHint(k.pendingCount)} big />
       </div>
+      {/* PROMPT 27: суваг — Касс (POS) / Онлайн (сайт) */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {report.byChannel.map((c) => {
+          const before = prev.byChannel.find((x) => x.channel === c.channel)?.amount ?? 0;
+          return (
+            <Kpi
+              key={c.channel}
+              label={c.channel === "POS" ? "Касс (POS)" : "Онлайн (сайт)"}
+              value={formatMNT(c.amount)}
+              hint={`${c.sales} борлуулалт · ${pct(c.amount)}%${c.channel === "ONLINE" ? " · сайтаас захиалсан цаг, онлайн төлбөр" : ""}`}
+              delta={change(c.amount, before)}
+            />
+          );
+        })}
+      </div>
       {/* KPI row 2 */}
       <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         <Kpi label={R.sales} value={k.sales} delta={change(k.sales, p.sales)} />
@@ -181,7 +196,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
         ) : (
           <DailyChart days={report.days} />
         )}
-        <Breakdown byService={report.byService} byStaff={report.byStaff} byProduct={report.byProduct} />
+        <Breakdown byService={report.byService} byStaff={report.byStaff} byProduct={report.byProduct} byChannel={report.byChannel} />
       </div>
 
       {sources && sourceTotal > 0 && (

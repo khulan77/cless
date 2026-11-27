@@ -38,7 +38,7 @@ const TRANSITIONS: Record<ApptAction, { from: readonly ApptStatus[]; to: ApptSta
     to: "CANCELLED",
     message: "Ирсэн эсвэл эхэлсэн цагийг цуцлах боломжгүй — POS-оор шийднэ үү.",
   },
-  noShow: { from: ["BOOKED", "CONFIRMED"], to: "NO_SHOW", message: "Энэ цагийг 'Ирээгүй' болгох боломжгүй." },
+  noShow: { from: ["BOOKED", "CONFIRMED"], to: "NO_SHOW", message: "Энэ цагийг 'Ороогүй' болгох боломжгүй." },
 };
 
 /** Идэвхтэй (давхцлын constraint-д тооцогдох) төлөвүүд */
@@ -64,7 +64,7 @@ export function nextApptStatus(
   if (action === "noShow" || action === "complete") {
     if (!ctx.now || !ctx.startsAt) throw new ApptStateError(from, action, "Цаг шаардлагатай.");
     if (ctx.now < ctx.startsAt) {
-      throw new ApptStateError(from, action, action === "noShow" ? "Цаг эхлээгүй байхад 'Ирээгүй' болгох боломжгүй." : "Цаг эхлээгүй байхад дуусгах боломжгүй.");
+      throw new ApptStateError(from, action, action === "noShow" ? "Цаг эхлээгүй байхад 'Ороогүй' болгох боломжгүй." : "Цаг эхлээгүй байхад дуусгах боломжгүй.");
     }
   }
   if (action === "complete" && !ctx.reason?.trim()) throw new ApptStateError(from, action, "Гараар дуусгах шалтгааныг бичнэ үү.");

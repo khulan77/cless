@@ -8,16 +8,20 @@ import { formatMNT } from "@/lib/money";
 import type { BreakdownRow, StaffRow } from "@/server/modules/reports/queries";
 
 const R = t.admin.report;
-type Tab = "service" | "staff" | "product";
+type Tab = "service" | "staff" | "product" | "channel";
 const TOP = 8;
 
 /** Top 8 + "Бусад"; bold name, grey count, amount on the right, a relative bar below */
-export function Breakdown({ byService, byStaff, byProduct }: { byService: BreakdownRow[]; byStaff: StaffRow[]; byProduct: BreakdownRow[] }) {
+type ChannelRow = { channel: "POS" | "ONLINE"; amount: number; service: number; product: number; sales: number };
+
+export function Breakdown({ byService, byStaff, byProduct, byChannel = [] }: { byService: BreakdownRow[]; byStaff: StaffRow[]; byProduct: BreakdownRow[]; byChannel?: ChannelRow[] }) {
   const [tab, setTab] = useState<Tab>("service");
   const [open, setOpen] = useState<string | null>(null);
   const rows: { key: string; name: string; count?: string; amount: number; sub?: string; staff?: StaffRow }[] =
     tab === "service"
       ? byService.map((r) => ({ key: r.key, name: r.name, count: R.times(r.qty), amount: r.amount }))
+      : tab === "channel"
+        ? byChannel.map((c) => ({ key: c.channel, name: c.channel === "POS" ? "Касс (POS)" : "Онлайн (сайт)", count: `${c.sales} борлуулалт`, amount: c.amount, sub: R.staffSplit(formatMNT(c.service), formatMNT(c.product)) }))
       : tab === "product"
         ? byProduct.map((r) => ({ key: r.key, name: r.name, count: R.pieces(r.qty), amount: r.amount, sub: r.margin != null ? R.margin(r.margin) : undefined }))
         : byStaff.map((s) => ({ key: s.key, name: s.name ?? R.unknownStaff, amount: s.amount, sub: R.staffSplit(formatMNT(s.service), formatMNT(s.product)), staff: s }));
@@ -39,6 +43,7 @@ export function Breakdown({ byService, byStaff, byProduct }: { byService: Breakd
             { value: "service", label: R.byService },
             { value: "staff", label: R.byStaff },
             { value: "product", label: R.byProduct },
+            ...(byChannel.length ? [{ value: "channel" as const, label: "Сувгаар" }] : []),
           ]}
         />
         <span className="ml-auto text-[13px] text-ink-soft tabular-nums">{R.rows(rows.length, formatMNT(total))}</span>
