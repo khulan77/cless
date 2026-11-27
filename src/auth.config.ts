@@ -14,6 +14,8 @@ export const authConfig = {
     authorized({ auth, request }) {
       // Нэвтрээгүй хандах боломжтой: нэвтрэх, урилга идэвхжүүлэх, нууц үг сэргээх
       const p = request.nextUrl.pathname;
+      // PROMPT 24: proxy бүх замд ажиллана — нэвтрэлт зөвхөн /admin-д шаардлагатай
+      if (!p.startsWith("/admin")) return true;
       if (p.startsWith("/admin/login") || p.startsWith("/admin/activate") || p.startsWith("/admin/forgot")) return true;
       return Boolean(auth?.user);
     },
