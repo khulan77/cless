@@ -143,8 +143,33 @@ const DEMO_STAFF = `SELECT "id" FROM "User" WHERE "email" ILIKE '%@example.mn'`;
 /** Зөвхөн demo ажилтантай (эсвэл мөргүй) цалингийн үе */
 const DEMO_PERIOD = `NOT EXISTS (SELECT 1 FROM "PayrollLine" l WHERE l."periodId" = p."id" AND l."staffId" NOT IN (${DEMO_STAFF}))`;
 
-export function demoCounts(includeOnline: boolean): Count[] {
+/** PROMPT 27 багц (migration 20261209000000_packages) — хүснэгт байгаа эсэх (migration-оос өмнөх DB-д ч ажиллана) */
+export async function hasPackageTables(q: Queryable): Promise<boolean> {
+  const r = await q.query<{ ok: boolean }>(`SELECT to_regclass('public."PackageTemplate"') IS NOT NULL AS ok`);
+  return !!r.rows[0]?.ok;
+}
+
+export const PACKAGE_COUNTS: Count[] = [
+  ["Багцын хасалт", `SELECT count(*) FROM "PackageRedemption"`],
+  ["Үйлчлүүлэгчийн багц", `SELECT count(*) FROM "CustomerPackage"`],
+  ["Багцын загвар × үйлчилгээ", `SELECT count(*) FROM "PackageTemplateService"`],
+  ["Багцын загвар", `SELECT count(*) FROM "PackageTemplate"`],
+];
+
+/**
+ * Багцын хүснэгтүүд (FK дараалал): PackageRedemption → CustomerPackage (Customer, Service-ийг Restrict барина) →
+ * PackageTemplateService → PackageTemplate (SaleItem.packageTemplateId Restrict — SaleItem устсаны ДАРАА).
+ */
+export const PACKAGE_STEPS: string[] = [
+  `DELETE FROM "PackageRedemption"`,
+  `DELETE FROM "CustomerPackage"`,
+  `DELETE FROM "PackageTemplateService"`,
+  `DELETE FROM "PackageTemplate"`,
+];
+
+export function demoCounts(includeOnline: boolean, packages = false): Count[] {
   return [
+    ...(packages ? PACKAGE_COUNTS : []),
     ["Үйлчилгээ", `SELECT count(*) FROM "Service"`],
     ["Үйлчилгээ × ажилтан", `SELECT count(*) FROM "ServiceStaff"`],
     ["Үйлчилгээний урамшууллын дүрэм", `SELECT count(*) FROM "CommissionRule" WHERE "serviceId" IS NOT NULL`],
@@ -178,17 +203,20 @@ export async function demoCustomers(q: Queryable, includeOnline: boolean) {
 }
 
 /**
- * Demo өгөгдлийг цэвэрлэнэ (дуудагчийн BEGIN…COMMIT дотор): гүйлгээ → outbox → айлчлал/зураг → цаг захиалга →
+ * Demo өгөгдлийг цэвэрлэнэ (дуудагчийн BEGIN…COMMIT дотор): гүйлгээ → багц → outbox → айлчлал/зураг → цаг захиалга →
  * үйлчилгээ → үлдсэн бүтээгдэхүүн → demo үйлчлүүлэгч → demo цалин/зардал/ирц. Буцаана: устгасан тоо ба
  * private storage-аас устгах айлчлалын зургийн object path-ууд (commit-ийн ДАРАА устгана).
  */
 export async function resetDemo(q: Queryable, opts: { target: string; includeOnline?: boolean }) {
   const includeOnline = !!opts.includeOnline;
-  const before = await countAll(q, [...transactionCounts(true), ...demoCounts(includeOnline), ...CATALOG_COUNTS]);
+  const packages = await hasPackageTables(q);
+  const before = await countAll(q, [...transactionCounts(true), ...demoCounts(includeOnline, packages), ...CATALOG_COUNTS]);
   const photos = (await q.query<{ storageKey: string }>(`SELECT "storageKey" FROM "VisitPhoto"`)).rows.map((r) => r.storageKey);
 
   for (const sql of transactionSteps(true)) await q.query(sql);
   const steps = [
+    // Багц — SaleItem устсаны дараа, Service / Customer / Appointment-оос өмнө
+    ...(packages ? PACKAGE_STEPS : []),
     `DELETE FROM "OutboxJob" WHERE "status"::text IN ('PENDING', 'FAILED')`,
     `DELETE FROM "VisitPhoto"`,
     `DELETE FROM "Visit"`,
