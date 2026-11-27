@@ -2,7 +2,22 @@ import { AlertTriangle } from "lucide-react";
 import { Badge, Table, tdClass, thClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import type { dayAttendance } from "@/server/modules/attendance/service";
+import { DAY_STATE_LABEL, type DayState } from "@/server/modules/attendance/punctuality";
 import { NoteCell } from "./NoteCell";
+
+const STATE_TONE: Record<DayState, "green" | "amber" | "red" | "info" | "neutral"> = {
+  ON_TIME: "green",
+  LATE: "amber",
+  ABSENT: "red",
+  LEAVE: "info",
+  NOT_YET: "neutral",
+  OFF: "neutral",
+  EXTRA: "info",
+};
+
+export function DayStateBadge({ state, lateMin }: { state: DayState; lateMin: number }) {
+  return <Badge tone={STATE_TONE[state]}>{state === "LATE" ? `Хоцорсон ${lateMin} мин` : DAY_STATE_LABEL[state]}</Badge>;
+}
 
 type Rows = Awaited<ReturnType<typeof dayAttendance>>;
 const fmt = (min: number) => (min > 0 ? `${Math.floor(min / 60)}ц ${String(min % 60).padStart(2, "0")}м` : "—");
@@ -17,6 +32,7 @@ export function DayAttendance({ rows, day, canNote }: { rows: Rows; day: string;
           <th className={thClass}>Ажилтан</th>
           <th className={thClass}>Хуваарь</th>
           <th className={thClass}>Ирсэн – явсан</th>
+          <th className={thClass}>Төлөв</th>
           <th className={`${thClass} text-right`}>Нийт</th>
           <th className={thClass}>Ирц (цалинд)</th>
           <th className={thClass}>Анхааруулга</th>
@@ -35,6 +51,7 @@ export function DayAttendance({ rows, day, canNote }: { rows: Rows; day: string;
               {r.sessions.length === 0 ? <span className="text-ink-soft">Ирээгүй</span> : r.sessions.map((s) => `${s.in}–${s.out ?? "…"}`).join(", ")}
               {r.working && <span className="ml-2"><Badge tone="green">Ажиллаж байна</Badge></span>}
             </td>
+            <td className={tdClass}>{r.state === "OFF" ? <span className="text-ink-soft">—</span> : <DayStateBadge state={r.state} lateMin={r.lateMin} />}</td>
             <td className={`${tdClass} text-right tabular-nums`}>{fmt(r.minutes)}</td>
             <td className={`${tdClass} tabular-nums`}>
               {r.workDay ? (

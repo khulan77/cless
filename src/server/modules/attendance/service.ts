@@ -12,13 +12,14 @@
  */
 import { createHmac } from "node:crypto";
 import type { Prisma } from "@/generated/prisma/client";
-import { formatTime, ubAt, ubDateKey, ubDayRange, ubWeekday } from "@/lib/time";
+import { addDays, formatTime, ubAt, ubDateKey, ubDayRange, ubWeekday } from "@/lib/time";
 import { audit } from "@/server/audit";
 import { db } from "@/server/db";
 import { UserError } from "@/server/errors";
 import { toDbDate } from "@/server/modules/payroll/dates";
 import { invalidateDay, lockedPeriodFor } from "@/server/modules/payroll/locks";
 import { evaluateGeo } from "./geo";
+import { evaluateDay } from "./punctuality";
 import { hoursOfDay, sessionsOf, workedMinutes } from "./sessions";
 
 type Tx = Prisma.TransactionClient;
@@ -186,19 +187,29 @@ export async function purgeOldCoordinates(now = new Date()) {
 /** Өдрийн ирц: ажилтан бүрт сесс, цаг, flag, "Явлаа дараагүй" */
 export async function dayAttendance(day: string, now = new Date()) {
   const { start, end } = ubDayRange(day);
-  const [staff, events, workDays, schedules, notes] = await Promise.all([
+  const [staff, events, workDays, schedules, notes, offs] = await Promise.all([
     db.user.findMany({ where: { isActive: true, role: { in: ["STAFF", "MANAGER"] } }, orderBy: [{ role: "asc" }, { name: "asc" }], select: { id: true, name: true, role: true } }),
     db.attendanceEvent.findMany({ where: { at: { gte: start, lt: end } }, orderBy: { at: "asc" } }),
     db.workDay.findMany({ where: { date: toDbDate(day) }, select: { staffId: true, status: true, hours: true, fromEvents: true, note: true } }),
     db.staffSchedule.findMany({ where: { weekday: ubWeekday(day) }, select: { staffId: true, startTime: true, endTime: true } }),
     db.attendanceNote.findMany({ where: { date: toDbDate(day) }, select: { staffId: true, note: true } }),
+    db.staffTimeOff.findMany({ where: { startsAt: { lt: end }, endsAt: { gt: start } }, select: { staffId: true } }),
   ]);
   return staff.map((s) => {
     const mine = events.filter((e) => e.staffId === s.id);
     const sessions = sessionsOf(mine);
     const wd = workDays.find((w) => w.staffId === s.id) ?? null;
-    const sch = schedules.filter((x) => x.staffId === s.id);
+    const sch = schedules.filter((x) => x.staffId === s.id).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const ev = evaluateDay({
+      scheduledStart: sch.length ? ubAt(day, sch[0]!.startTime) : null,
+      scheduledEnd: sch.length ? ubAt(day, sch.reduce((m, x) => (x.endTime > m ? x.endTime : m), sch[0]!.endTime)) : null,
+      firstIn: sessions[0]?.in ?? null,
+      onLeave: offs.some((o) => o.staffId === s.id),
+      now,
+    });
     return {
+      state: ev.state,
+      lateMin: ev.lateMin,
       id: s.id,
       name: s.name,
       role: s.role,
@@ -211,6 +222,53 @@ export async function dayAttendance(day: string, now = new Date()) {
       workDay: wd ? { status: wd.status, hours: wd.hours, manual: !wd.fromEvents, note: wd.note } : null,
       comment: notes.find((n) => n.staffId === s.id)?.note ?? null,
     };
+  });
+}
+
+/**
+ * Хуваарь vs бодит (хугацаагаар): ажилтан бүрт хуваарьтай өдөр, ирсэн, хоцорсон (тоо, минут), тасалсан, чөлөөтэй.
+ * Өдөр бүрийн дэлгэрэнгүй `days`-д.
+ */
+export async function scheduleVsActual(from: string, to: string, now = new Date()) {
+  const start = ubDayRange(from).start;
+  const end = ubDayRange(to).end;
+  const [staff, events, schedules, offs] = await Promise.all([
+    db.user.findMany({ where: { isActive: true, role: { in: ["STAFF", "MANAGER"] } }, orderBy: [{ role: "asc" }, { name: "asc" }], select: { id: true, name: true, role: true } }),
+    db.attendanceEvent.findMany({ where: { type: "CHECK_IN", at: { gte: start, lt: end } }, orderBy: { at: "asc" }, select: { staffId: true, at: true } }),
+    db.staffSchedule.findMany({ select: { staffId: true, weekday: true, startTime: true, endTime: true } }),
+    db.staffTimeOff.findMany({ where: { startsAt: { lt: end }, endsAt: { gt: start } }, select: { staffId: true, startsAt: true, endsAt: true } }),
+  ]);
+  const days: string[] = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) days.push(d);
+  return staff.map((s) => {
+    const totals = { scheduled: 0, came: 0, late: 0, lateMin: 0, absent: 0, leave: 0 };
+    const perDay = days.map((day) => {
+      const { start: ds, end: de } = ubDayRange(day);
+      const sch = schedules.filter((x) => x.staffId === s.id && x.weekday === ubWeekday(day)).sort((a, b) => a.startTime.localeCompare(b.startTime));
+      const firstIn = events.find((e) => e.staffId === s.id && e.at >= ds && e.at < de)?.at ?? null;
+      const ev = evaluateDay({
+        scheduledStart: sch.length ? ubAt(day, sch[0]!.startTime) : null,
+        scheduledEnd: sch.length ? ubAt(day, sch.reduce((m, x) => (x.endTime > m ? x.endTime : m), sch[0]!.endTime)) : null,
+        firstIn,
+        onLeave: offs.some((o) => o.staffId === s.id && o.startsAt < de && o.endsAt > ds),
+        now,
+      });
+      if (sch.length) totals.scheduled++;
+      if (firstIn) totals.came++;
+      if (ev.state === "LATE") {
+        totals.late++;
+        totals.lateMin += ev.lateMin;
+      }
+      if (ev.state === "ABSENT") totals.absent++;
+      if (ev.state === "LEAVE") totals.leave++;
+      return {
+        day,
+        scheduled: sch.length ? `${sch[0]!.startTime}–${sch.at(-1)!.endTime}` : null,
+        firstIn: firstIn ? formatTime(firstIn) : null,
+        ...ev,
+      };
+    });
+    return { id: s.id, name: s.name, role: s.role, ...totals, days: perDay };
   });
 }
 

@@ -5,7 +5,8 @@ import { PageHeader, SegmentedTabs, btnClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { addDays, ubDateKey } from "@/lib/time";
 import { DayAttendance } from "@/components/admin/attendance/DayAttendance";
-import { closeStaleSessions, dayAttendance } from "@/server/modules/attendance/service";
+import { ScheduleVsActual } from "@/components/admin/attendance/ScheduleVsActual";
+import { closeStaleSessions, dayAttendance, scheduleVsActual } from "@/server/modules/attendance/service";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { attendanceGrid } from "@/server/modules/payroll/attendance";
@@ -31,11 +32,16 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
   const { splitDay } = payrollSettings;
   const half = sp.half === "1" || sp.half === "2" ? (Number(sp.half) as 1 | 2) : Number(today.slice(8)) <= splitDay ? 1 : 2;
   const { from, to } = halfRange(month, half, splitDay);
-  const view = sp.view === "day" ? "day" : "grid";
+  const view = sp.view === "day" ? "day" : sp.view === "compare" ? "compare" : "grid";
   const day = typeof sp.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : today;
-  const [grid, dayRows] = await Promise.all([view === "grid" ? attendanceGrid(from, to) : null, view === "day" ? dayAttendance(day) : null]);
+  const [grid, dayRows, compare] = await Promise.all([
+    view === "grid" ? attendanceGrid(from, to) : null,
+    view === "day" ? dayAttendance(day) : null,
+    view === "compare" ? scheduleVsActual(from, to) : null,
+  ]);
   const A = t.admin.payroll.att;
-  const href = (m: string, h: 1 | 2) => `/admin/attendance?month=${m}&half=${h}`;
+  const vq = view === "compare" ? "&view=compare" : "";
+  const href = (m: string, h: 1 | 2) => `/admin/attendance?month=${m}&half=${h}${vq}`;
   const prev = half === 2 ? href(month, 1) : href(shiftMonth(month, -1), 2);
   const next = half === 1 ? href(month, 2) : href(shiftMonth(month, 1), 1);
 
@@ -48,7 +54,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
         value={view}
         items={[
           { value: "day", label: "Өдрөөр (Ирлээ/Явлаа)", href: `/admin/attendance?view=day&date=${day}` },
-          { value: "grid", label: "15 хоногоор (7 хоногийн цаг)", href: href(month, half) },
+          { value: "grid", label: "15 хоногоор (7 хоногийн цаг)", href: `/admin/attendance?month=${month}&half=${half}` },
+          { value: "compare", label: "Хуваарь vs бодит", href: `/admin/attendance?month=${month}&half=${half}&view=compare` },
         ]}
       />
       {dayRows ? (
@@ -79,7 +86,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: S
           ]}
         />
       </div>
-      <AttendanceGrid days={grid!.days} rows={grid!.rows} holidays={grid!.holidays} lockedDays={grid!.lockedDays} canEdit={canEdit} />
+      {compare ? <ScheduleVsActual rows={compare} /> : <AttendanceGrid days={grid!.days} rows={grid!.rows} holidays={grid!.holidays} lockedDays={grid!.lockedDays} canEdit={canEdit} />}
       </>
       )}
     </>
