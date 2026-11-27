@@ -47,6 +47,8 @@ export const variantInputSchema = z.object({
   costPrice: moneySchema,
   lowStockAt: intSchema(0, 10_000),
   isActive: z.boolean(),
+  /** PROMPT 27: шинэ хувилбарын эхний үлдэгдэл (ширхэг) — зөвхөн үүсгэхэд, орлого болж бүртгэгдэнэ */
+  initialStock: z.coerce.number().int("Бүхэл тоо.").min(0).max(100_000).optional(),
 });
 
 export const productInputSchema = z

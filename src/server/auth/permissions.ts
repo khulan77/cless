@@ -51,6 +51,8 @@ export const PERMISSIONS = [
   // Агуулах, каталог
   "stock:read",
   "stock:write",
+  // Үйлчилгээнд бүтээгдэхүүн олгох (SERVICE_USE) — MANAGER, ADMIN (PROMPT 27)
+  "stock:issue",
   "product:write",
   "service:write",
   "price:write",

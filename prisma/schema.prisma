@@ -374,6 +374,7 @@ model User {
   attendanceCreated     AttendanceEvent[]   @relation("AttendanceEventCreatedBy")
   attendanceNotes       AttendanceNote[]    @relation("AttendanceNoteStaff")
   attendanceNotesBy     AttendanceNote[]    @relation("AttendanceNoteBy")
+  serviceStockUses      StockMovement[]     @relation("StockMovementStaff")
   approvedPayrolls      PayrollPeriod[]     @relation("PayrollApprovedBy")
   confirmedRateSets     PayrollRateSet[]    @relation("RateSetConfirmedBy")
 
@@ -517,28 +518,36 @@ model PriceHistory {
 }
 
 model StockMovement {
-  id          String        @id @default(cuid())
+  id            String        @id @default(cuid())
   /// TODO(multi-branch): үлдэгдлийг StockBalance(branchId, variantId) руу шилжүүлэхэд ашиглана
-  branchId    String
-  variantId   String
-  type        StockMoveType
+  branchId      String
+  variantId     String
+  type          StockMoveType
   /// +орлого / -зарлага
-  qty         Int
-  unitCost    Int?
-  saleId      String?
-  note        String?
-  createdById String?
-  createdAt   DateTime      @default(now())
+  qty           Int
+  unitCost      Int?
+  saleId        String?
+  note          String?
+  createdById   String?
+  /// PROMPT 27: үйлчилгээнд олгосон (SERVICE_USE) — аль цаг, үйлчилгээ, гоо сайханч
+  appointmentId String?
+  serviceId     String?
+  staffId       String?
+  createdAt     DateTime      @default(now())
 
-  branch    Branch  @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  variant   Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
-  sale      Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
-  createdBy User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  variant     Variant      @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  sale        Sale?        @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  createdBy   User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  service     Service?     @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  staff       User?        @relation("StockMovementStaff", fields: [staffId], references: [id], onDelete: SetNull)
 
   @@index([branchId, createdAt])
   @@index([variantId, createdAt])
   @@index([saleId])
   @@index([type, createdAt])
+  @@index([appointmentId])
 }
 
 model Collection {
@@ -648,6 +657,7 @@ model Service {
   saleItems       SaleItem[]
   commissionRules CommissionRule[]
   staff           ServiceStaff[]
+  stockUses       StockMovement[]
 
   @@index([isActive, sortOrder])
 }
@@ -748,16 +758,17 @@ model Appointment {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  staff       User         @relation("ApptStaff", fields: [staffId], references: [id], onDelete: Restrict)
-  service     Service      @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  room        Room?        @relation(fields: [roomId], references: [id], onDelete: Restrict)
-  createdBy   User?        @relation("ApptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  cancelledBy User?        @relation("ApptCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  branch      Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  customer    Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  staff       User            @relation("ApptStaff", fields: [staffId], references: [id], onDelete: Restrict)
+  service     Service         @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  room        Room?           @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  createdBy   User?           @relation("ApptCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  cancelledBy User?           @relation("ApptCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
   visit       Visit?
   sales       Sale[]
   photos      VisitPhoto[]
+  stockUses   StockMovement[]
 
   @@index([branchId, startsAt])
   @@index([staffId, startsAt])

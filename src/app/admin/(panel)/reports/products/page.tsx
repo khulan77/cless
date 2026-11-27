@@ -7,7 +7,8 @@ import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
-import { presetRange, rangeFromParams } from "@/server/modules/reports/definitions";
+import { presetRange, rangeBounds, rangeFromParams } from "@/server/modules/reports/definitions";
+import { serviceUseReport } from "@/server/modules/inventory/service-use";
 import { productAnalytics, productDetail, type ProductRow } from "@/server/modules/reports/products";
 
 export const metadata = { title: "Бүтээгдэхүүн — Тайлан" };
@@ -97,7 +98,9 @@ export default async function ProductReportPage({ searchParams }: { searchParams
     );
   }
 
-  const rows = await productAnalytics(range);
+  const { start, end } = rangeBounds(range);
+  const [rows, use] = await Promise.all([productAnalytics(range), serviceUseReport(start, end)]);
+  const canCost = can(user.role, "cost:read");
   const tot = rows.reduce((a, r) => ({ sold: a.sold + r.soldQty, rev: a.rev + r.revenue, used: a.used + r.usedQty }), { sold: 0, rev: 0, used: 0 });
   return (
     <>
@@ -154,6 +157,38 @@ export default async function ProductReportPage({ searchParams }: { searchParams
           </Table>
         </>
       )}
+
+      {/* PROMPT 27: менежерийн «Үйлчилгээнд олгох»-оор бүртгэсэн бодит зарцуулалт (өртгөөр), гоо сайханч бүрээр */}
+      <div className="mt-8 grid gap-6 xl:grid-cols-2">
+        <Card title="Үйлчилгээнд зарцуулсан бүтээгдэхүүн" description={canCost ? `Нийт өртөг: ${formatMNT(use.totalCost)}` : "Бодит олголтоор (ширхэг / сав)"}>
+          {use.byProduct.length === 0 ? (
+            <p className="text-[14px] text-ink-soft">Энэ хугацаанд үйлчилгээнд олгосон бүтээгдэхүүн алга.</p>
+          ) : (
+            <ul className="divide-y divide-hairline text-[14px]">
+              {use.byProduct.map((p) => (
+                <li key={p.key} className="flex justify-between gap-3 py-2">
+                  <span>{p.name}</span>
+                  <span className="tabular-nums">{p.qty}{canCost ? ` · ${formatMNT(p.cost)}` : ""}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+        <Card title="Гоо сайханч бүрээр">
+          {use.byStaff.length === 0 ? (
+            <p className="text-[14px] text-ink-soft">—</p>
+          ) : (
+            <ul className="divide-y divide-hairline text-[14px]">
+              {use.byStaff.map((p) => (
+                <li key={p.key} className="flex justify-between gap-3 py-2">
+                  <span>{p.name}</span>
+                  <span className="tabular-nums">{p.qty}{canCost ? ` · ${formatMNT(p.cost)}` : ""}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
     </>
   );
 }

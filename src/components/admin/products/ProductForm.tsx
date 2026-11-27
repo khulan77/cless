@@ -305,7 +305,23 @@ export function ProductForm({ initial, collections, stockByVariant = {}, labels:
                         <td className="px-2 py-2">
                           <input aria-label={F.lowStockAt} type="number" min={0} value={numValue(v.lowStockAt)} onChange={(e) => setVariant(i, { lowStockAt: num(e.target.value) })} className={`${cls("lowStockAt")} w-20 text-right`} />
                         </td>
-                        <td className="px-2 py-2 pt-3.5 tabular-nums text-ink-soft">{v.id ? (stockByVariant[v.id] ?? 0) : "—"}</td>
+                        <td className="px-2 py-2 pt-3.5 tabular-nums text-ink-soft">
+                          {v.id ? (
+                            (stockByVariant[v.id] ?? 0)
+                          ) : (
+                            // PROMPT 27: шинэ хувилбарын эхний үлдэгдэл (орлого болж бүртгэгдэнэ)
+                            <input
+                              aria-label="Эхний үлдэгдэл"
+                              title="Эхний үлдэгдэл (ширхэг) — хадгалахад орлого болж бүртгэгдэнэ"
+                              type="number"
+                              min={0}
+                              placeholder="0"
+                              value={typeof v.initialStock === "number" ? v.initialStock : ""}
+                              onChange={(e) => setVariant(i, { initialStock: e.target.value === "" ? undefined : Number(e.target.value) })}
+                              className={`${cls("initialStock")} -mt-1.5 w-20 text-right`}
+                            />
+                          )}
+                        </td>
                         <td className="px-2 py-2 pt-3">
                           <input type="checkbox" aria-label={t.admin.active} checked={v.isActive} onChange={(e) => setVariant(i, { isActive: e.target.checked })} className="size-4 accent-navy" />
                         </td>

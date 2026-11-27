@@ -42,6 +42,7 @@ const MATRIX: Row[] = [
   ["shift:all", false, true, false, true],
   ["stock:read", false, true, true, true],
   ["stock:write", false, true, true, true],
+  ["stock:issue", false, true, false, true],
   ["product:write", false, true, true, true],
   ["service:write", false, true, false, true],
   ["price:write", false, true, true, true],

@@ -2,6 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import type { Prisma } from "@/generated/prisma/client";
+import type { z } from "zod";
 import { db } from "@/server/db";
 import { audit } from "@/server/audit";
 import { requirePermission } from "@/server/auth/session";
@@ -13,6 +14,7 @@ import {
   type ReceiveStockInput,
 } from "@/lib/validation/stock";
 import { getCurrentBranch } from "@/server/modules/branches/service";
+import { issueForService, issueSchema, suggestionsForAppointment } from "@/server/modules/inventory/service-use";
 import { parseInput, runAction } from "./result";
 
 /**
@@ -112,4 +114,25 @@ export async function adjustStock(input: AdjustStockInput) {
     refresh(data.variantId);
     return { stock };
   }, "Тооллогын засвар хадгалагдлаа.");
+}
+
+// ───────── PROMPT 27: үйлчилгээнд олгох (MANAGER, ADMIN) ─────────
+
+export async function issueForServiceAction(input: z.input<typeof issueSchema>) {
+  return runAction(async () => {
+    const user = await requirePermission("stock:issue");
+    const r = await issueForService(parseInput(issueSchema, input), user.id);
+    refresh(input.variantId);
+    revalidatePath("/admin/inventory");
+    revalidatePath("/admin/calendar");
+    return r;
+  }, "Үйлчилгээнд олголоо — үлдэгдлээс хасагдлаа.");
+}
+
+/** «Орсон» цагт санал болгох материал (норм − олгосон) */
+export async function serviceUseSuggestionsAction(appointmentId: string) {
+  return runAction(async () => {
+    await requirePermission("stock:issue");
+    return suggestionsForAppointment(String(appointmentId));
+  });
 }

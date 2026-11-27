@@ -49,4 +49,4 @@ export type CalColumn = {
   timeOff: { start: string; end: string; reason: string }[];
 };
 
-export type CalPerms = { canWrite: boolean; canStatus: boolean; canDoneManual: boolean; canPos: boolean; canInvite?: boolean; canSchedule?: boolean };
+export type CalPerms = { canWrite: boolean; canStatus: boolean; canDoneManual: boolean; canPos: boolean; canInvite?: boolean; canSchedule?: boolean; /** PROMPT 27: үйлчилгээнд бүтээгдэхүүн олгох */ canIssue?: boolean };

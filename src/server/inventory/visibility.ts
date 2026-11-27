@@ -38,6 +38,9 @@ export function stockMovementSelect(role: Role) {
     unitCost: inventoryAccess(role).canSeeCost,
     createdBy: { select: { name: true } },
     sale: { select: { number: true } },
+    // PROMPT 27: үйлчилгээнд олгосон — аль үйлчилгээ, гоо сайханч
+    service: { select: { name: true } },
+    staff: { select: { name: true } },
   } as const;
 }
 
