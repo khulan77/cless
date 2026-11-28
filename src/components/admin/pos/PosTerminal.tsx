@@ -23,7 +23,7 @@ import { apptOpenPos } from "@/server/actions/appointments";
 import type { DraftData } from "@/server/modules/sales/drafts";
 import { exceedsDiscountLimit, priceSale, type DiscountInput } from "@/server/modules/sales/pricing";
 import { CustomerPicker, type PickedCustomer } from "@/components/admin/customers/CustomerPicker";
-import { PaymentPanel, type PaymentRow, type PaymentSale } from "./PaymentPanel";
+import { PaymentPanel, type PaymentRow, type PaymentSale, type QPayAccountOption } from "./PaymentPanel";
 
 const s = t.admin.pos;
 const APPROVAL_REQUIRED = "DISCOUNT_APPROVAL_REQUIRED";
@@ -62,6 +62,9 @@ const SHOW_VISIT_SECTION = false;
 export function PosTerminal({
   staff,
   qpayMode,
+  qpayAccounts,
+  qpayAccountLabels,
+  defaultQpayAccount,
   shiftOpen,
   canTransfer,
   maxDiscountPercent,
@@ -76,6 +79,10 @@ export function PosTerminal({
   /** "Зарсан" сонголтод — кассчин (одоогийн хэрэглэгч) */
   cashier: { id: string; name: string };
   qpayMode: "api" | "manual";
+  /** PROMPT 29: сонгож болох QPay данс (0–2) */
+  qpayAccounts: QPayAccountOption[];
+  qpayAccountLabels: Record<"A" | "B", string>;
+  defaultQpayAccount: "A" | "B" | null;
   shiftOpen: boolean;
   canTransfer: boolean;
   maxDiscountPercent: number;
@@ -705,6 +712,9 @@ export function PosTerminal({
             sale={payment.sale}
             payments={payment.payments}
             qpayMode={qpayMode}
+            qpayAccounts={qpayAccounts}
+            qpayAccountLabels={qpayAccountLabels}
+            defaultQpayAccount={defaultQpayAccount}
             shiftOpen={shiftOpen}
             canTransfer={canTransfer}
             onDone={() => void newSale()}

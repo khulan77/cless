@@ -8,6 +8,8 @@ import { saleStatusTone } from "@/lib/sale-status";
 import { can } from "@/server/auth/permissions";
 import { requirePagePermission } from "@/server/auth/session";
 import { getSaleDetail } from "@/server/modules/sales/queries";
+import { payLabel } from "@/lib/pay-label";
+import { getQPaySettings } from "@/server/modules/settings/pos-settings";
 import { concernNames } from "@/server/modules/visits/service";
 import { VisitSummary } from "@/components/admin/visits/VisitSummary";
 import { ubDateKey } from "@/lib/time";
@@ -22,7 +24,9 @@ const dt = (d: Date) => d.toLocaleString("en-GB", { timeZone: "Asia/Ulaanbaatar"
 export default async function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requirePagePermission("sale:read");
   const { id } = await params;
-  const sale = await getSaleDetail(id);
+  const [sale, qpay] = await Promise.all([getSaleDetail(id), getQPaySettings()]);
+  // PROMPT 29: "QPay · Компанийн данс"
+  const qpayLabels = { A: qpay.accounts.A.label, B: qpay.accounts.B.label };
   if (!sale) notFound();
 
   const concerns = sale.visit ? await concernNames(sale.visit.concerns) : [];
@@ -111,7 +115,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
                 {sale.payments.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span>
-                      {t.admin.payMethod[p.method]}
+                      {payLabel(p.method, p.qpayAccount, qpayLabels, " · ")}
                       <span className="ml-2 text-[13px] text-ink-soft">
                         {p.approvalCode ?? p.externalRef ?? p.transactions[0]?.providerInvoiceId ?? ""}
                         {p.tendered ? ` · өгсөн ${formatMNT(p.tendered)}, хариулт ${formatMNT(p.change ?? 0)}` : ""}

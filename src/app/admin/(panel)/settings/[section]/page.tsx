@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { EmailSettingsForm, PosSettingsForm, QPayModeForm, SalonForm, ShopModeForm } from "@/components/admin/settings/SettingsForms";
+import { EmailSettingsForm, PosSettingsForm, QPayAccountsForm, QPayModeForm, SalonForm, ShopModeForm } from "@/components/admin/settings/SettingsForms";
 import { AccountantEmailsForm } from "@/components/admin/accountant/AccountantEmailsForm";
 import { Badge, Card, PageHeader, Table, tdClass, thClass } from "@/components/admin/ui";
 import { formatMNT } from "@/lib/money";
@@ -8,7 +8,7 @@ import { t } from "@/i18n";
 import { formatDateTime } from "@/lib/time";
 import { requirePagePermission } from "@/server/auth/session";
 import { db } from "@/server/db";
-import { QPAY_TOKEN_HEARTBEAT, effectiveQPayMode, qpayEnvConfigured } from "@/server/modules/payments/providers/qpay";
+import { QPAY_ACCOUNTS, effectiveQPayMode, qpayAccountConfigured, qpayEnvConfigured, qpayTokenHeartbeat } from "@/server/modules/payments/providers/qpay";
 import { getSalonSettings, getShopMode } from "@/server/modules/settings/admin-settings";
 import { CHECKOUT_AVAILABLE } from "@/server/modules/settings/schema";
 import { getEmailSettings, getPosSettings, getQPaySettings } from "@/server/modules/settings/pos-settings";
@@ -89,14 +89,28 @@ export default async function SettingsSectionPage({ params }: { params: Promise<
       </div>
     );
   } else {
-    const [q, token] = await Promise.all([getQPaySettings(), db.workerHeartbeat.findUnique({ where: { id: QPAY_TOKEN_HEARTBEAT } })]);
+    const [q, tokens] = await Promise.all([
+      getQPaySettings(),
+      db.workerHeartbeat.findMany({ where: { id: { in: QPAY_ACCOUNTS.map(qpayTokenHeartbeat) } } }),
+    ]);
     body = (
       <div className="space-y-5">
         <QPayModeForm mode={q.mode} apiAvailable={qpayEnvConfigured()} />
         <div className="rounded-xl bg-canvas px-4 py-3 text-[14px] text-ink-soft">
           <p>{s.qpayEffective(effectiveQPayMode(q.mode) === "api" ? "Автомат" : "Гараар")}</p>
-          <p>{token ? s.qpayLastToken(formatDateTime(token.lastRunAt)) : s.qpayNeverToken}</p>
+          {QPAY_ACCOUNTS.map((a) => {
+            const token = tokens.find((x) => x.id === qpayTokenHeartbeat(a));
+            return (
+              <p key={a}>
+                {q.accounts[a].label}: {token ? s.qpayLastToken(formatDateTime(token.lastRunAt)) : s.qpayNeverToken}
+              </p>
+            );
+          })}
         </div>
+        <QPayAccountsForm
+          defaultAccount={q.defaultAccount}
+          accounts={QPAY_ACCOUNTS.map((a) => ({ key: a, label: q.accounts[a].label, enabled: q.accounts[a].enabled, configured: qpayAccountConfigured(a) }))}
+        />
       </div>
     );
   }

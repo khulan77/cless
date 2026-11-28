@@ -6,6 +6,8 @@
 import { Prisma, type PayMethod } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 import { getCurrentBranch } from "@/server/modules/branches/service";
+import { payLabel } from "@/lib/pay-label";
+import { getQPaySettings } from "@/server/modules/settings/pos-settings";
 import { REPORT_SALE_STATUSES, daysOf, rangeBounds, type ReportRange } from "./definitions";
 
 export type SaleChannelKey = "POS" | "ONLINE";
@@ -61,7 +63,8 @@ export type Report = {
   byService: BreakdownRow[];
   byStaff: StaffRow[];
   byProduct: BreakdownRow[];
-  payments: { method: PayMethod; amount: number }[];
+  /** PROMPT 29: QPay — дансаар задална (account A/B, бусад хэлбэрт байхгүй) */
+  payments: { method: PayMethod; account?: "A" | "B"; label: string; amount: number }[];
   /** PROMPT 27: Касс (POS) / Онлайн (сайт) — буцаалт хассан орлого, борлуулалтын тоо */
   byChannel: { channel: SaleChannelKey; amount: number; service: number; product: number; sales: number }[];
 };
@@ -71,7 +74,7 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
   const { start, end } = rangeBounds(range);
   const saleWhere = { branchId: branch.id, status: { in: [...REPORT_SALE_STATUSES] }, paidAt: { gte: start, lt: end } } satisfies Prisma.SaleWhereInput;
 
-  const [rows, sales, refunds, payments, refundsByMethod, pending, appts, channelSales, course] = await Promise.all([
+  const [rows, sales, refunds, payments, refundsByMethod, qpaySettings, pending, appts, channelSales, course] = await Promise.all([
     db.$queryRaw<LineRow[]>(Prisma.sql`
       WITH s AS (
         SELECT sa."id", sa."paidAt",
@@ -109,8 +112,21 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
     `),
     db.sale.count({ where: saleWhere }),
     db.refund.aggregate({ where: { status: "COMPLETED", sale: saleWhere }, _count: true, _sum: { amount: true } }),
-    db.payment.groupBy({ by: ["method"], where: { status: "SUCCEEDED", sale: saleWhere }, _sum: { amount: true } }),
-    db.refund.groupBy({ by: ["method"], where: { status: "COMPLETED", sale: saleWhere }, _sum: { amount: true } }),
+    db.payment.groupBy({ by: ["method", "qpayAccount"], where: { status: "SUCCEEDED", sale: saleWhere }, _sum: { amount: true } }),
+    // Буцаалт (данс заагаагүй) — QPay буцаалтыг тухайн борлуулалтын QPay төлбөрийн дансанд
+    db.$queryRaw<{ method: PayMethod; account: "A" | "B" | null; amount: number }[]>(Prisma.sql`
+      SELECT rf."method", CASE WHEN rf."method"::text = 'QPAY' THEN COALESCE((
+          SELECT p."qpayAccount"::text FROM "Payment" p
+          WHERE p."saleId" = rf."saleId" AND p."method"::text = 'QPAY' AND p."status"::text = 'SUCCEEDED'
+          ORDER BY p."createdAt" LIMIT 1), 'A') END AS account,
+        SUM(rf."amount")::int AS amount
+      FROM "Refund" rf JOIN "Sale" sa ON sa."id" = rf."saleId"
+      WHERE rf."status"::text = 'COMPLETED' AND sa."branchId" = ${branch.id}
+        AND sa."status"::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
+        AND sa."paidAt" >= ${start} AND sa."paidAt" < ${end}
+      GROUP BY 1, 2
+    `),
+    getQPaySettings(),
     db.sale.aggregate({
       where: { branchId: branch.id, status: "PARTIALLY_PAID", createdAt: { gte: start, lt: end } },
       _count: true,
@@ -211,9 +227,17 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
     withMargin ? { ...x, margin: x.amount > 0 ? Math.round(((x.amount - cost) / x.amount) * 1000) / 10 : null } : x;
 
   // ── Payment methods (net of refunds by method) ──
-  const methods = new Map<PayMethod, number>();
-  for (const p of payments) methods.set(p.method, (methods.get(p.method) ?? 0) + (p._sum.amount ?? 0));
-  for (const r of refundsByMethod) methods.set(r.method, (methods.get(r.method) ?? 0) - (r._sum.amount ?? 0));
+  const methods = new Map<string, { method: PayMethod; account?: "A" | "B"; amount: number }>();
+  const bump = (method: PayMethod, acct: "A" | "B" | null, amount: number) => {
+    const account = method === "QPAY" ? (acct ?? "A") : undefined;
+    const k = `${method}:${account ?? ""}`;
+    const x = methods.get(k) ?? { method, ...(account ? { account } : {}), amount: 0 };
+    x.amount += amount;
+    methods.set(k, x);
+  };
+  for (const p of payments) bump(p.method, p.qpayAccount, p._sum.amount ?? 0);
+  for (const r of refundsByMethod) bump(r.method, r.account, -r.amount);
+  const qpayLabels = { A: qpaySettings.accounts.A.label, B: qpaySettings.accounts.B.label };
 
   return {
     range,
@@ -226,7 +250,10 @@ export async function loadReport(range: ReportRange, opts: { canCost: boolean })
       name: s.key === "none" ? null : (users.find((u) => u.id === s.key)?.name ?? null),
       services: sorted(m.values()).map((x) => strip(x, false)),
     })),
-    payments: [...methods.entries()].map(([method, amount]) => ({ method, amount })).filter((p) => p.amount !== 0).sort((a, b) => b.amount - a.amount),
+    payments: [...methods.values()]
+      .map((p) => ({ ...p, label: payLabel(p.method, p.account, qpayLabels) }))
+      .filter((p) => p.amount !== 0)
+      .sort((a, b) => b.amount - a.amount),
     byChannel: (["POS", "ONLINE"] as const).map((channel) => {
       const mine = rows.filter((r) => r.channel === channel);
       const service = mine.filter((r) => r.kind === "SERVICE").reduce((s, r) => s + r.amount, 0);

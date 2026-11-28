@@ -168,7 +168,7 @@ Vercel дээр зөвхөн вэб апп ажиллана. Worker (имэйл,
 | `CRON_SECRET` | ✓ (Vercel) | Vercel Cron-ийн нууц (`openssl rand -hex 32`, 16+ тэмдэгт). `vercel.json`-ий cron өдөр бүр 23:50 (УБ, `50 15 * * *` UTC) `/api/cron/attendance`-ийг `Authorization: Bearer <CRON_SECRET>`-ээр дуудна: «Явлаа» дараагүй ирцийг хаах, 90 хоногоос хуучин байршил устгах. Vercel → Settings → Environment Variables (Production) — нэмээгүй бол cron 401 буцаана |
 | `DB_POOL_MAX` | | Нэг instance-ийн pg холболт. Default 3 (Vercel) |
 | `NEXT_IMAGE_UNOPTIMIZED` | | `1` — `/_next/image`-ийг алгасаж зургийг шууд өгнө (Hobby-ийн Image Optimization хязгаар дуусаж 402 өгвөл). Default зургууд, upload-ууд sharp-аар webp болсон тул чанар алдагдахгүй; зөвхөн дэлгэцийн өргөнөөр жижигрүүлсэн хувилбар (srcset) байхгүй болно. Build үед уншигдана — өөрчилбөл redeploy |
-| `QPAY_*` | | Зөвхөн CHECKOUT горимд |
+| `QPAY_*` | | QPay Merchant API (заавал биш — байхгүй бол касс «гараар» горимд). Нийтлэг: `QPAY_BASE_URL`, `QPAY_CALLBACK_SECRET` (32+). Хоёр данс (PROMPT 29): **A — компанийн** `QPAY_A_USERNAME`, `QPAY_A_PASSWORD`, `QPAY_A_INVOICE_CODE` (хуучин `QPAY_USERNAME`… → A), **B — захирлын** `QPAY_B_USERNAME`, `QPAY_B_PASSWORD`, `QPAY_B_INVOICE_CODE`. Дансны нэр, идэвхтэй эсэх, касс дээрх анхдагч — Тохиргоо → Төлбөр. B-гийн түлхүүргүй бол «Тохируулаагүй», сонгох боломжгүй. НӨАТ, eBarimt данснаас хамаарахгүй |
 
 **Build ба DB.** Build нь нүүр хуудас, layout-ийн кэштэй өгөгдлийг prerender хийхдээ DB уншина (Supabase-д хүрэх
 ёстой). `/products/[slug]`, `/collections/[slug]`, `/services/[slug]`-ийн жагсаалт DB-ээс уншигдахгүй бол build

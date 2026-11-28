@@ -229,12 +229,13 @@ async function succeededAmount(tx: Tx, saleId: string) {
 async function cancelOpenPayments(tx: Tx, saleId: string) {
   const open = await tx.payment.findMany({
     where: { saleId, status: { in: ["PENDING", "PROCESSING"] } },
-    select: { id: true, transactions: { select: { providerInvoiceId: true } } },
+    select: { id: true, qpayAccount: true, transactions: { select: { providerInvoiceId: true } } },
   });
   for (const p of open) {
     await tx.payment.update({ where: { id: p.id }, data: { status: "CANCELLED" } });
     for (const t of p.transactions) {
-      await enqueue(tx, { type: "QPAY_CANCEL_INVOICE", payload: { invoiceId: t.providerInvoiceId }, dedupeKey: `qpay-cancel:${t.providerInvoiceId}` });
+      // PROMPT 29: тухайн дансаар цуцлана
+      await enqueue(tx, { type: "QPAY_CANCEL_INVOICE", payload: { invoiceId: t.providerInvoiceId, account: p.qpayAccount ?? "A" }, dedupeKey: `qpay-cancel:${t.providerInvoiceId}` });
     }
   }
 }

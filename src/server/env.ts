@@ -58,11 +58,22 @@ export function checkEnv(env: Record<string, string | undefined>, target: EnvTar
     warn("WESEND_API_KEY", "Байхгүй — SMS, имэйл, код .emails/ хавтас руу файл болж бичигдэнэ.");
   }
 
-  // QPay: аль нэг нь тохируулагдсан бол бүгд заавал (хагас тохиргоо = API горим ажиллахгүй)
-  const qpaySet = QPAY_KEYS.filter(set);
-  if (qpaySet.length > 0 && qpaySet.length < QPAY_KEYS.length) {
-    for (const k of QPAY_KEYS) if (!set(k)) need(k, "QPay API горимд заавал (бусад QPAY_* тохируулагдсан).");
+  // QPay (PROMPT 29: A — компани, B — захирал): дансны аль нэг түлхүүр байвал тэр дансны бүх түлхүүр + нийтлэг
+  // QPAY_BASE_URL, QPAY_CALLBACK_SECRET заавал (хагас тохиргоо = API горим ажиллахгүй). A — хуучин QPAY_USERNAME… ч болно.
+  const needed = new Set<string>();
+  const QPAY_COMMON = ["QPAY_BASE_URL", "QPAY_CALLBACK_SECRET"] as const;
+  const CREDS = ["USERNAME", "PASSWORD", "INVOICE_CODE"] as const;
+  let anyAccount = false;
+  for (const acct of ["A", "B"] as const) {
+    const usesNew = CREDS.some((c) => set(`QPAY_${acct}_${c}`));
+    const name = (c: string) => (acct === "A" && !usesNew ? `QPAY_${c}` : `QPAY_${acct}_${c}`);
+    if (!CREDS.some((c) => set(name(c)))) continue;
+    anyAccount = true;
+    for (const c of CREDS) if (!set(name(c))) needed.add(name(c));
+    for (const k of QPAY_COMMON) if (!set(k)) needed.add(k);
   }
+  if (!anyAccount && QPAY_COMMON.some(set)) for (const k of QPAY_KEYS) if (!set(k)) needed.add(k);
+  for (const k of needed) need(k, "QPay API горимд заавал (бусад QPAY_* тохируулагдсан).");
   if (set("QPAY_BASE_URL") && !url(["https:"]).safeParse(env.QPAY_BASE_URL).success) need("QPAY_BASE_URL", "https:// байх ёстой.");
   if (set("QPAY_CALLBACK_SECRET") && env.QPAY_CALLBACK_SECRET!.length < 32) need("QPAY_CALLBACK_SECRET", "Хамгийн багадаа 32 тэмдэгт.");
 

@@ -225,9 +225,9 @@ export default async function ReportPage({ searchParams }: { searchParams: Sp })
           ) : (
             <ul className="space-y-3">
               {report.payments.map((x) => (
-                <li key={x.method}>
+                <li key={`${x.method}:${x.account ?? ""}`}>
                   <div className="flex justify-between gap-3 text-[15px]">
-                    <span>{t.admin.payMethod[x.method]}</span>
+                    <span>{x.label}</span>
                     <span className="tabular-nums">
                       {formatMNT(x.amount)} <span className="text-ink-soft">· {payTotal ? Math.round((x.amount / payTotal) * 100) : 0}%</span>
                     </span>

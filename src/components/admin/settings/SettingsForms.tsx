@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MoneyInput } from "@/components/admin/MoneyInput";
 import { useServerAction } from "@/components/admin/use-action";
-import { Button, Checkbox, Field, Input, Textarea } from "@/components/admin/ui";
+import { Badge, Button, Checkbox, Field, Input, Textarea } from "@/components/admin/ui";
 import { t } from "@/i18n";
-import { saveEmailSettingsAction, savePosSettingsAction, saveQPayModeAction, saveSalonAction, saveShopModeAction } from "@/server/actions/settings";
+import { saveEmailSettingsAction, savePosSettingsAction, saveQPayAccountsAction, saveQPayModeAction, saveSalonAction, saveShopModeAction } from "@/server/actions/settings";
 
 const s = t.admin.settingsPage;
 
@@ -190,6 +190,58 @@ export function ShopModeForm({ mode, checkoutAvailable }: { mode: "CATALOG" | "C
           );
         })}
       </fieldset>
+      <Button type="submit" disabled={a.pending}>
+        {s.save}
+      </Button>
+    </form>
+  );
+}
+
+/** PROMPT 29: хоёр QPay данс — харагдах нэр, идэвхтэй, касс дээрх анхдагч. Түлхүүр зөвхөн серверийн ENV-д. */
+export type QPayAccountRow = { key: "A" | "B"; label: string; enabled: boolean; configured: boolean };
+export function QPayAccountsForm({ accounts, defaultAccount }: { accounts: QPayAccountRow[]; defaultAccount: "A" | "B" }) {
+  const router = useRouter();
+  const [rows, setRows] = useState(accounts);
+  const [def, setDef] = useState(defaultAccount);
+  const a = useServerAction(saveQPayAccountsAction);
+  const set = (key: "A" | "B", patch: Partial<QPayAccountRow>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  const byKey = (k: "A" | "B") => rows.find((r) => r.key === k)!;
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const acc = (k: "A" | "B") => ({ label: byKey(k).label, enabled: byKey(k).enabled });
+        void a.run({ accounts: { A: acc("A"), B: acc("B") }, defaultAccount: def }, { onSuccess: () => router.refresh() });
+      }}
+    >
+      <p className="text-[13px] font-medium text-ink">QPay данс</p>
+      {rows.map((r) => {
+        // B — түлхүүргүй бол сонгох боломжгүй; A — гар горимд түлхүүргүй ч ажилладаг (терминал)
+        const locked = r.key === "B" && !r.configured;
+        return (
+          <div key={r.key} className="grid gap-3 rounded-xl border border-hairline p-4 md:grid-cols-[1fr_auto_auto] md:items-end">
+            <Field label={`Данс ${r.key} — харагдах нэр`} htmlFor={`qpay-${r.key}-label`} error={a.fieldErrors?.[`accounts.${r.key}.label`]?.[0]}>
+              <Input id={`qpay-${r.key}-label`} value={r.label} maxLength={40} onChange={(e) => set(r.key, { label: e.target.value })} />
+            </Field>
+            <div className="flex items-center gap-2 pb-2">
+              {r.configured ? <Badge tone="green">Түлхүүртэй</Badge> : <Badge tone="amber">Тохируулаагүй</Badge>}
+            </div>
+            <div className="flex flex-col gap-1.5 pb-2 text-[14px]">
+              <label className={`flex items-center gap-2 ${locked ? "text-ink-faint" : ""}`}>
+                <input type="checkbox" className="accent-navy" checked={r.enabled && !locked} disabled={locked} onChange={(e) => set(r.key, { enabled: e.target.checked })} />
+                Идэвхтэй
+              </label>
+              <label className={`flex items-center gap-2 ${!r.enabled || locked ? "text-ink-faint" : ""}`}>
+                <input type="radio" name="qpay-default" className="accent-navy" checked={def === r.key} disabled={!r.enabled || locked} onChange={() => setDef(r.key)} />
+                Касс дээр анхдагч
+              </label>
+            </div>
+            {locked && <p className="text-[13px] text-warn md:col-span-3">QPAY_B_USERNAME, QPAY_B_PASSWORD, QPAY_B_INVOICE_CODE серверт тохируулсны дараа сонгох боломжтой.</p>}
+          </div>
+        );
+      })}
+      <p className="text-[13px] text-ink-soft">Данс нь зөвхөн мөнгө хүлээн авах газар — НӨАТ, eBarimt данснаас хамаарахгүй, борлуулалт бүр нэг системд бүртгэгдэнэ.</p>
       <Button type="submit" disabled={a.pending}>
         {s.save}
       </Button>

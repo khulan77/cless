@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/admin/sales/SaleActions";
-import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { requirePagePermission } from "@/server/auth/session";
 import { getSaleDetail } from "@/server/modules/sales/queries";
+import { payLabel } from "@/lib/pay-label";
+import { getQPaySettings } from "@/server/modules/settings/pos-settings";
 
 export const metadata = { title: "Баримт" };
 export const instant = false;
@@ -12,7 +13,9 @@ export const instant = false;
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePagePermission("sale:read");
   const { id } = await params;
-  const sale = await getSaleDetail(id);
+  const [sale, qpay] = await Promise.all([getSaleDetail(id), getQPaySettings()]);
+  // PROMPT 29: "QPay · Компанийн данс"
+  const qpayLabels = { A: qpay.accounts.A.label, B: qpay.accounts.B.label };
   if (!sale || !sale.number) notFound();
   const paid = sale.payments.filter((p) => p.status === "SUCCEEDED");
   const change = paid.reduce((s, p) => s + (p.change ?? 0), 0);
@@ -61,7 +64,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         </p>
         {paid.map((p) => (
           <p key={p.id} className="flex justify-between">
-            <span>{t.admin.payMethod[p.method]}</span>
+            <span>{payLabel(p.method, p.qpayAccount, qpayLabels, " · ")}</span>
             <span>{formatMNT(p.tendered ?? p.amount)}</span>
           </p>
         ))}

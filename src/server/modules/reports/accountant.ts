@@ -70,7 +70,7 @@ export type DailySummary = {
   discounts: number;
   refunds: number;
   refundCount: number;
-  payments: { method: PayMethod; amount: number }[];
+  payments: { method: PayMethod; label?: string; amount: number }[];
   /** Тухайн өдөр хаагдсан ээлжүүдийн зөрүүний нийлбэр (null = хаагдсан ээлж алга) */
   cashDifference: number | null;
   closedShifts: number;
@@ -170,7 +170,7 @@ export function summaryLines(s: DailySummary): [string, number | string][] {
     [A.lineSales, `${s.sales}`],
     [A.lineDiscounts, s.discounts],
     [A.lineRefunds(s.refundCount), s.refunds],
-    ...s.payments.map((p) => [A.linePayment(PAY[p.method] ?? p.method), p.amount] as [string, number]),
+    ...s.payments.map((p) => [A.linePayment(p.label ?? PAY[p.method] ?? p.method), p.amount] as [string, number]),
     [A.lineCashDiff, s.cashDifference === null ? A.noClosedShift : s.cashDifference],
   ];
 }

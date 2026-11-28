@@ -4,7 +4,7 @@ import { Card, PageHeader, btnClass } from "@/components/admin/ui";
 import { t } from "@/i18n";
 import { formatMNT } from "@/lib/money";
 import { requireFinancePage } from "@/server/modules/finance/access";
-import { CASH_METHODS, dailyCash } from "@/server/modules/finance/daily-cash";
+import { dailyCash } from "@/server/modules/finance/daily-cash";
 import { loadReport } from "@/server/modules/reports/queries";
 import { balanceSheet, cashFlow, compare, financeRange, previousFinanceRange, profitAndLoss, vatReport } from "@/server/modules/finance/reports";
 
@@ -168,8 +168,8 @@ async function Cash({ range }: { range: { from: string; to: string } }) {
               <td className="py-2.5 pl-4 text-right tabular-nums">{money(cf.opening?.bank)}</td>
             </tr>
             {cf.inflows.map((i) => (
-              <tr key={i.method} className="border-b border-hairline">
-                <td className="py-2.5 pl-6">+ {PAY[i.method] ?? i.method}</td>
+              <tr key={`${i.method}:${i.account ?? ""}`} className="border-b border-hairline">
+                <td className="py-2.5 pl-6">+ {i.label}</td>
                 <td className="py-2.5 text-right tabular-nums">{i.method === "CASH" ? money(i.amount) : ""}</td>
                 <td className="py-2.5 pl-4 text-right tabular-nums">{i.method === "CASH" ? "" : money(i.amount)}</td>
               </tr>
@@ -209,8 +209,8 @@ async function Cash({ range }: { range: { from: string; to: string } }) {
               <tr className="border-b border-hairline">
                 <th className="py-2 text-left font-medium">Огноо</th>
                 <th className="py-2 text-left font-medium">Бүртгэсэн</th>
-                {CASH_METHODS.map((m) => (
-                  <th key={m} className="py-2 text-right font-medium">{PAY[m] ?? m}</th>
+                {daily.columns.map((c) => (
+                  <th key={c.key} className="py-2 text-right font-medium">{c.label}</th>
                 ))}
                 <th className="py-2 text-right font-medium">Нийт</th>
               </tr>
@@ -220,7 +220,7 @@ async function Cash({ range }: { range: { from: string; to: string } }) {
                 <tr key={`${r.day}${r.userId}`} className="border-b border-hairline">
                   <td className="py-2 tabular-nums">{r.day}</td>
                   <td className="py-2">{r.name}</td>
-                  {CASH_METHODS.map((m) => (
+                  {daily.columns.map(({ key: m }) => (
                     <td key={m} className="py-2 text-right tabular-nums">{r.byMethod[m] ? money(r.byMethod[m]) : "—"}</td>
                   ))}
                   <td className="py-2 text-right font-medium tabular-nums">{money(r.net)}</td>

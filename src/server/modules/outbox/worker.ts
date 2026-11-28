@@ -61,7 +61,9 @@ export const handlers: Partial<Record<OutboxJob["type"], Handler>> = {
   },
   QPAY_CANCEL_INVOICE: {
     run: async (job) => {
-      await getQPayProvider().cancelInvoice(payload(job).invoiceId!);
+      // PROMPT 29: payload.account — A / B (хуучин ажил — A)
+      const acct = payload(job).account === "B" ? "B" : "A";
+      await getQPayProvider(acct).cancelInvoice(payload(job).invoiceId!);
     },
   },
 };

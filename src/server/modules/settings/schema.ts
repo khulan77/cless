@@ -36,8 +36,19 @@ export const taxSettingsSchema = z.object({
   vatRateBp: z.number().int().min(0).max(5000).catch(1000),
 });
 
+/** PROMPT 29: данс бүрийн харагдах нэр, идэвхтэй эсэх (нууц биш — түлхүүр ENV-д) */
+const qpayAccountSettings = (label: string, enabled: boolean) =>
+  z
+    .object({ label: z.string().trim().min(1).max(40).catch(label), enabled: z.boolean().catch(enabled) })
+    .catch({ label, enabled });
+
 export const qpaySettingsSchema = z.object({
   mode: z.enum(["api", "manual"]).catch("manual"),
+  accounts: z
+    .object({ A: qpayAccountSettings("Компанийн данс", true), B: qpayAccountSettings("Захирлын данс", false) })
+    .catch({ A: { label: "Компанийн данс", enabled: true }, B: { label: "Захирлын данс", enabled: false } }),
+  /** Касс дээрх анхдагч данс, сайтын (онлайн) QPay */
+  defaultAccount: z.enum(["A", "B"]).catch("A"),
 });
 
 const hm = z.string().regex(/^([01]\d|2[0-4]):[0-5]\d$/);

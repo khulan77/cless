@@ -13,6 +13,8 @@ import {
   saveEmailSettings,
   savePosSettings,
   saveQPayMode,
+  saveQPayAccounts,
+  qpayAccountsFormSchema,
   saveSalonSettings,
   saveShopMode,
   type SalonInput,
@@ -79,6 +81,15 @@ export async function saveEmailSettingsAction(input: Parameters<typeof saveEmail
     await saveEmailSettings(input, user.id);
     revalidatePath("/admin/settings");
   }, "Имэйлийн тохиргоо хадгалагдлаа.");
+}
+
+export async function saveQPayAccountsAction(input: z.input<typeof qpayAccountsFormSchema>) {
+  return runAction(async () => {
+    const user = await requirePermission("integration:write");
+    await saveQPayAccounts(parseInput(qpayAccountsFormSchema, input), user.id);
+    revalidatePath("/admin/settings");
+    revalidatePath("/admin/pos");
+  }, "QPay данс хадгалагдлаа.");
 }
 
 export async function saveQPayModeAction(mode: "manual" | "api") {

@@ -17,7 +17,8 @@ const p = t.admin.payment;
 type Method = "CASH" | "CARD" | "QPAY" | "TRANSFER";
 
 export type PaymentSale = { id: string; number: string; total: number; paidAmount: number; status: string };
-export type PaymentRow = { id: string; method: string; amount: number; status: string; change: number | null; reviewReason: string | null };
+export type PaymentRow = { id: string; method: string; amount: number; status: string; change: number | null; reviewReason: string | null; qpayAccount?: "A" | "B" | null };
+export type QPayAccountOption = { key: "A" | "B"; label: string };
 
 const newKey = () => crypto.randomUUID();
 
@@ -25,6 +26,9 @@ export function PaymentPanel({
   sale: initial,
   payments: initialPayments,
   qpayMode,
+  qpayAccounts,
+  qpayAccountLabels,
+  defaultQpayAccount,
   shiftOpen,
   canTransfer,
   onDone,
@@ -33,6 +37,9 @@ export function PaymentPanel({
   sale: PaymentSale;
   payments: PaymentRow[];
   qpayMode: "api" | "manual";
+  qpayAccounts: QPayAccountOption[];
+  qpayAccountLabels: Record<"A" | "B", string>;
+  defaultQpayAccount: "A" | "B" | null;
   shiftOpen: boolean;
   canTransfer: boolean;
   /** Start a new sale */
@@ -49,6 +56,8 @@ export function PaymentPanel({
   const [approvalCode, setApprovalCode] = useState("");
   const [cardLast4, setCardLast4] = useState("");
   const [ref, setRef] = useState("");
+  // PROMPT 29: QPay данс — хувааж төлөхөд хэсэг бүр өөр данс байж болно
+  const [qpayAccount, setQpayAccount] = useState<"A" | "B" | null>(defaultQpayAccount);
   const [qr, setQr] = useState<(NonNullable<PaymentView["qpay"]> & { paymentId: string }) | null>(null);
   const [lastChange, setLastChange] = useState<number | null>(null);
   const keyRef = useRef(newKey());
@@ -106,7 +115,7 @@ export function PaymentPanel({
           ? { ...base, method, approvalCode, cardLast4: cardLast4 || null }
           : method === "TRANSFER"
             ? { ...base, method, externalRef: ref }
-            : { ...base, method, externalRef: qpayMode === "manual" ? ref : null };
+            : { ...base, method, externalRef: qpayMode === "manual" ? ref : null, qpayAccount };
     const res = await pay.run(input);
     if (!res.ok) {
       // Validation errors may be retried with the same key; anything else gets a fresh key
@@ -265,6 +274,24 @@ export function PaymentPanel({
               </Field>
             </div>
           )}
+          {method === "QPAY" && qpayAccounts.length === 0 && <p className="text-[14px] text-danger">QPay данс идэвхгүй эсвэл тохируулаагүй байна (Тохиргоо → Төлбөр).</p>}
+          {method === "QPAY" && qpayAccounts.length > 1 && (
+            <div role="radiogroup" aria-label="QPay данс" className="grid grid-cols-2 gap-2">
+              {qpayAccounts.map((a) => (
+                <button
+                  key={a.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={qpayAccount === a.key}
+                  onClick={() => setQpayAccount(a.key)}
+                  className={`min-h-14 rounded-xl border px-3 py-3 text-[15px] font-medium transition-colors ${qpayAccount === a.key ? "border-navy bg-navy text-white" : "border-hairline bg-white hover:border-ink/30"}`}
+                >
+                  {qpayMode === "manual" ? `QPay (${a.label}) — гараар` : `QPay · ${a.label}`}
+                </button>
+              ))}
+            </div>
+          )}
+          {method === "QPAY" && qpayAccounts.length === 1 && <p className="text-[14px] text-ink-soft">{qpayMode === "manual" ? `QPay (${qpayAccounts[0]!.label}) — гараар` : `QPay · ${qpayAccounts[0]!.label}`}</p>}
           {method === "QPAY" && qpayMode === "manual" && (
             <Field label={p.qpayRef} hint={p.qpayManualHint} htmlFor="pay-ref" error={pay.fieldErrors.externalRef}>
               <Input id="pay-ref" value={ref} onChange={(e) => setRef(e.target.value)} autoComplete="off" />
@@ -276,7 +303,7 @@ export function PaymentPanel({
             </Field>
           )}
 
-          <Button type="submit" className="w-full" disabled={busy || !(amount > 0) || (method === "CASH" && !shiftOpen)}>
+          <Button type="submit" className="w-full" disabled={busy || !(amount > 0) || (method === "CASH" && !shiftOpen) || (method === "QPAY" && (!qpayAccount || !qpayAccounts.some((a) => a.key === qpayAccount)))}>
             {method === "QPAY" && qpayMode === "api" ? p.createQr : p.pay}
           </Button>
         </form>
@@ -288,7 +315,10 @@ export function PaymentPanel({
           <ul className="divide-y divide-hairline rounded-xl border border-hairline text-[13px]">
             {payments.map((x) => (
               <li key={x.id} className="flex items-center justify-between gap-2 px-3 py-2">
-                <span>{t.admin.payMethod[x.method as keyof typeof t.admin.payMethod] ?? x.method}</span>
+                <span>
+                  {t.admin.payMethod[x.method as keyof typeof t.admin.payMethod] ?? x.method}
+                  {x.method === "QPAY" && ` · ${qpayAccountLabels[x.qpayAccount ?? "A"]}`}
+                </span>
                 <span className="flex items-center gap-2">
                   {x.reviewReason && <Badge tone="amber">{p.review}</Badge>}
                   <Badge tone={x.status === "SUCCEEDED" ? "green" : x.status === "PROCESSING" ? "amber" : "neutral"}>

@@ -10,8 +10,8 @@ import { audit } from "@/server/audit";
 import { db } from "@/server/db";
 import { UserError } from "@/server/errors";
 import { getCurrentBranch } from "@/server/modules/branches/service";
-import { qpayEnvConfigured } from "@/server/modules/payments/providers/qpay";
-import { CHECKOUT_AVAILABLE, SHOP_MODES, emailSettingsSchema, posSettingsSchema, shopSettingsSchema, type ShopMode } from "./schema";
+import { qpayAccountConfigured, qpayEnvConfigured } from "@/server/modules/payments/providers/qpay";
+import { CHECKOUT_AVAILABLE, SHOP_MODES, emailSettingsSchema, posSettingsSchema, qpaySettingsSchema, shopSettingsSchema, type ShopMode } from "./schema";
 
 const optionalHttps = (host: RegExp, message: string) =>
   z
@@ -125,7 +125,29 @@ export async function saveQPayMode(mode: "manual" | "api", actorId: string) {
   if (m === "api" && !qpayEnvConfigured()) {
     throw new UserError("QPay API-ийн түлхүүрүүд (QPAY_*) серверт тохируулагдаагүй тул API горимыг сонгох боломжгүй.");
   }
-  await saveJsonSetting("qpay", { mode: m }, actorId, "settings.qpay");
+  // Дансны тохиргоог (PROMPT 29) хадгалж үлдээнэ
+  const row = await db.siteSetting.findUnique({ where: { key: "qpay" } });
+  await saveJsonSetting("qpay", qpaySettingsSchema.parse({ ...((row?.value as object) ?? {}), mode: m }), actorId, "settings.qpay");
+}
+
+/** PROMPT 29: QPay данс бүрийн харагдах нэр, идэвхтэй эсэх, касс дээрх анхдагч. Түлхүүр — зөвхөн ENV. */
+const accountForm = z.object({ label: z.string().trim().min(1, "Дансны нэрийг оруулна уу.").max(40), enabled: z.boolean() });
+export const qpayAccountsFormSchema = z.object({
+  accounts: z.object({ A: accountForm, B: accountForm }),
+  defaultAccount: z.enum(["A", "B"]),
+});
+
+export async function saveQPayAccounts(raw: z.input<typeof qpayAccountsFormSchema>, actorId: string) {
+  const d = qpayAccountsFormSchema.parse(raw);
+  const row = await db.siteSetting.findUnique({ where: { key: "qpay" } });
+  const current = qpaySettingsSchema.parse(row?.value ?? {});
+  // B-г түлхүүргүйгээр идэвхжүүлэхгүй; A — гар горимд түлхүүргүй ч ажилладаг (терминал)
+  if (d.accounts.B.enabled && !qpayAccountConfigured("B")) {
+    throw new UserError("Захирлын (B) дансны QPAY_B_* түлхүүр серверт тохируулагдаагүй тул идэвхжүүлэх боломжгүй.", { "accounts.B.enabled": ["Тохируулаагүй."] });
+  }
+  if (!d.accounts[d.defaultAccount].enabled) throw new UserError("Анхдагч данс идэвхтэй байх ёстой.", { defaultAccount: ["Идэвхгүй данс."] });
+  if (!d.accounts.A.enabled && !d.accounts.B.enabled) throw new UserError("Дор хаяж нэг данс идэвхтэй байх ёстой.");
+  await saveJsonSetting("qpay", qpaySettingsSchema.parse({ ...current, ...d }), actorId, "settings.qpay_accounts");
 }
 
 export async function getShopMode(): Promise<ShopMode> {
