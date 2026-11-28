@@ -14,7 +14,8 @@ import { enqueue } from "@/server/modules/outbox/service";
 import { applyPayment } from "@/server/modules/sales/finalize";
 import { getQPaySettings } from "@/server/modules/settings/pos-settings";
 import { SITE_URL } from "@/lib/site-url";
-import { callbackSecret, effectiveQPayMode, getQPayProvider } from "./providers/qpay";
+import { callbackSecret, effectiveQPayMode, getQPayProvider, qpayAccountConfigured, type QPayAccountKey } from "./providers/qpay";
+import { qpayAccountViews, resolveQPayAccount } from "./providers/qpay/accounts";
 import { signPaymentId } from "./providers/qpay/signature";
 import { QPAY_INVOICE_TTL_MS } from "./providers/qpay/types";
 
@@ -39,7 +40,13 @@ export const createPaymentSchema = z.discriminatedUnion("method", [
   }),
   z.object({ ...base, method: z.literal("TRANSFER"), externalRef: z.string().trim().min(2, "Гүйлгээний утгыг оруулна уу.").max(200) }),
   // QPay: externalRef байвал гараар (manual) баталгаажуулалт, үгүй бол API-аар invoice
-  z.object({ ...base, method: z.literal("QPAY"), externalRef: z.string().trim().min(2, "Гүйлгээний дугаарыг оруулна уу.").max(200).nullish() }),
+  // PROMPT 29: qpayAccount — A (компани) / B (захирал); сонгоогүй бол анхдагч данс
+  z.object({
+    ...base,
+    method: z.literal("QPAY"),
+    externalRef: z.string().trim().min(2, "Гүйлгээний дугаарыг оруулна уу.").max(200).nullish(),
+    qpayAccount: z.enum(["A", "B"]).nullish(),
+  }),
 ]);
 export type CreatePaymentInput = z.input<typeof createPaymentSchema>;
 
@@ -52,7 +59,7 @@ const METHOD_PERMISSION: Record<"CASH" | "CARD" | "QPAY" | "TRANSFER", Parameter
 
 type Deeplink = { name: string; link: string; logo?: string };
 export type PaymentView = {
-  payment: { id: string; method: PayMethod; amount: number; status: string; change: number | null; reviewReason: string | null };
+  payment: { id: string; method: PayMethod; amount: number; status: string; change: number | null; reviewReason: string | null; qpayAccount: QPayAccountKey | null };
   sale: { id: string; status: string; total: number; paidAmount: number };
   qpay?: { qrText: string; qrImage: string | null; deeplinks: Deeplink[]; expiresAt: string };
 };
@@ -67,7 +74,7 @@ async function view(client: Tx | typeof db, paymentId: string): Promise<PaymentV
   });
   const t = p.transactions[0];
   return {
-    payment: { id: p.id, method: p.method, amount: p.amount, status: p.status, change: p.change, reviewReason: p.reviewReason },
+    payment: { id: p.id, method: p.method, amount: p.amount, status: p.status, change: p.change, reviewReason: p.reviewReason, qpayAccount: p.qpayAccount },
     sale: p.sale,
     qpay: t
       ? { qrText: t.qrText ?? "", qrImage: t.qrImage, deeplinks: (t.deeplinks as Deeplink[] | null) ?? [], expiresAt: t.expiresAt.toISOString() }
@@ -84,9 +91,15 @@ async function remaining(tx: Tx, saleId: string, total: number) {
   return total - (ok._sum.amount ?? 0) - (open._sum.amount ?? 0);
 }
 
-export function callbackUrl(paymentId: string) {
-  return `${SITE_URL}/api/qpay/callback?pid=${encodeURIComponent(paymentId)}&sig=${signPaymentId(paymentId, callbackSecret())}`;
+/** Гарын үсэг нь pid + данс хоёуланг хамарна (acct-ийг солих боломжгүй) */
+export const callbackSignedValue = (paymentId: string, acct: QPayAccountKey) => `${paymentId}:${acct}`;
+
+export function callbackUrl(paymentId: string, acct: QPayAccountKey = "A") {
+  return `${SITE_URL}/api/qpay/callback?pid=${encodeURIComponent(paymentId)}&acct=${acct}&sig=${signPaymentId(callbackSignedValue(paymentId, acct), callbackSecret())}`;
 }
+
+/** Хуучин мөр (qpayAccount null) — A */
+const acctOf = (p: { qpayAccount: QPayAccountKey | null }): QPayAccountKey => p.qpayAccount ?? "A";
 
 /**
  * Төлбөр үүсгэх. Ижил idempotencyKey-ээр дахин ирвэл өмнөхийг буцаана.
@@ -104,9 +117,19 @@ export async function createPayment(raw: CreatePaymentInput, actor: Actor): Prom
     return view(db, existing.id);
   }
 
-  const qpayMode = input.method === "QPAY" ? effectiveQPayMode((await getQPaySettings()).mode) : null;
+  const qpaySettings = input.method === "QPAY" ? await getQPaySettings() : null;
+  const qpayMode = qpaySettings ? effectiveQPayMode(qpaySettings.mode) : null;
   const viaApi = input.method === "QPAY" && !input.externalRef;
   if (viaApi && qpayMode !== "api") throw new UserError("QPay API холбогдоогүй. Гүйлгээний дугаарыг гараар оруулна уу.");
+  // PROMPT 29: данс — идэвхтэй, түлхүүртэй (A гар горимд түлхүүргүй ч болно). API-д тухайн дансны түлхүүр заавал.
+  let qpayAccount: QPayAccountKey | null = null;
+  if (input.method === "QPAY" && qpaySettings && qpayMode) {
+    const views = qpayAccountViews(qpaySettings, qpayMode, (a) => qpayAccountConfigured(a));
+    qpayAccount = resolveQPayAccount(views, qpaySettings.defaultAccount, input.qpayAccount);
+    if (!qpayAccount || (viaApi && !qpayAccountConfigured(qpayAccount))) {
+      throw new UserError("Сонгосон QPay данс идэвхгүй эсвэл тохируулаагүй байна.", { qpayAccount: ["Тохируулаагүй данс."] });
+    }
+  }
 
   let paymentId: string;
   try {
@@ -125,11 +148,12 @@ export async function createPayment(raw: CreatePaymentInput, actor: Actor): Prom
         amount: input.amount,
         idempotencyKey: input.idempotencyKey,
         createdById: actor.id,
+        qpayAccount,
       };
 
       if (input.method === "QPAY" && viaApi) {
         const p = await tx.payment.create({ data: { ...common, status: "PENDING" } });
-        await audit(tx, { userId: actor.id, action: "payment.qpay_started", entity: "Payment", entityId: p.id, after: { amount: input.amount } });
+        await audit(tx, { userId: actor.id, action: "payment.qpay_started", entity: "Payment", entityId: p.id, after: { amount: input.amount, qpayAccount } });
         return p.id;
       }
 
@@ -157,7 +181,7 @@ export async function createPayment(raw: CreatePaymentInput, actor: Actor): Prom
         action: "payment.succeeded",
         entity: "Payment",
         entityId: p.id,
-        after: { saleId: input.saleId, method: input.method, amount: input.amount, manual: input.method === "QPAY" },
+        after: { saleId: input.saleId, method: input.method, amount: input.amount, manual: input.method === "QPAY", ...(qpayAccount ? { qpayAccount } : {}) },
       });
       await applyPayment(tx, input.saleId, actor.id);
       return p.id;
@@ -179,11 +203,11 @@ export async function createPayment(raw: CreatePaymentInput, actor: Actor): Prom
 async function startQPayInvoice(paymentId: string, actorId: string) {
   const p = await db.payment.findUniqueOrThrow({ where: { id: paymentId }, include: { sale: { select: { number: true } } } });
   try {
-    const invoice = await getQPayProvider().createInvoice({
+    const invoice = await getQPayProvider(acctOf(p)).createInvoice({
       paymentId,
       amount: p.amount,
       description: `${p.sale.number ?? "POS"} — ${p.amount}₮`,
-      callbackUrl: callbackUrl(paymentId),
+      callbackUrl: callbackUrl(paymentId, acctOf(p)),
     });
     await db.$transaction(async (tx) => {
       await tx.paymentTransaction.create({
@@ -221,7 +245,7 @@ export async function verifyQPayPayment(paymentId: string, actorId: string | nul
   const t = p.transactions[0];
   if (p.method !== "QPAY" || !t || p.status !== "PROCESSING") return view(db, paymentId);
 
-  const result = await getQPayProvider().checkPayment(t.providerInvoiceId); // transaction-ээс гадуур
+  const result = await getQPayProvider(acctOf(p)).checkPayment(t.providerInvoiceId); // transaction-ээс гадуур, тухайн дансаар
 
   let cancelInvoice = false;
   await db.$transaction(async (tx) => {
@@ -250,20 +274,20 @@ export async function verifyQPayPayment(paymentId: string, actorId: string | nul
     }
   }, TX_OPTS);
 
-  if (cancelInvoice) await getQPayProvider().cancelInvoice(t.providerInvoiceId).catch(() => undefined);
+  if (cancelInvoice) await getQPayProvider(acctOf(p)).cancelInvoice(t.providerInvoiceId).catch(() => undefined);
   return view(db, paymentId);
 }
 
 /** Хүлээгдэж буй QPay төлбөрийг менежер цуцлах (шинэ QR үүсгэхийн өмнө) */
 export async function cancelPayment(paymentId: string, actorId: string): Promise<PaymentView> {
   await db.$transaction(async (tx) => {
-    const rows = await tx.$queryRaw<{ status: string }[]>`SELECT "status"::text AS "status" FROM "Payment" WHERE "id" = ${paymentId} FOR UPDATE`;
+    const rows = await tx.$queryRaw<{ status: string; qpayAccount: QPayAccountKey | null }[]>`SELECT "status"::text AS "status", "qpayAccount"::text AS "qpayAccount" FROM "Payment" WHERE "id" = ${paymentId} FOR UPDATE`;
     if (!rows[0]) throw new UserError("Төлбөр олдсонгүй.");
     if (!["PENDING", "PROCESSING"].includes(rows[0].status)) throw new UserError("Зөвхөн хүлээгдэж буй төлбөрийг цуцална.");
     await tx.payment.update({ where: { id: paymentId }, data: { status: "CANCELLED" } });
     const txs = await tx.paymentTransaction.findMany({ where: { paymentId }, select: { providerInvoiceId: true } });
     for (const t of txs) {
-      await enqueue(tx, { type: "QPAY_CANCEL_INVOICE", payload: { invoiceId: t.providerInvoiceId }, dedupeKey: `qpay-cancel:${t.providerInvoiceId}` });
+      await enqueue(tx, { type: "QPAY_CANCEL_INVOICE", payload: { invoiceId: t.providerInvoiceId, account: rows[0].qpayAccount ?? "A" }, dedupeKey: `qpay-cancel:${t.providerInvoiceId}` });
     }
     await audit(tx, { userId: actorId, action: "payment.cancel", entity: "Payment", entityId: paymentId });
   });

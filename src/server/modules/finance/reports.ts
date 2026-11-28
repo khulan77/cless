@@ -27,7 +27,8 @@ import { toDbDate } from "@/server/modules/payroll/dates";
 import { change, dayCount, previousRange, rangeBounds, type ReportRange } from "@/server/modules/reports/definitions";
 import { getFinanceSettings } from "./settings";
 import { packageLiability } from "@/server/modules/packages/service";
-import { getTaxSettings } from "@/server/modules/settings/pos-settings";
+import { getQPaySettings, getTaxSettings } from "@/server/modules/settings/pos-settings";
+import { payLabel } from "@/lib/pay-label";
 
 // ───────────────────────── Хугацаа ─────────────────────────
 
@@ -211,7 +212,8 @@ const bucket = (m: PayMethod | null): "cash" | "bank" | "other" => (m && CASH.in
 export type CashFlowLine = { label: string; cash: number; bank: number };
 export type CashFlow = {
   range: ReportRange;
-  inflows: { method: PayMethod; amount: number }[];
+  /** PROMPT 29: QPay — дансаар («QPay — Компанийн данс» / «QPay — Захирлын данс») */
+  inflows: { method: PayMethod; account?: "A" | "B"; label: string; amount: number }[];
   nonCash: { method: PayMethod; amount: number }[];
   outflows: CashFlowLine[];
   totals: { inCash: number; inBank: number; outCash: number; outBank: number; netCash: number; netBank: number };
@@ -225,15 +227,28 @@ export type CashFlow = {
 async function flows(range: ReportRange) {
   const branch = await getCurrentBranch();
   const { start, end } = rangeBounds(range);
-  const [payments, refunds, expenses, payroll, movements, shifts] = await Promise.all([
-    db.payment.groupBy({ by: ["method"], where: { status: "SUCCEEDED", paidAt: { gte: start, lt: end }, sale: { branchId: branch.id } }, _sum: { amount: true } }),
+  const [payments, refunds, expenses, payroll, movements, shifts, qpay] = await Promise.all([
+    db.payment.groupBy({ by: ["method", "qpayAccount"], where: { status: "SUCCEEDED", paidAt: { gte: start, lt: end }, sale: { branchId: branch.id } }, _sum: { amount: true } }),
     db.refund.groupBy({ by: ["method"], where: { status: "COMPLETED", completedAt: { gte: start, lt: end }, sale: { branchId: branch.id } }, _sum: { amount: true } }),
     db.expense.groupBy({ by: ["paidVia"], where: { payrollPeriodId: null, date: { gte: toDbDate(range.from), lte: toDbDate(range.to) } }, _sum: { amount: true } }),
     db.payrollLine.aggregate({ where: { period: { status: "PAID", paidAt: { gte: start, lt: end } } }, _sum: { net: true } }),
     db.cashMovement.groupBy({ by: ["type"], where: { type: { in: ["PAY_IN", "PAY_OUT"] }, createdAt: { gte: start, lt: end }, shift: { branchId: branch.id } }, _sum: { amount: true } }),
     db.cashShift.findMany({ where: { branchId: branch.id, closedAt: { gte: start, lt: end } }, orderBy: { closedAt: "asc" }, select: { id: true, openedAt: true, closedAt: true, expectedCash: true, countedCash: true, difference: true } }),
+    getQPaySettings(),
   ]);
-  const inflows = payments.map((p) => ({ method: p.method, amount: p._sum.amount ?? 0 })).filter((p) => p.amount !== 0);
+  const labels = { A: qpay.accounts.A.label, B: qpay.accounts.B.label };
+  // QPay-ийн null (хуучин) ба A — нэг мөр
+  const byKey = new Map<string, { method: PayMethod; account?: "A" | "B"; label: string; amount: number }>();
+  for (const p of payments) {
+    const account = p.method === "QPAY" ? (p.qpayAccount ?? "A") : undefined;
+    const k = `${p.method}:${account ?? ""}`;
+    const x = byKey.get(k) ?? { method: p.method, ...(account ? { account } : {}), label: payLabel(p.method, account, labels), amount: 0 };
+    x.amount += p._sum.amount ?? 0;
+    byKey.set(k, x);
+  }
+  const inflows = [...byKey.values()]
+    .filter((p) => p.amount !== 0)
+    .sort((a, b) => a.label.localeCompare(b.label));
   const outflows: CashFlowLine[] = [];
   const line = (label: string) => {
     const l = { label, cash: 0, bank: 0 };

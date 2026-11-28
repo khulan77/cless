@@ -9,7 +9,8 @@ import { requirePagePermission } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { getCurrentBranch } from "@/server/modules/branches/service";
 import { getOpenShift } from "@/server/modules/cash-shifts/service";
-import { effectiveQPayMode } from "@/server/modules/payments/providers/qpay";
+import { effectiveQPayMode, qpayAccountConfigured } from "@/server/modules/payments/providers/qpay";
+import { defaultQPayAccount, qpayAccountViews } from "@/server/modules/payments/providers/qpay/accounts";
 import { draftDataSchema, latestDraftId, listDrafts, type DraftData } from "@/server/modules/sales/drafts";
 import { getPosSale, listServiceStaff, openPosSales } from "@/server/modules/sales/queries";
 import { getPosSettings, getQPaySettings, getTaxSettings } from "@/server/modules/settings/pos-settings";
@@ -89,6 +90,8 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
     targetId ? getPosSale(targetId) : null,
     can(user.role, "appointment:status") ? todayForPos() : Promise.resolve([]),
   ]);
+  // PROMPT 29: касс дээр сонгож болох QPay данс (идэвхтэй + түлхүүртэй; A — гар горимд түлхүүргүй ч болно)
+  const qpayViews = qpayAccountViews(qpay, effectiveQPayMode(qpay.mode), (a) => qpayAccountConfigured(a));
 
   let initial: PosInitial = { saleId: null, data: draftDataSchema.parse({}), payment: null };
   if (sale && sale.status === "DRAFT") {
@@ -100,7 +103,7 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
       data: await dataFromSale(sale),
       payment: {
         sale: { id: sale.id, number: sale.number ?? "", total: sale.total, paidAmount: sale.paidAmount, status: sale.status },
-        payments: sale.payments.map((p) => ({ id: p.id, method: p.method, amount: p.amount, status: p.status, change: p.change, reviewReason: p.reviewReason })),
+        payments: sale.payments.map((p) => ({ id: p.id, method: p.method, amount: p.amount, status: p.status, change: p.change, reviewReason: p.reviewReason, qpayAccount: p.qpayAccount })),
       },
     };
   }
@@ -157,6 +160,9 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
         staff={staff}
         cashier={{ id: user.id, name: user.name }}
         qpayMode={effectiveQPayMode(qpay.mode)}
+        qpayAccounts={qpayViews.filter((v) => v.selectable).map((v) => ({ key: v.key, label: v.label }))}
+        qpayAccountLabels={{ A: qpay.accounts.A.label, B: qpay.accounts.B.label }}
+        defaultQpayAccount={defaultQPayAccount(qpayViews, qpay.defaultAccount)}
         shiftOpen={!pos.cashShiftsEnabled || Boolean(shift)}
         canTransfer={can(user.role, "payment:transfer:confirm")}
         maxDiscountPercent={can(user.role, "discount:over-limit") ? 100 : pos.maxManagerDiscountPercent}

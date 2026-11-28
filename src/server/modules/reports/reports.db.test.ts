@@ -78,7 +78,7 @@ describe("reports", () => {
     expect(r.kpi).toMatchObject({ total: 150_000, service: 100_000, serviceOneTime: 100_000, serviceCourse: 0, product: 50_000, sales: 1, average: 150_000, serviceQty: 1, productQty: 1 });
     expect(r.kpi.service + r.kpi.product).toBe(r.kpi.total);
     expect(r.kpi.net).toBe(150_000 - 13_636);
-    expect(r.payments).toEqual([{ method: "CARD", amount: 90_000 }, { method: "CASH", amount: 60_000 }]);
+    expect(r.payments.map(({ method, amount }) => ({ method, amount }))).toEqual([{ method: "CARD", amount: 90_000 }, { method: "CASH", amount: 60_000 }]);
     expect(r.days.find((d) => d.day === "2026-11-10")).toEqual({ day: "2026-11-10", service: 100_000, product: 50_000 });
     expect(r.days).toHaveLength(30);
   });
@@ -91,7 +91,7 @@ describe("reports", () => {
     const r = await loadReport(NOV, { canCost: true });
     expect(r.kpi).toMatchObject({ total: 50_000, product: 50_000, productQty: 1, refunds: 50_000, refundCount: 1 });
     expect(r.byProduct[0]).toMatchObject({ name: "SÉRUM · 30 мл", qty: 1, amount: 50_000, margin: 60 });
-    expect(r.payments).toEqual([{ method: "CARD", amount: 50_000 }]);
+    expect(r.payments.map(({ method, amount }) => ({ method, amount }))).toEqual([{ method: "CARD", amount: 50_000 }]);
     // A requested (not completed) refund does not count
     await db.refund.create({ data: { saleId: s.id, amount: 50_000, reason: "т", status: "REQUESTED", method: "CARD", requestedById: admin.id, items: [{ saleItemId: s.items[0]!.id, qty: 1, amount: 50_000 }] } });
     expect((await loadReport(NOV, { canCost: true })).kpi.total).toBe(50_000);

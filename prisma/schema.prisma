@@ -98,6 +98,12 @@ enum PayMethod {
   MEMBERSHIP
 }
 
+/// PROMPT 29: QPay merchant данс — A (компани), B (захирал). Нууц ENV-д.
+enum QPayAccount {
+  A
+  B
+}
+
 enum PayStatus {
   PENDING
   PROCESSING
@@ -1078,6 +1084,8 @@ model Payment {
   externalRef    String?
   /// Дүн зөрсөн г.м. — админ шалгах шаардлагатай
   reviewReason   String?
+  /// PROMPT 29: QPay аль данс руу орсон (QPAY үед; хуучин мөр null = A)
+  qpayAccount    QPayAccount?
   createdById    String
   confirmedById  String?
   cashShiftId    String?

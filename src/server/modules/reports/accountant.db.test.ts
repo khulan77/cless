@@ -74,7 +74,7 @@ describe("Нягтланд илгээх (A11)", () => {
     expect(s.serviceCourse).toBe(0);
     expect(s.discounts).toBe(20_000);
     expect(s.refunds).toBe(d.refunded);
-    expect(s.payments).toEqual([{ method: "CARD", amount: d.total - d.refunded }]);
+    expect(s.payments.map(({ method, amount }) => ({ method, amount }))).toEqual([{ method: "CARD", amount: d.total - d.refunded }]);
     expect(s.cashDifference).toBe(-5_000);
     expect(s.closedShifts).toBe(1);
   });

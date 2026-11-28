@@ -8,7 +8,7 @@ import { fromDbDate, toDbDate } from "@/server/modules/payroll/dates";
 import type { LineDetails } from "@/server/modules/payroll/periods";
 import type { ReportRange } from "@/server/modules/reports/definitions";
 import { loadReport } from "@/server/modules/reports/queries";
-import { CASH_METHODS, dailyCash } from "./daily-cash";
+import { dailyCash } from "./daily-cash";
 import { listExpenses } from "./expenses";
 import { balanceSheet, cashFlow, profitAndLoss, vatReport } from "./reports";
 
@@ -120,7 +120,7 @@ export async function financeWorkbook(range: ReportRange): Promise<Uint8Array> {
   // Мөнгөн гүйлгээ
   const c = sheet(wb, "Мөнгөн гүйлгээ", [{ header: title, width: 40 }, { header: "Бэлэн", width: 16, money: true }, { header: "Данс", width: 16, money: true }]);
   c.addRow(["Эхний үлдэгдэл", cf.opening?.cash ?? null, cf.opening?.bank ?? null]);
-  for (const i of cf.inflows) c.addRow([`Орсон: ${PAY[i.method] ?? i.method}`, i.method === "CASH" ? i.amount : 0, i.method === "CASH" ? 0 : i.amount]);
+  for (const i of cf.inflows) c.addRow([`Орсон: ${i.label}`, i.method === "CASH" ? i.amount : 0, i.method === "CASH" ? 0 : i.amount]);
   for (const o of cf.outflows) c.addRow([`Гарсан: ${o.label}`, -o.cash, -o.bank]);
   c.addRow(["Цэвэр өөрчлөлт", cf.totals.netCash, cf.totals.netBank]);
   c.addRow(["Эцсийн үлдэгдэл", cf.closing?.cash ?? null, cf.closing?.bank ?? null]).font = { bold: true };
@@ -175,7 +175,7 @@ export async function financeWorkbook(range: ReportRange): Promise<Uint8Array> {
 
   // Касс
   const k = sheet(wb, "Касс", [{ header: "Төлбөрийн хэлбэр / ээлж", width: 36 }, { header: "Хүлээгдэж буй", width: 16, money: true }, { header: "Тоолсон", width: 16, money: true }, { header: "Зөрүү", width: 14, money: true }]);
-  for (const pmt of rep.payments) k.addRow([PAY[pmt.method] ?? pmt.method, pmt.amount]);
+  for (const pmt of rep.payments) k.addRow([pmt.label ?? PAY[pmt.method] ?? pmt.method, pmt.amount]);
   k.addRow([]);
   for (const sh of cf.shifts) k.addRow([`Ээлж ${sh.closedAt ? ubDateKey(sh.closedAt) : ""}`, sh.expected, sh.counted, sh.difference]);
 
@@ -229,11 +229,11 @@ export async function financeWorkbook(range: ReportRange): Promise<Uint8Array> {
   const dc = sheet(wb, "Өдрийн касс", [
     { header: "Огноо", width: 12 },
     { header: "Бүртгэсэн", width: 24 },
-    ...CASH_METHODS.map((m) => ({ header: PAY[m] ?? m, width: 14, money: true })),
+    ...daily.columns.map((c) => ({ header: c.label, width: 18, money: true })),
     { header: "Буцаалт", width: 14, money: true },
     { header: "Нийт (цэвэр)", width: 16, money: true },
   ]);
-  for (const r of daily.rows) dc.addRow([r.day, r.name, ...CASH_METHODS.map((m) => r.byMethod[m] ?? 0), r.refunds, r.net]);
+  for (const r of daily.rows) dc.addRow([r.day, r.name, ...daily.columns.map((c) => r.byMethod[c.key] ?? 0), r.refunds, r.net]);
 
   addExpenseSheet(wb, expenses);
   return bytes(wb);
